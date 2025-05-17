@@ -1,4 +1,35 @@
 {
     "magmacore.message.update_available": "Eine neue Version von %s ist verfügbar!",
-    "magmacore.message.update_link": "Klicke hier um zu updaten!"
+    "magmacore.message.update_link": "Klicke hier um zu updaten!",
+    "magmacore.message.reposts_header": "Important information about mod reposts:",
+    "magmacore.message.reposts_warning": "Sites like 9minecraft.net, mc-mod.net, etc. are known for reuploading mod files without permissions. \nThese sites will also contain a bunch of ads, to try to make money from mods they did not create.\n",
+    "magmacore.message.reposts_note_intro": "For you, this can mean any of the following:",
+    "magmacore.message.reposts_malware": "- Modified versions of mods, which may contain malware & viruses",
+    "magmacore.message.reposts_steal": "- Having your information stolen from malicious ads",
+    "magmacore.message.reposts_broken": "- Old and broken mod versions that can corrupt your world",
+    "magmacore.message.reposts_authors": "- Taking money and views away from the real authors, which may cause them to stop making mods",
+    "magmacore.message.reposts_more_info": "* Click here for more information *",
+
+    "magmacore.configuration.title": "Magma Core Konfiguration",
+    "magmacore.configuration.section.magmacore.magmacore.client.toml": "Client Settings",
+    "magmacore.configuration.section.magmacore.magmacore.client.toml.title": "Client Options",
+    "magmacore.configuration.section.magmacore.magmacore.server.toml": "Server Settings",
+    "magmacore.configuration.section.magmacore.magmacore.server.toml.title": "Server Options",
+    "magmacore.configuration.section.magmacore.magmacore.startup.toml": "Startup Settings",
+    "magmacore.configuration.section.magmacore.magmacore.startup.toml.title": "Startup Options",
+
+    "magmacore.configuration.general": "General Options",
+    "magmacore.configuration.general.button": "General Settings",
+    "magmacore.configuration.general.tooltip": "Configure general settings",
+
+    "magmacore.configuration.update-checker": "Update-Checker",
+    "magmacore.configuration.update.tooltip-checker": "Activate whether the game should check at every world start whether your mod matches the latest version",
+    "magmacore.configuration.supporter_rewards": "Patreon Rewards",
+    "magmacore.configuration.supporter_rewards.tooltip": "Enables ingame rewards on first spawn for Patreons and supporters",
+    "magmacore.configuration.debug_mode": "Debug Mode",
+    "magmacore.configuration.debug_mode.tooltip": "Enables the Debug mode",
+    "magmacore.configuration.mod_reposts_info": "Mod reposts info",
+    "magmacore.configuration.mod_reposts_info.tooltip": "Activate whether the game should show the mod reposts info the first time the game launches. To pack makers: Please support us!",
+
+    "magmacore.item.certificate": "Danke dass du mich in meiner Arbeit unterstützt!"
 }
