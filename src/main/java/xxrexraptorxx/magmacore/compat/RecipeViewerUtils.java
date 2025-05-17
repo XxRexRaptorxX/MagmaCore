@@ -3,7 +3,7 @@ package xxrexraptorxx.magmacore.compat;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import xxrexraptorxx.magmacore.utils.ItemHelper;
+import xxrexraptorxx.magmacore.content.ItemHelper;
 
 import java.util.Collections;
 import java.util.List;

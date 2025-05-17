@@ -1,4 +1,4 @@
-package xxrexraptorxx.magmacore.utils;
+package xxrexraptorxx.magmacore.content;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -7,6 +7,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
+import xxrexraptorxx.magmacore.utils.MiscUtils;
 
 public class BlockHelper {
 
@@ -15,13 +16,23 @@ public class BlockHelper {
     }
 
 
-    public static String getKey(Block block) {
+    public static String getPath(Block block) {
         return BuiltInRegistries.BLOCK.getKey(block).getPath();
     }
 
 
-    public static String getKey(ItemStack stack) {
-        return ItemHelper.getKey(stack.getItem());
+    public static String getPath(ItemStack stack) {
+        return ItemHelper.getPath(stack.getItem());
+    }
+
+
+    public static ResourceKey<Block> getPath(String name) {
+        return ResourceKey.create(Registries.BLOCK, ResourceLocation.fromNamespaceAndPath(MiscUtils.detectModId(), name));
+    }
+
+
+    public static ResourceLocation getLocation(String name){
+        return ResourceLocation.fromNamespaceAndPath(MiscUtils.detectModId(), name);
     }
 
 
