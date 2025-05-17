@@ -269,8 +269,8 @@ public class Events {
                     player.sendSystemMessage(Component.translatable("magmacore.message.reposts_broken").withStyle(ChatFormatting.RED));
                     player.sendSystemMessage(Component.translatable("magmacore.message.reposts_authors").withStyle(ChatFormatting.RED));
 
-                    MutableComponent url = Component.translatable(ChatFormatting.GOLD + "magmacore.message.reposts_more_info")
-                            .withStyle(style -> style.withClickEvent(new ClickEvent.OpenUrl(URI.create("https://vazkii.net/repost/"))));
+                    MutableComponent url = Component.translatable("magmacore.message.reposts_more_info")
+                            .withStyle(style -> style.withClickEvent(new ClickEvent.OpenUrl(URI.create("https://vazkii.net/repost/"))).withColor(ChatFormatting.GOLD));
                     player.sendSystemMessage(url);
                 }
             }

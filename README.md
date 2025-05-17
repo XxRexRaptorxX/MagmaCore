@@ -1,6 +1,6 @@
-[![CurseForge Downloads](https://cf.way2muchnoise.eu/286666.svg?badge_style=for_the_badge)][cf_mod] [![CurseForge Game Versions](https://cf.way2muchnoise.eu/versions/286666.svg?badge_style=for_the_badge)][cf_mod]
+[![CurseForge Downloads](https://cf.way2muchnoise.eu/1267885.svg?badge_style=for_the_badge)][cf_mod] [![CurseForge Game Versions](https://cf.way2muchnoise.eu/versions/1267885.svg?badge_style=for_the_badge)][cf_mod]
 
-[![Modrinth Downloads](https://img.shields.io/modrinth/dt/fgwtZ87p?label=Modrinth&logo=modrinth&style=for-the-badge)][mr_mod] [![Modrinth Game Versions](https://img.shields.io/modrinth/game-versions/fgwtZ87p?label=Available%20for&logo=modrinth&style=for-the-badge)][mr_mod]
+[![Modrinth Downloads](https://img.shields.io/modrinth/dt/rqi506vX?label=Modrinth&logo=modrinth&style=for-the-badge)][mr_mod] [![Modrinth Game Versions](https://img.shields.io/modrinth/game-versions/rqi506vX?label=Available%20for&logo=modrinth&style=for-the-badge)][mr_mod]
 
 # Magma Core for Minecraft
 
