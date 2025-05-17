@@ -1,0 +1,14 @@
+{
+    "magmacore.message.update_available": "A newer version of %s is available!",
+    "magmacore.message.update_link": "Click here to update!",
+    "magmacore.message.reposts_header": "Important information about mod reposts:",
+    "magmacore.message.reposts_warning": "Sites like 9minecraft.net, mc-mod.net, etc. are known for reuploading mod files without permissions. \nThese sites will also contain a bunch of ads, to try to make money from mods they did not create.\n",
+    "magmacore.message.reposts_note_intro": "For you, this can mean any of the following:",
+    "magmacore.message.reposts_malware": "- Modified versions of mods, which may contain malware & viruses",
+    "magmacore.message.reposts_steal": "- Having your information stolen from malicious ads",
+    "magmacore.message.reposts_broken": "- Old and broken mod versions that can corrupt your world",
+    "magmacore.message.reposts_authors": "- Taking money and views away from the real authors, which may cause them to stop making mods",
+    "magmacore.message.reposts_more_info": "* Click here for more information *",
+
+    "magmacore.item.certificate": "Thank you for supporting me in my work!"
+}
