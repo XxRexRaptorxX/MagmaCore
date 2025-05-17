@@ -30,7 +30,7 @@ public class Config {
     //SERVER
     static {
         ConfigHelper.setCategory(SERVER_BUILDER, "general");
-        SUPPORTER_REWARDS =       SERVER_BUILDER.comment("Enables ingame rewards on first spawn for Patreons").define("patreon_rewards", true);
+        SUPPORTER_REWARDS =       SERVER_BUILDER.comment("Enables ingame rewards on first spawn for Patreons and supporters").define("supporter_rewards", true);
         SERVER_BUILDER.pop();
 
         SERVER_CONFIG = SERVER_BUILDER.build();

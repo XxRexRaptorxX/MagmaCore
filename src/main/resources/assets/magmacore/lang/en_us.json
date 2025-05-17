@@ -10,5 +10,26 @@
     "magmacore.message.reposts_authors": "- Taking money and views away from the real authors, which may cause them to stop making mods",
     "magmacore.message.reposts_more_info": "* Click here for more information *",
 
+    "magmacore.configuration.title": "Magma Core Configuration",
+    "magmacore.configuration.section.magmacore.magmacore.client.toml": "Client Settings",
+    "magmacore.configuration.section.magmacore.magmacore.client.toml.title": "Client Options",
+    "magmacore.configuration.section.magmacore.magmacore.server.toml": "Server Settings",
+    "magmacore.configuration.section.magmacore.magmacore.server.toml.title": "Server Options",
+    "magmacore.configuration.section.magmacore.magmacore.startup.toml": "Startup Settings",
+    "magmacore.configuration.section.magmacore.magmacore.startup.toml.title": "Startup Options",
+
+    "magmacore.configuration.general": "General Options",
+    "magmacore.configuration.general.button": "General Settings",
+    "magmacore.configuration.general.tooltip": "Configure general settings",
+
+    "magmacore.configuration.update-checker": "Update-Checker",
+    "magmacore.configuration.update.tooltip-checker": "Activate whether the game should check at every world start whether your mod matches the latest version",
+    "magmacore.configuration.supporter_rewards": "Patreon Rewards",
+    "magmacore.configuration.supporter_rewards.tooltip": "Enables ingame rewards on first spawn for Patreons and supporters",
+    "magmacore.configuration.debug_mode": "Debug Mode",
+    "magmacore.configuration.debug_mode.tooltip": "Enables the Debug mode",
+    "magmacore.configuration.mod_reposts_info": "Mod reposts info",
+    "magmacore.configuration.mod_reposts_info.tooltip": "Activate whether the game should show the mod reposts info the first time the game launches. To pack makers: Please support us!",
+
     "magmacore.item.certificate": "Thank you for supporting me in my work!"
 }
