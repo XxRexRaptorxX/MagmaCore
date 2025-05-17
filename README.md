@@ -4,11 +4,11 @@
 
 # Magma Core for Minecraft
 
-![Logo](https://i.imgur.com/05QnUzP.png)
+![Logo](https://github.com/XxRexRaptorxX/MagmaCore/blob/main/src/main/resources/logo.png?raw=true)
 
 ## 📖 Description
 
-This is the core mod that is needed for the other RexRaptor mods!
+This is the core mod that is needed for the other [RexRaptor](https://www.curseforge.com/members/xxrexraptorxx/projects) mods!
 
 -----
 
