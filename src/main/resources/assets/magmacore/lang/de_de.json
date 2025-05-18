@@ -23,7 +23,7 @@
     "magmacore.configuration.general.tooltip": "Configure general settings",
 
     "magmacore.configuration.update-checker": "Update-Checker",
-    "magmacore.configuration.update.tooltip-checker": "Activate whether the game should check at every world start whether your mod matches the latest version",
+    "magmacore.configuration.update-checker.tooltip": "Activate whether the game should check at every world start whether your mod matches the latest version",
     "magmacore.configuration.supporter_rewards": "Patreon Rewards",
     "magmacore.configuration.supporter_rewards.tooltip": "Enables ingame rewards on first spawn for Patreons and supporters",
     "magmacore.configuration.debug_mode": "Debug Mode",
