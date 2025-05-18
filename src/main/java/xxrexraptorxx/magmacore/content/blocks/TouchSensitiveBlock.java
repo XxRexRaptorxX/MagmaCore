@@ -1,4 +1,4 @@
-package xxrexraptorxx.magmacore.content;
+package xxrexraptorxx.magmacore.content.blocks;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
