@@ -4,12 +4,10 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.neoforge.client.gui.ConfigurationScreen;
-import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xxrexraptorxx.magmacore.config.Config;
+import xxrexraptorxx.magmacore.config.ConfigHelper;
 
 /**
  * @author XxRexRaptorxX (RexRaptor)
@@ -22,9 +20,7 @@ public class MagmaCore {
 
 
     public MagmaCore(IEventBus bus, ModContainer container) {
-        container.registerConfig(ModConfig.Type.SERVER, Config.SERVER_CONFIG, References.MODID + "/" + References.MODID + "-server.toml");
-        container.registerConfig(ModConfig.Type.CLIENT, Config.CLIENT_CONFIG, References.MODID + "/" + References.MODID + "-client.toml");
-
+        ConfigHelper.registerConfigs(container, References.MODID, true, Config.SERVER_CONFIG, Config.CLIENT_CONFIG);
         ModRegistry.register(References.MODID, References.NAME, References.URL);
     }
 
@@ -33,7 +29,7 @@ public class MagmaCore {
     public static class MagmaCoreClient {
 
         public MagmaCoreClient(ModContainer container) {
-            container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
+            ConfigHelper.registerIngameConfig(container);
         }
     }
 }
