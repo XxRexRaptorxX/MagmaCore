@@ -11,6 +11,7 @@ public class FormattingHelper {
             return string;
         }
 
+        string = string.replace('_', ' ');
         String[] words = string.split(" ");
         StringBuilder capitalizedString = new StringBuilder();
 
@@ -31,13 +32,28 @@ public class FormattingHelper {
     }
 
 
+    public static String setLangTagPrefix(String prefix, String modId) {
+        return prefix + "." + modId + ".";
+    }
+
+
     public static String setLangTag(String prefix, String suffix) {
         return prefix + "." + MiscUtils.detectModId() + "." + suffix;
     }
 
 
+    public static String setLangTag(String prefix, String modId, String suffix) {
+        return prefix + "." + modId + "." + suffix;
+    }
+
+
     public static MutableComponent setModLangComponent(String prefix, String suffix) {
         return Component.translatable(setLangTag(prefix, suffix));
+    }
+
+
+    public static MutableComponent setModLangComponent(String prefix, String modId, String suffix) {
+        return Component.translatable(setLangTag(prefix, modId, suffix));
     }
 
 
