@@ -51,13 +51,14 @@ import java.util.concurrent.CompletableFuture;
 public class Events {
 
     private static final Map<String, Boolean> shownMap = new HashMap<>();
+    private static boolean hasShownUp = false;
 
     /**
      * Handles update checking for registered mods after world joining.
      */
     @SubscribeEvent
     public static void UpdateChecker(ClientTickEvent.Pre event) {
-        if (Minecraft.getInstance().screen != null || !Config.getUpdateChecker()) return;
+        if (Minecraft.getInstance().screen != null || !Config.getUpdateChecker() || hasShownUp) return;
 
         for (var entry : ModRegistry.getEntries()) {
             if (Config.getDebugMode()) MagmaCore.LOGGER.info("Update checker for " + entry.modName() + " is running!");
@@ -89,6 +90,9 @@ public class Events {
                 default -> { /* up to date */ }
             }
         }
+
+        if (Config.getDebugMode()) MagmaCore.LOGGER.info("All updates checked!");
+        hasShownUp = true;
     }
 
 
