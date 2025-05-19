@@ -8,6 +8,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -71,7 +72,8 @@ public class Events {
             switch (result.status()) {
                 case OUTDATED, BETA_OUTDATED -> {
                     MutableComponent msg = Component.translatable("magmacore.message.update_available", entry.modName()).withStyle(style -> style.withColor(ChatFormatting.BLUE));
-                    MutableComponent link = Component.translatable("magmacore.message.update_link").withStyle(style -> style.withColor(ChatFormatting.GREEN).withClickEvent(new ClickEvent.OpenUrl(URI.create(entry.updateUrl()))));
+                    MutableComponent link = Component.translatable("magmacore.message.update_link").withStyle(style -> style.withColor(ChatFormatting.GREEN)
+                            .withClickEvent(new ClickEvent.OpenUrl(URI.create(entry.updateUrl()))).withHoverEvent(new HoverEvent.ShowText(Component.translatable("magmacore.message.official").withStyle(ChatFormatting.GOLD))));
 
                     player.displayClientMessage(msg, false);
                     player.displayClientMessage(link, false);
@@ -261,17 +263,23 @@ public class Events {
 
                 if (!(launcher.contains("curseforge") || launcher.contains("modrinth") || launcher.contains("prism")) && Config.getModRepostsInfo()) {
                     MagmaCore.LOGGER.info("Stop-mod-reposts info message is generated. Don't worry, this message should only appear the very first time after installation!");
+                    player.sendSystemMessage(Component.literal("<-------------------------------------------------->").withStyle(ChatFormatting.RED));
+
                     player.sendSystemMessage(Component.translatable("magmacore.message.reposts_header").withStyle(ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED));
                     player.sendSystemMessage(Component.translatable("magmacore.message.reposts_warning").withStyle(ChatFormatting.RED));
-                    player.sendSystemMessage(Component.translatable("magmacore.message.reposts_note_intro").withStyle(ChatFormatting.UNDERLINE).withStyle(ChatFormatting.RED));
+                    player.sendSystemMessage(Component.translatable("magmacore.message.reposts_note_intro").withStyle(ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED));
                     player.sendSystemMessage(Component.translatable("magmacore.message.reposts_malware").withStyle(ChatFormatting.RED));
                     player.sendSystemMessage(Component.translatable("magmacore.message.reposts_steal").withStyle(ChatFormatting.RED));
                     player.sendSystemMessage(Component.translatable("magmacore.message.reposts_broken").withStyle(ChatFormatting.RED));
                     player.sendSystemMessage(Component.translatable("magmacore.message.reposts_authors").withStyle(ChatFormatting.RED));
+                    player.sendSystemMessage(Component.empty());
 
                     MutableComponent url = Component.translatable("magmacore.message.reposts_more_info")
-                            .withStyle(style -> style.withClickEvent(new ClickEvent.OpenUrl(URI.create("https://vazkii.net/repost/"))).withColor(ChatFormatting.GOLD));
+                            .withStyle(style -> style.withClickEvent(new ClickEvent.OpenUrl(URI.create("https://vazkii.net/repost/")))
+                            .withColor(ChatFormatting.GOLD).withHoverEvent(new HoverEvent.ShowText(Component.literal("?").withStyle(ChatFormatting.GRAY))));
                     player.sendSystemMessage(url);
+
+                    player.sendSystemMessage(Component.literal("<-------------------------------------------------->").withStyle(ChatFormatting.RED));
                 }
             }
         } catch (IOException e) {
