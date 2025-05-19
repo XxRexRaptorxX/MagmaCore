@@ -1,6 +1,5 @@
 package xxrexraptorxx.magmacore.world;
 
-import com.mojang.authlib.GameProfile;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.Registry;
@@ -17,7 +16,6 @@ import net.minecraft.stats.Stats;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
@@ -31,6 +29,7 @@ import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import xxrexraptorxx.magmacore.config.Config;
+import xxrexraptorxx.magmacore.content.items.RewardItems;
 import xxrexraptorxx.magmacore.main.MagmaCore;
 import xxrexraptorxx.magmacore.main.ModRegistry;
 import xxrexraptorxx.magmacore.main.References;
@@ -111,17 +110,18 @@ public class Events {
                 if (player instanceof ServerPlayer serverPlayer) { // Ensure the player is a ServerPlayer
                     // Check if the player is logging in for the first time
                     if (serverPlayer.getStats().getValue(Stats.CUSTOM, Stats.PLAY_TIME) < 5) {
+                        boolean isDev = player.getName().getString().equals("Dev");
 
                         // Perform supporter checks asynchronously
                         CompletableFuture.runAsync(() -> {
-                            if (SupporterCheck(URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Supporter"), player)) {
+                            if (SupporterCheck(URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Supporter"), player) || Config.getDebugMode() && isDev) {
                                 giveSupporterReward(player, level);
                             }
-                            if (SupporterCheck(URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Premium%20Supporter"), player)) {
+                            if (SupporterCheck(URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Premium%20Supporter"), player) || Config.getDebugMode() && isDev) {
                                 givePremiumSupporterReward(player, level);
                             }
-                            if (SupporterCheck(URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Elite"), player)) {
-                                giveEliteReward(player);
+                            if (SupporterCheck(URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Elite"), player) || Config.getDebugMode() && isDev) {
+                                giveEliteReward(player, level);
                             }
                         });
                     }
@@ -157,17 +157,9 @@ public class Events {
     private static void giveSupporterReward(Player player, Level level) {
         if (Config.getDebugMode()) MagmaCore.LOGGER.info("Supporter found! " + player.getDisplayName());
 
-        ItemStack certificate = new ItemStack(Items.PAPER);
-        certificate.set(DataComponents.CUSTOM_NAME, Component.translatable("magmacore.item.certificate").withStyle(ChatFormatting.GOLD)
-                .append(Component.literal(" - XxRexRaptorxX").withStyle(ChatFormatting.ITALIC).withStyle(ChatFormatting.GREEN)));
-
-        ItemStack reward = new ItemStack(Items.PLAYER_HEAD);
-        var profile = new GameProfile(player.getUUID(), player.getName().getString());
-        reward.set(DataComponents.PROFILE, new ResolvableProfile(profile));
-
         level.playSound(null, player.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.5F, level.random.nextFloat() * 0.15F + 0.8F);
-        player.getInventory().add(reward);
-        player.getInventory().add(certificate);
+        player.getInventory().add(RewardItems.getPlayerHead(player));
+        player.getInventory().add(RewardItems.getCertificate());
     }
 
 
@@ -184,13 +176,10 @@ public class Events {
     }
 
 
-    private static void giveEliteReward(Player player) {
+    private static void giveEliteReward(Player player, Level level) {
         if (Config.getDebugMode()) MagmaCore.LOGGER.info("Elite Supporter found! " + player.getDisplayName());
 
-        ItemStack star = new ItemStack(Items.NETHER_STAR);
-
-        star.set(DataComponents.CUSTOM_NAME, Component.literal("Elite Star"));
-        player.getInventory().add(star);
+        player.getInventory().add(RewardItems.getArmor(level, player));
     }
 
 

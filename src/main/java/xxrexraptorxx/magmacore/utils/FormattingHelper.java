@@ -112,6 +112,20 @@ public class FormattingHelper {
 
 
     /**
+     * Creates a translatable text component for a mod-specific language tag
+     * using the provided mod ID.
+     *
+     * @param modId the mod identifier to include
+     * @param suffix the suffix for the language key
+     * @return a {@link MutableComponent} that will translate the key "{modId}.{suffix}"
+     */
+    public static MutableComponent setLangComponent(String modId, String suffix) {
+        return Component.translatable(modId + "." + suffix);
+    }
+
+
+
+    /**
      * Returns either the normal or expanded tooltip component depending on
      * whether the Shift key is held down.
      *

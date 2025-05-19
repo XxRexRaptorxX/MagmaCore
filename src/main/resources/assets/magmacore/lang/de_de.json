@@ -32,5 +32,8 @@
     "magmacore.configuration.mod_reposts_info": "Mod reposts info",
     "magmacore.configuration.mod_reposts_info.tooltip": "Activate whether the game should show the mod reposts info the first time the game launches. To pack makers: Please support us!",
 
-    "magmacore.item.certificate": "Danke dass du mich in meiner Arbeit unterstützt!"
+    "magmacore.item.certificate": "Zertifikat",
+    "magmacore.item.certificate.lore": "Danke dass du mich in meiner Arbeit unterstützt!",
+    "magmacore.item.legendary_chestplate": "Legendärer Harnisch",
+    "magmacore.item.legendary_chestplate.lore": "Eigens geschmiedet für "
 }
