@@ -11,16 +11,39 @@ import javax.annotation.Nullable;
 
 public class ConfigHelper {
 
+    /**
+     * Sets a configuration category on the given builder, pushing a new comment header.
+     *
+     * @param builder the {@link ModConfigSpec.Builder} to configure
+     * @param name the category name; used both as the push key and to generate a comment
+     */
     public static void setCategory(ModConfigSpec.Builder builder, String name) {
         builder.push(name).comment(Character.toUpperCase(name.charAt(0)) + name.substring(1));
     }
 
 
+    /**
+     * Registers the in-game configuration screen factory for this mod.
+     *
+     * @param container the {@link ModContainer} of the mod
+     */
     public static void registerIngameConfig(ModContainer container) {
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
     }
 
 
+    /**
+     * Registers all provided configuration specs for this mod with the loader.
+     * Optionally places config files in a subfolder matching the mod ID.
+     *
+     * @param container the {@link ModContainer} of the mod
+     * @param modId the mod identifier, used for file naming and folder paths
+     * @param withFolder if true, config files are placed in a folder named after the mod ID
+     * @param serverConfig the server-side config spec, or null if not used
+     * @param clientConfig the client-side config spec, or null if not used
+     * @param commonConfig the common config spec, or null if not used
+     * @param startupConfig the startup config spec, or null if not used
+     */
     public static void registerConfigs(ModContainer container, String modId, boolean withFolder, @Nullable ModConfigSpec serverConfig, @Nullable ModConfigSpec clientConfig, @Nullable ModConfigSpec commonConfig, @Nullable ModConfigSpec startupConfig) {
 
         String path = modId;
@@ -38,6 +61,15 @@ public class ConfigHelper {
     }
 
 
+    /**
+     * Convenience overload for registering only server and client configs.
+     *
+     * @param container the {@link ModContainer} of the mod
+     * @param modId the mod identifier, used for file naming and folder paths
+     * @param withFolder if true, config files are placed in a folder named after the mod ID
+     * @param serverConfig the server-side config spec, or null if not used
+     * @param clientConfig the client-side config spec, or null if not used
+     */
     public static void registerConfigs(ModContainer container, String modId, boolean withFolder, @Nullable ModConfigSpec serverConfig, @Nullable ModConfigSpec clientConfig) {
         registerConfigs(container, modId, withFolder, serverConfig, clientConfig, null, null);
     }

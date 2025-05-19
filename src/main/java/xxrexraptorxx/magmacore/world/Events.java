@@ -53,6 +53,9 @@ public class Events {
 
     private static final Map<String, Boolean> shownMap = new HashMap<>();
 
+    /**
+     * Handles update checking for registered mods after world joining.
+     */
     @SubscribeEvent
     public static void UpdateChecker(ClientTickEvent.Pre event) {
         if (Minecraft.getInstance().screen != null || !Config.getUpdateChecker()) return;

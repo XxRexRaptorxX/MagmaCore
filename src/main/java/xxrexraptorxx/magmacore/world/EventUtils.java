@@ -10,6 +10,14 @@ import javax.annotation.Nullable;
 
 public class EventUtils {
 
+    /**
+     * Applies a status effect and/or damage to a player or living entity.
+     * Only executes on the server side.
+     *
+     * @param entity         the entity to affect; if not a player or living entity, no action is taken
+     * @param effectInstance the MobEffectInstance to apply, or null if no effect should be applied
+     * @param damageAmount   the amount of damage to inflict; negative values deal magic damage, non-negative values inflict no damage
+     */
     public static void addPlayerEffects(Entity entity, @Nullable MobEffectInstance effectInstance, float damageAmount) {
         Level level = entity.level();
 
