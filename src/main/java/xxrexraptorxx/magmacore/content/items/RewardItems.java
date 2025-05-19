@@ -42,7 +42,7 @@ public class RewardItems {
     }
 
 
-    public static ItemStack getArmor(Level level, Player player) {
+    public static ItemStack getChestplate(Level level, Player player) {
         ItemStack reward = new ItemStack(Items.IRON_CHESTPLATE);
         try {
             HolderLookup.RegistryLookup<TrimMaterial> lookupTrimMaterials = level.registryAccess().lookupOrThrow(Registries.TRIM_MATERIAL);
@@ -53,6 +53,28 @@ public class RewardItems {
             reward.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
             reward.set(DataComponents.CUSTOM_NAME, Component.translatable("magmacore.item.legendary_chestplate").withStyle(ChatFormatting.GOLD));
             reward.set(DataComponents.LORE, new ItemLore(List.of(Component.empty(), Component.translatable("magmacore.item.legendary_chestplate.lore").append(player.getName().getString()))));
+
+        } catch (IllegalStateException e) {
+            MagmaCore.LOGGER.error("Failed to create ArmorTrim for reward: {}", e.getMessage(), e);
+        } catch (Exception e) {
+            MagmaCore.LOGGER.error("Unexpected error in getArmor(): {}", e.getMessage(), e);
+        }
+
+        return reward;
+    }
+
+
+    public static ItemStack getLeggings(Level level, Player player) {
+        ItemStack reward = new ItemStack(Items.IRON_LEGGINGS);
+        try {
+            HolderLookup.RegistryLookup<TrimMaterial> lookupTrimMaterials = level.registryAccess().lookupOrThrow(Registries.TRIM_MATERIAL);
+            HolderLookup.RegistryLookup<TrimPattern> lookupTrimPatterns = level.registryAccess().lookupOrThrow(Registries.TRIM_PATTERN);
+
+            reward.set(DataComponents.TRIM, new ArmorTrim(lookupTrimMaterials.getOrThrow(TrimMaterials.NETHERITE), lookupTrimPatterns.getOrThrow(TrimPatterns.DUNE)));
+            reward.set(DataComponents.RARITY, Rarity.EPIC);
+            reward.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+            reward.set(DataComponents.CUSTOM_NAME, Component.translatable("magmacore.item.legendary_leggings").withStyle(ChatFormatting.GOLD));
+            reward.set(DataComponents.LORE, new ItemLore(List.of(Component.empty(), Component.translatable("magmacore.item.legendary_leggings.lore").append(player.getName().getString()))));
 
         } catch (IllegalStateException e) {
             MagmaCore.LOGGER.error("Failed to create ArmorTrim for reward: {}", e.getMessage(), e);

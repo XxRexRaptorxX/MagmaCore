@@ -35,5 +35,7 @@
     "magmacore.item.certificate": "Certificate",
     "magmacore.item.certificate.lore": "Thank you for supporting me in my work!",
     "magmacore.item.legendary_chestplate": "Legendary Chestplate",
-    "magmacore.item.legendary_chestplate.lore": "Specially forged for "
+    "magmacore.item.legendary_chestplate.lore": "Specially forged for ",
+    "magmacore.item.legendary_leggings": "Legendary Leggings",
+    "magmacore.item.legendary_leggings.lore": "Specially forged for "
 }

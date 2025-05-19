@@ -2,9 +2,6 @@ package xxrexraptorxx.magmacore.world;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.core.Registry;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -16,9 +13,6 @@ import net.minecraft.stats.Stats;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.Enchantments;
-import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
@@ -61,7 +55,7 @@ public class Events {
         if (Minecraft.getInstance().screen != null || !Config.getUpdateChecker() || hasShownUp) return;
 
         for (var entry : ModRegistry.getEntries()) {
-            if (Config.getDebugMode()) MagmaCore.LOGGER.info("Update checker for " + entry.modName() + " is running!");
+            if (Config.getDebugMode()) MagmaCore.LOGGER.info("Update-Checker for " + entry.modName() + " is running!");
 
             if (shownMap.getOrDefault(entry.modId(), false)) continue;
 
@@ -170,20 +164,14 @@ public class Events {
     private static void givePremiumSupporterReward(Player player, Level level) {
         if (Config.getDebugMode()) MagmaCore.LOGGER.info("Premium Supporter found! " + player.getDisplayName());
 
-        ItemStack reward = new ItemStack(Items.DIAMOND_SWORD, 1);
-        Registry<Enchantment> enchantmentsRegistry = level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
-
-        reward.enchant(enchantmentsRegistry.getOrThrow(Enchantments.MENDING), 1);
-        reward.enchant(enchantmentsRegistry.getOrThrow(Enchantments.SHARPNESS), 3);
-        reward.set(DataComponents.ENCHANTMENTS, reward.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY));
-        player.getInventory().add(reward);
+        player.getInventory().add(RewardItems.getLeggings(level, player));
     }
 
 
     private static void giveEliteReward(Player player, Level level) {
         if (Config.getDebugMode()) MagmaCore.LOGGER.info("Elite Supporter found! " + player.getDisplayName());
 
-        player.getInventory().add(RewardItems.getArmor(level, player));
+        player.getInventory().add(RewardItems.getChestplate(level, player));
     }
 
 
