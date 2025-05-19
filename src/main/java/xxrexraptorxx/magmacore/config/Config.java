@@ -6,9 +6,11 @@ public class Config {
 
     private static final ModConfigSpec.Builder SERVER_BUILDER = new ModConfigSpec.Builder();
     private static final ModConfigSpec.Builder CLIENT_BUILDER = new ModConfigSpec.Builder();
+    private static final ModConfigSpec.Builder STARTUP_BUILDER = new ModConfigSpec.Builder();
 
     public static ModConfigSpec SERVER_CONFIG;
     public static ModConfigSpec CLIENT_CONFIG;
+    public static ModConfigSpec STARTUP_CONFIG;
 
     private static final ModConfigSpec.BooleanValue UPDATE_CHECKER;
     private static final ModConfigSpec.BooleanValue MOD_REPOSTS_INFO;
@@ -21,7 +23,6 @@ public class Config {
         ConfigHelper.setCategory(CLIENT_BUILDER, "general");
         UPDATE_CHECKER =        CLIENT_BUILDER.comment("Activate whether the game should check at every world start whether your mod matches the latest version").define("update-checker", true);
         MOD_REPOSTS_INFO =      CLIENT_BUILDER.comment("Activate whether the game should show the mod reposts info the first time the game launches. To pack makers: Please support us!").define("mod_reposts_info", true);
-        DEBUG_MODE =            CLIENT_BUILDER.comment("Activate the Debug Mode").define("debug_mode", false);
         CLIENT_BUILDER.pop();
 
         CLIENT_CONFIG = CLIENT_BUILDER.build();
@@ -34,6 +35,15 @@ public class Config {
         SERVER_BUILDER.pop();
 
         SERVER_CONFIG = SERVER_BUILDER.build();
+    }
+
+    //STARTUP
+    static {
+        ConfigHelper.setCategory(STARTUP_BUILDER, "general");
+        DEBUG_MODE =            STARTUP_BUILDER.comment("Activate the Debug Mode").define("debug_mode", false);
+        STARTUP_BUILDER.pop();
+
+        STARTUP_CONFIG = STARTUP_BUILDER.build();
     }
 
 

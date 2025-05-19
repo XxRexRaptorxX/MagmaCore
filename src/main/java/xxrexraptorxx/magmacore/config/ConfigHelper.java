@@ -22,7 +22,6 @@ public class ConfigHelper {
 
 
     public static void registerConfigs(ModContainer container, String modId, boolean withFolder, @Nullable ModConfigSpec serverConfig, @Nullable ModConfigSpec clientConfig, @Nullable ModConfigSpec commonConfig, @Nullable ModConfigSpec startupConfig) {
-        if (Config.getDebugMode()) MagmaCore.LOGGER.info("Registering configs for " + modId);
 
         String path = modId;
 
@@ -34,6 +33,8 @@ public class ConfigHelper {
         if (clientConfig != null) container.registerConfig(ModConfig.Type.CLIENT, clientConfig, path + "-client.toml");
         if (commonConfig != null) container.registerConfig(ModConfig.Type.COMMON, commonConfig, path + "-common.toml");
         if (startupConfig != null) container.registerConfig(ModConfig.Type.STARTUP, startupConfig, path + "-startup.toml");
+
+        if (Config.getDebugMode()) MagmaCore.LOGGER.info("Configs registered for " + modId);
     }
 
 
