@@ -16,6 +16,8 @@ public class Config {
     private static final ModConfigSpec.BooleanValue MOD_REPOSTS_INFO;
     private static final ModConfigSpec.BooleanValue SUPPORTER_REWARDS;
     private static final ModConfigSpec.BooleanValue DEBUG_MODE;
+    private static final ModConfigSpec.BooleanValue INGAME_LOGS;
+    private static final ModConfigSpec.BooleanValue SHOW_ALL_LOGS;
 
 
     //CLIENT
@@ -23,6 +25,11 @@ public class Config {
         ConfigHelper.setCategory(CLIENT_BUILDER, "general");
         UPDATE_CHECKER =        CLIENT_BUILDER.comment("Activate whether the game should check at every world start whether your mod matches the latest version").define("update-checker", true);
         MOD_REPOSTS_INFO =      CLIENT_BUILDER.comment("Activate whether the game should show the mod reposts info the first time the game launches. To pack makers: Please support us!").define("mod_reposts_info", true);
+        CLIENT_BUILDER.pop();
+
+        ConfigHelper.setCategory(CLIENT_BUILDER, "logger");
+        INGAME_LOGS =           CLIENT_BUILDER.comment("Shows you ingame in the chat, all logs of the console. Only useful for debugging").define("ingame_logs", false);
+        SHOW_ALL_LOGS =         CLIENT_BUILDER.comment("Shows you all logs, if switched off only logs from RexRaptor mods are displayed").define("show_all_logs", true);
         CLIENT_BUILDER.pop();
 
         CLIENT_CONFIG = CLIENT_BUILDER.build();
@@ -50,5 +57,7 @@ public class Config {
     public static boolean getUpdateChecker()            { return UPDATE_CHECKER.get();                          }
     public static boolean getModRepostsInfo()           { return MOD_REPOSTS_INFO.get();                        }
     public static boolean getSupporterRewards()         { return SUPPORTER_REWARDS.get();                       }
+    public static boolean getIngameLogs()               { return INGAME_LOGS.get();                             }
+    public static boolean getShowAllLogs()              { return SHOW_ALL_LOGS.get();                           }
     public static boolean getDebugMode()                { return DEBUG_MODE != null || DEBUG_MODE.get();        }
 }

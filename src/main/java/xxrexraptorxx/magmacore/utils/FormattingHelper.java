@@ -1,9 +1,11 @@
 package xxrexraptorxx.magmacore.utils;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import org.apache.logging.log4j.Level;
 import xxrexraptorxx.magmacore.main.References;
 
 public class FormattingHelper {
@@ -159,6 +161,28 @@ public class FormattingHelper {
      */
     public static Component setExpandableTooltip(Component normal, Component expanded) {
         return Screen.hasShiftDown() ? expanded : normal;
+    }
+
+
+    public static ChatFormatting getColor(Level level) {
+        if (level == Level.ERROR) {
+            return ChatFormatting.RED;
+
+        } else if (level == Level.FATAL) {
+            return ChatFormatting.DARK_RED;
+
+        } else if (level == Level.DEBUG) {
+            return ChatFormatting.AQUA;
+
+        } else if (level == Level.TRACE) {
+            return ChatFormatting.AQUA;
+
+        } else if (level == Level.WARN) {
+            return ChatFormatting.RED;
+
+        } else {
+            return ChatFormatting.YELLOW;
+        }
     }
 
 }

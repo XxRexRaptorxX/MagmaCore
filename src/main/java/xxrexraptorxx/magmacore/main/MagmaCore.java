@@ -1,13 +1,16 @@
 package xxrexraptorxx.magmacore.main;
 
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xxrexraptorxx.magmacore.config.Config;
 import xxrexraptorxx.magmacore.config.ConfigHelper;
+import xxrexraptorxx.magmacore.utils.ChatLogAppender;
 
 /**
  * @author XxRexRaptorxX (RexRaptor)
@@ -22,6 +25,8 @@ public class MagmaCore {
     public MagmaCore(IEventBus bus, ModContainer container) {
         ConfigHelper.registerConfigs(container, References.MODID, true, Config.SERVER_CONFIG, Config.CLIENT_CONFIG, null, Config.STARTUP_CONFIG);
         ModRegistry.register(References.MODID, References.NAME, References.URL);
+
+        bus.addListener(this::onClientSetup);
     }
 
 
@@ -31,6 +36,11 @@ public class MagmaCore {
         public MagmaCoreClient(ModContainer container) {
             ConfigHelper.registerIngameConfig(container);
         }
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private void onClientSetup(FMLClientSetupEvent event) {
+        ChatLogAppender.register();
     }
 }
 
