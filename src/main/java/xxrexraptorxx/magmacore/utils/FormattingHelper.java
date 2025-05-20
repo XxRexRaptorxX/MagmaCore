@@ -3,6 +3,8 @@ package xxrexraptorxx.magmacore.utils;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.ResourceLocation;
+import xxrexraptorxx.magmacore.main.References;
 
 public class FormattingHelper {
 
@@ -35,13 +37,24 @@ public class FormattingHelper {
 
 
     /**
-     * Constructs a language tag prefix using the detected mod ID.
+     * Constructs a language tag prefix using the Magma Core id.
      *
      * @param prefix the base prefix to use (e.g. "item" or "block")
-     * @return the concatenated prefix in the form "{prefix}.{modId}."
+     * @return the concatenated prefix in the form "{prefix}.magmacore."
      */
-    public static String setLangTagPrefix(String prefix) {
-        return prefix + "." + MiscUtils.detectModId() + ".";
+    public static String setCoreTagPrefix(String prefix) {
+        return prefix + "." + References.MODID + ".";
+    }
+
+
+    /**
+     * Constructs a language tag prefix using the default namespace.
+     *
+     * @param prefix the base prefix to use (e.g. "item" or "block")
+     * @return the concatenated prefix in the form "{prefix}.minecraft."
+     */
+    public static String setMCLangTagPrefix(String prefix) {
+        return prefix + "." + ResourceLocation.DEFAULT_NAMESPACE + ".";
     }
 
 
@@ -58,14 +71,26 @@ public class FormattingHelper {
 
 
     /**
-     * Constructs a full language tag using the detected mod ID.
+     * Constructs a full language tag using the MagmaCore id.
      *
      * @param prefix the base prefix to use (e.g. "item" or "block")
      * @param suffix the suffix to append (e.g. "name" or "description")
-     * @return the language tag in the form "{prefix}.{modId}.{suffix}"
+     * @return the language tag in the form "{prefix}.magmacore.{suffix}"
      */
-    public static String setLangTag(String prefix, String suffix) {
-        return prefix + "." + MiscUtils.detectModId() + "." + suffix;
+    public static String setCoreLangTag(String prefix, String suffix) {
+        return prefix + "." + References.MODID + "." + suffix;
+    }
+
+
+    /**
+     * Constructs a full language tag using the default namespace.
+     *
+     * @param prefix the base prefix to use (e.g. "item" or "block")
+     * @param suffix the suffix to append (e.g. "name" or "description")
+     * @return the language tag in the form "{prefix}.magmacore.{suffix}"
+     */
+    public static String setMCLangTag(String prefix, String suffix) {
+        return prefix + "." + ResourceLocation.DEFAULT_NAMESPACE + "." + suffix;
     }
 
 
@@ -84,15 +109,14 @@ public class FormattingHelper {
 
 
     /**
-     * Creates a translatable text component for a mod-specific language tag.
-     * Uses the detected mod ID.
+     * Creates a translatable text component for a Magma Core language tag.
      *
      * @param prefix the base prefix for the language key
      * @param suffix the suffix for the language key
-     * @return a {@link MutableComponent} that will translate the key "{prefix}.{modId}.{suffix}"
+     * @return a {@link MutableComponent} that will translate the key "{prefix}.magmacore.{suffix}"
      */
-    public static MutableComponent setModLangComponent(String prefix, String suffix) {
-        return Component.translatable(setLangTag(prefix, suffix));
+    public static MutableComponent setCoreLangComponent(String prefix, String suffix) {
+        return Component.translatable(setCoreLangTag(prefix, suffix));
     }
 
 

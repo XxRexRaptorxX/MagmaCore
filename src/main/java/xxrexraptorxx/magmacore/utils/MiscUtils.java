@@ -5,70 +5,10 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforgespi.language.IModFileInfo;
-import net.neoforged.neoforgespi.language.IModInfo;
-import xxrexraptorxx.magmacore.main.MagmaCore;
-import xxrexraptorxx.magmacore.main.References;
 
 import javax.annotation.Nullable;
-import java.net.URI;
-import java.net.URL;
-import java.nio.file.Paths;
-import java.security.CodeSource;
-import java.security.ProtectionDomain;
 
 public class MiscUtils {
-
-    /**
-     * Detects the ID of the mod that invoked this method by inspecting the call stack and
-     * matching the originating JAR file name against the list of loaded mod files.
-     * <p>
-     * It finds the first caller outside this coremod's package, determines the JAR location of
-     * that caller class via its ProtectionDomain, and then compares the JAR file name with
-     * those in the loaded mod files list.
-     *
-     * @return the detected mod ID, or this coremod's ID as a fallback if detection fails
-     */
-    public static String detectModId() {
-        // 1) Find the first caller class outside of this coremod's package
-        Class<?> caller = StackWalker
-                .getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
-                .walk(frames -> frames
-                        .map(StackWalker.StackFrame::getDeclaringClass)
-                        .filter(c -> !c.getPackageName().startsWith("xxrexraptorxx." + References.MODID))
-                        .findFirst()
-                ).orElse(null);
-
-        if (caller != null) {
-            // 2) Retrieve the code source location (JAR) of the caller class
-            ProtectionDomain domain = caller.getProtectionDomain();
-            CodeSource source = domain.getCodeSource();
-            if (source != null) {
-                try {
-                    URL location = source.getLocation();            // e.g., file:/.../mods/myMod-1.0.jar
-                    URI uri = location.toURI();
-                    String jarName = Paths.get(uri).getFileName().toString();
-
-                    // 3) Compare the JAR name against all loaded mod file names
-                    for (IModFileInfo fileInfo : ModList.get().getModFiles()) {
-                        if (fileInfo.getFile().getFileName().equals(jarName)) {
-                            // Return the first mod ID in this JAR
-                            IModInfo mod = fileInfo.getMods().getFirst();
-                            return mod.getModId();
-                        }
-                    }
-                } catch (Exception e) {
-                    MagmaCore.LOGGER.warn("detectModId: could not resolve JAR path", e);
-                }
-            }
-        }
-
-        // Fallback: log an error and return this coremod's ID
-        MagmaCore.LOGGER.error("detectModId: unable to determine calling mod; falling back to own ID");
-        return References.MODID;
-    }
-
 
     /**
      * Retrieves a {@link MobEffectInstance} for the given effect ID if it exists in the registry,

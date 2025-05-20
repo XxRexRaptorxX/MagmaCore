@@ -29,7 +29,7 @@ public class LootUtils {
      * @return a {@link LootItemFunction.Builder} that applies the translated name to the item
      */
     public static LootItemFunction.Builder setItemName(String name) {
-        return SetNameFunction.setName(FormattingHelper.setModLangComponent("item", name), SetNameFunction.Target.ITEM_NAME);
+        return SetNameFunction.setName(FormattingHelper.setCoreLangComponent("item", name), SetNameFunction.Target.ITEM_NAME);
     }
 
 
@@ -41,7 +41,7 @@ public class LootUtils {
      * @return a {@link LootItemFunction.Builder} that sets and formats the item's name
      */
     public static LootItemFunction.Builder setItemName(String name, ChatFormatting formatting) {
-        return SetNameFunction.setName(FormattingHelper.setModLangComponent("item", name).withStyle(formatting), SetNameFunction.Target.ITEM_NAME);
+        return SetNameFunction.setName(FormattingHelper.setCoreLangComponent("item", name).withStyle(formatting), SetNameFunction.Target.ITEM_NAME);
     }
 
 
@@ -52,7 +52,7 @@ public class LootUtils {
      * @return a {@link LootItemFunction.Builder} that adds the translated lore line
      */
     public static LootItemFunction.Builder setLore(String name) {
-        return new SetLoreFunction.Builder().addLine(FormattingHelper.setModLangComponent("lore", name));
+        return new SetLoreFunction.Builder().addLine(FormattingHelper.setCoreLangComponent("lore", name));
     }
 
 
@@ -64,7 +64,7 @@ public class LootUtils {
      * @return a {@link LootItemFunction.Builder} that adds the formatted translated lore line
      */
     public static LootItemFunction.Builder setLore(String name, ChatFormatting formatting) {
-        return new SetLoreFunction.Builder().addLine(FormattingHelper.setModLangComponent("lore", name).withStyle(formatting));
+        return new SetLoreFunction.Builder().addLine(FormattingHelper.setCoreLangComponent("lore", name).withStyle(formatting));
     }
 
 
