@@ -50,5 +50,5 @@ public class Config {
     public static boolean getUpdateChecker()            { return UPDATE_CHECKER.get();                          }
     public static boolean getModRepostsInfo()           { return MOD_REPOSTS_INFO.get();                        }
     public static boolean getSupporterRewards()         { return SUPPORTER_REWARDS.get();                       }
-    public static boolean getDebugMode()                { return DEBUG_MODE.get();                              }
+    public static boolean getDebugMode()                { return DEBUG_MODE != null || DEBUG_MODE.get();        }
 }
