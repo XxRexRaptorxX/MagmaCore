@@ -6,6 +6,7 @@ import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import xxrexraptorxx.magmacore.main.MagmaCore;
+import xxrexraptorxx.magmacore.utils.FormattingHelper;
 
 import javax.annotation.Nullable;
 
@@ -19,6 +20,17 @@ public class ConfigHelper {
      */
     public static void setCategory(ModConfigSpec.Builder builder, String name) {
         builder.push(name).comment(Character.toUpperCase(name.charAt(0)) + name.substring(1));
+    }
+
+
+    /**
+     * Sets a configuration category on the given builder, pushing a new comment header and Magma Core language tag.
+     *
+     * @param builder the {@link ModConfigSpec.Builder} to configure
+     * @param name the category name; used both as the push key and to generate a comment
+     */
+    public static void setCoreCategory(ModConfigSpec.Builder builder, String name) {
+        builder.push(name).comment(Character.toUpperCase(name.charAt(0)) + name.substring(1)).translation(FormattingHelper.setCoreTagPrefix("configuration." + name));
     }
 
 
@@ -45,7 +57,6 @@ public class ConfigHelper {
      * @param startupConfig the startup config spec, or null if not used
      */
     public static void registerConfigs(ModContainer container, String modId, boolean withFolder, @Nullable ModConfigSpec serverConfig, @Nullable ModConfigSpec clientConfig, @Nullable ModConfigSpec commonConfig, @Nullable ModConfigSpec startupConfig) {
-
         String path = modId;
 
         if (withFolder) {
