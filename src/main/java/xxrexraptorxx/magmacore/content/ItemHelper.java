@@ -6,7 +6,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import xxrexraptorxx.magmacore.utils.MiscUtils;
 
 public class ItemHelper {
 
@@ -50,8 +49,8 @@ public class ItemHelper {
      * @param name the path/name of the item resource
      * @return a {@code ResourceKey<Item>} pointing to the item under the current mod's namespace
      */
-    public static ResourceKey<Item> getPath(String name) {
-        return ResourceKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(MiscUtils.detectModId(), name));
+    public static ResourceKey<Item> getPath(String modId, String name) {
+        return ResourceKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(modId, name));
     }
 
 
@@ -61,8 +60,8 @@ public class ItemHelper {
      * @param name the path/name of the resource
      * @return a {@code ResourceLocation} with namespace = detected mod ID and the given path
      */
-    public static ResourceLocation getLocation(String name){
-        return ResourceLocation.fromNamespaceAndPath(MiscUtils.detectModId(), name);
+    public static ResourceLocation getLocation(String modId, String name){
+        return ResourceLocation.fromNamespaceAndPath(modId, name);
     }
 
 

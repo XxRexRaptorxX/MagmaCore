@@ -7,7 +7,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
-import xxrexraptorxx.magmacore.utils.MiscUtils;
 
 public class BlockHelper {
 
@@ -51,8 +50,8 @@ public class BlockHelper {
      * @param name the path/name of the block resource
      * @return a {@code ResourceKey<Block>} pointing to the block under the current mod's namespace
      */
-    public static ResourceKey<Block> getPath(String name) {
-        return ResourceKey.create(Registries.BLOCK, ResourceLocation.fromNamespaceAndPath(MiscUtils.detectModId(), name));
+    public static ResourceKey<Block> getPath(String modId, String name) {
+        return ResourceKey.create(Registries.BLOCK, ResourceLocation.fromNamespaceAndPath(modId, name));
     }
 
 
@@ -62,8 +61,8 @@ public class BlockHelper {
      * @param name the path/name of the resource
      * @return a {@code ResourceLocation} with namespace = detected mod ID and the given path
      */
-    public static ResourceLocation getLocation(String name){
-        return ResourceLocation.fromNamespaceAndPath(MiscUtils.detectModId(), name);
+    public static ResourceLocation getLocation(String modId, String name){
+        return ResourceLocation.fromNamespaceAndPath(modId, name);
     }
 
 
