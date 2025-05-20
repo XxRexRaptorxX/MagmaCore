@@ -8,9 +8,19 @@
 
 ## 📖 Description
 
-This is the core mod that is needed for the other [RexRaptor](https://www.curseforge.com/members/xxrexraptorxx/projects) mods!
+This core mod contains basic code and features like update checker and much more that my other mods access.
 
------
+
+### Features:
+
+- chat console logger
+- ingame config
+- version checker
+- debug mode
+- helper methodes (for formatting, datagen, config, integration and much more!
+- [stop-mod-reposts](https://vazkii.net/repost/) info message
+
+ -----
 
 ## 🗒️ License
 
