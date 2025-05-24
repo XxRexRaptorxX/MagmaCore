@@ -2,6 +2,7 @@ package xxrexraptorxx.magmacore.world;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -10,8 +11,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.stats.Stats;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.VersionChecker;
@@ -20,11 +23,14 @@ import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import xxrexraptorxx.magmacore.config.Config;
 import xxrexraptorxx.magmacore.content.items.RewardItems;
 import xxrexraptorxx.magmacore.main.MagmaCore;
 import xxrexraptorxx.magmacore.main.ModRegistry;
 import xxrexraptorxx.magmacore.main.References;
+import xxrexraptorxx.magmacore.utils.FormattingHelper;
 
 import java.io.IOException;
 import java.net.URI;
@@ -34,9 +40,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 @EventBusSubscriber(modid = References.MODID, bus = EventBusSubscriber.Bus.GAME)
@@ -66,9 +70,9 @@ public class Events {
             var result = VersionChecker.getResult(modContainer.getModInfo());
             switch (result.status()) {
                 case OUTDATED, BETA_OUTDATED -> {
-                    MutableComponent msg = Component.translatable("magmacore.message.update_available", entry.modName()).withStyle(style -> style.withColor(ChatFormatting.BLUE));
-                    MutableComponent link = Component.translatable("magmacore.message.update_link").withStyle(style -> style.withColor(ChatFormatting.GREEN)
-                            .withClickEvent(new ClickEvent.OpenUrl(URI.create(entry.updateUrl()))).withHoverEvent(new HoverEvent.ShowText(Component.translatable("magmacore.message.official").withStyle(ChatFormatting.GOLD))));
+                    MutableComponent msg = FormattingHelper.setCoreLangComponent("message.update_available", entry.modName()).withStyle(style -> style.withColor(ChatFormatting.BLUE));
+                    MutableComponent link = FormattingHelper.setCoreLangComponent("message.update_link").withStyle(style -> style.withColor(ChatFormatting.GREEN)
+                            .withClickEvent(new ClickEvent.OpenUrl(URI.create(entry.updateUrl()))).withHoverEvent(new HoverEvent.ShowText(FormattingHelper.setCoreLangComponent("message.official").withStyle(ChatFormatting.GOLD))));
 
                     player.displayClientMessage(msg, false);
                     player.displayClientMessage(link, false);
@@ -89,6 +93,10 @@ public class Events {
 
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+    public static URI supporterList = URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Supporter");
+    public static URI premiumSupporterList = URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Premium%20Supporter");
+    public static URI eliteSupporterList = URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Elite");
+    public static Set<String> supporterSet = new HashSet<>();
 
     /**
      * Distributes supporter rewards on first login.
@@ -110,13 +118,13 @@ public class Events {
 
                         // Perform supporter checks asynchronously
                         CompletableFuture.runAsync(() -> {
-                            if (SupporterCheck(URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Supporter"), player) || Config.getDebugMode() && isDev) {
+                            if (SupporterCheck(supporterList, player) || Config.getDebugMode() && isDev) {
                                 giveSupporterReward(player, level);
                             }
-                            if (SupporterCheck(URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Premium%20Supporter"), player) || Config.getDebugMode() && isDev) {
+                            if (SupporterCheck(premiumSupporterList, player) || Config.getDebugMode() && isDev) {
                                 givePremiumSupporterReward(player, level);
                             }
-                            if (SupporterCheck(URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Elite"), player) || Config.getDebugMode() && isDev) {
+                            if (SupporterCheck(eliteSupporterList, player) || Config.getDebugMode() && isDev) {
                                 giveEliteReward(player, level);
                             }
                         });
@@ -170,6 +178,48 @@ public class Events {
         if (Config.getDebugMode()) MagmaCore.LOGGER.info("Elite Supporter found! " + player.getDisplayName());
 
         player.getInventory().add(RewardItems.getChestplate(level, player));
+    }
+
+
+    @SubscribeEvent
+    public static void onServerStart(ServerStartedEvent event) {
+        CompletableFuture.runAsync(() -> {
+            supporterSet = fetchList(supporterList);
+
+            if (Config.getDebugMode()) MagmaCore.LOGGER.info("Loaded supporter: {}", supporterSet.size());
+        });
+    }
+
+
+    private static Set<String> fetchList(URI uri) {
+        try {
+            HttpResponse<String> resp = HTTP_CLIENT.send(HttpRequest.newBuilder(uri).GET().build(), HttpResponse.BodyHandlers.ofString());
+            return new HashSet<>(List.of(resp.body().split("\\R")));
+
+        } catch (Exception ex) {
+            MagmaCore.LOGGER.error("Error while loading: {}", ex.getMessage());
+
+            return Set.of();
+        }
+    }
+
+
+    @SubscribeEvent
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        if (Config.getSupporterHighlights()) {
+            Entity player = event.getEntity();
+            Level level = player.level();
+            boolean isDev = player.getName().getString().equals("Dev");
+
+            if (!level.isClientSide() && supporterSet.contains(event.getEntity().getUUID().toString()) || Config.getDebugMode() && isDev) {
+                Vec3 pos = player.position();
+                double d0 = pos.x + (level.random.nextFloat() - 0.5F);
+                double d1 = pos.y + (level.random.nextFloat() * 1.5F - 0.75F);
+                double d2 = pos.z + (level.random.nextFloat() - 0.5F);
+
+                level.addParticle(ParticleTypes.GLOW, d0, d1, d2, 0.0D, 0.0D, 0.0D);
+            }
+        }
     }
 
 
@@ -247,16 +297,16 @@ public class Events {
                     MagmaCore.LOGGER.info("Stop-mod-reposts info message is generated. Don't worry, this message should only appear the very first time after installation!");
                     player.sendSystemMessage(Component.literal("<-------------------------------------------------->").withStyle(ChatFormatting.RED));
 
-                    player.sendSystemMessage(Component.translatable("magmacore.message.reposts_header").withStyle(ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED));
-                    player.sendSystemMessage(Component.translatable("magmacore.message.reposts_warning").withStyle(ChatFormatting.RED));
-                    player.sendSystemMessage(Component.translatable("magmacore.message.reposts_note_intro").withStyle(ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED));
-                    player.sendSystemMessage(Component.translatable("magmacore.message.reposts_malware").withStyle(ChatFormatting.RED));
-                    player.sendSystemMessage(Component.translatable("magmacore.message.reposts_steal").withStyle(ChatFormatting.RED));
-                    player.sendSystemMessage(Component.translatable("magmacore.message.reposts_broken").withStyle(ChatFormatting.RED));
-                    player.sendSystemMessage(Component.translatable("magmacore.message.reposts_authors").withStyle(ChatFormatting.RED));
+                    player.sendSystemMessage(FormattingHelper.setCoreLangComponent("message.reposts_header").withStyle(ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED));
+                    player.sendSystemMessage(FormattingHelper.setCoreLangComponent("message.reposts_warning").withStyle(ChatFormatting.RED));
+                    player.sendSystemMessage(FormattingHelper.setCoreLangComponent("message.reposts_note_intro").withStyle(ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED));
+                    player.sendSystemMessage(FormattingHelper.setCoreLangComponent("message.reposts_malware").withStyle(ChatFormatting.RED));
+                    player.sendSystemMessage(FormattingHelper.setCoreLangComponent("message.reposts_steal").withStyle(ChatFormatting.RED));
+                    player.sendSystemMessage(FormattingHelper.setCoreLangComponent("message.reposts_broken").withStyle(ChatFormatting.RED));
+                    player.sendSystemMessage(FormattingHelper.setCoreLangComponent("message.reposts_authors").withStyle(ChatFormatting.RED));
                     player.sendSystemMessage(Component.empty());
 
-                    MutableComponent url = Component.translatable("magmacore.message.reposts_more_info")
+                    MutableComponent url = FormattingHelper.setCoreLangComponent("message.reposts_more_info")
                             .withStyle(style -> style.withClickEvent(new ClickEvent.OpenUrl(URI.create("https://vazkii.net/repost/")))
                             .withColor(ChatFormatting.GOLD).withHoverEvent(new HoverEvent.ShowText(Component.literal("?").withStyle(ChatFormatting.GRAY))));
                     player.sendSystemMessage(url);

@@ -49,8 +49,10 @@
 
     "magmacore.configuration.update-checker": "Update-Checker",
     "magmacore.configuration.update-checker.tooltip": "Activate whether the game should check at every world start whether your mod matches the latest version",
-    "magmacore.configuration.supporter_rewards": "Patreon Rewards",
+    "magmacore.configuration.supporter_rewards": "Supporter Rewards",
     "magmacore.configuration.supporter_rewards.tooltip": "Enables ingame rewards on first spawn for Patreons and supporters",
+    "magmacore.configuration.supporter_highlights": "Supporter Highlights",
+    "magmacore.configuration.supporter_highlights.tooltip": "Enables the supporters to be highlighted ingame with particles around them",
     "magmacore.configuration.debug_mode": "Debug Mode",
     "magmacore.configuration.debug_mode.tooltip": "Enables the Debug mode",
     "magmacore.configuration.mod_reposts_info": "Mod reposts info",
