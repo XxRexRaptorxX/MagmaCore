@@ -15,6 +15,7 @@ public class Config {
     private static final ModConfigSpec.BooleanValue UPDATE_CHECKER;
     private static final ModConfigSpec.BooleanValue MOD_REPOSTS_INFO;
     private static final ModConfigSpec.BooleanValue SUPPORTER_REWARDS;
+    private static final ModConfigSpec.BooleanValue SUPPORTER_HIGHLIGHTS;
     private static final ModConfigSpec.BooleanValue DEBUG_MODE;
     private static final ModConfigSpec.BooleanValue INGAME_LOGS;
     private static final ModConfigSpec.BooleanValue SHOW_ALL_LOGS;
@@ -39,6 +40,7 @@ public class Config {
     static {
         ConfigHelper.setCategory(SERVER_BUILDER, "general");
         SUPPORTER_REWARDS =       SERVER_BUILDER.comment("Enables ingame rewards on first spawn for Patreons and supporters").define("supporter_rewards", true);
+        SUPPORTER_HIGHLIGHTS =    SERVER_BUILDER.comment("Enables the supporters to be highlighted ingame with particles around them").define("supporter_highlights", true);
         SERVER_BUILDER.pop();
 
         SERVER_CONFIG = SERVER_BUILDER.build();
@@ -57,6 +59,7 @@ public class Config {
     public static boolean getUpdateChecker()            { return UPDATE_CHECKER.get();                          }
     public static boolean getModRepostsInfo()           { return MOD_REPOSTS_INFO.get();                        }
     public static boolean getSupporterRewards()         { return SUPPORTER_REWARDS.get();                       }
+    public static boolean getSupporterHighlights()      { return SUPPORTER_HIGHLIGHTS.get();                    }
     public static boolean getIngameLogs()               { return INGAME_LOGS.get();                             }
     public static boolean getShowAllLogs()              { return SHOW_ALL_LOGS.get();                           }
     public static boolean getDebugMode()                { return DEBUG_MODE != null || DEBUG_MODE.get();        }
