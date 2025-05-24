@@ -52,10 +52,10 @@
     "magmacore.configuration.mod_reposts_info": "Info über Mod-Reuploads",
     "magmacore.configuration.mod_reposts_info.tooltip": "Aktivieren, ob beim ersten Spielstart Infos über Mod-Reuploads angezeigt werden sollen. An Pack-Ersteller: Bitte unterstützt uns!",
 
-    "magmacore.item.certificate": "Zertifikat",
-    "magmacore.item.certificate.lore": "Danke dass du mich in meiner Arbeit unterstützt!",
-    "magmacore.item.legendary_chestplate": "Legendärer Harnisch",
-    "magmacore.item.legendary_chestplate.lore": "Eigens geschmiedet für ",
-    "magmacore.item.legendary_leggings": "Legendärer Beinschutz",
-    "magmacore.item.legendary_leggings.lore": "Eigens geschmiedet für "
+    "item.magmacore.certificate": "Zertifikat",
+    "item.magmacore.certificate.lore": "Danke dass du mich in meiner Arbeit unterstützt!",
+    "item.magmacore.legendary_chestplate": "Legendärer Harnisch",
+    "item.magmacore.legendary_chestplate.lore": "Eigens geschmiedet für ",
+    "item.magmacore.legendary_leggings": "Legendärer Beinschutz",
+    "item.magmacore.legendary_leggings.lore": "Eigens geschmiedet für "
 }
