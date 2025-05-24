@@ -15,6 +15,7 @@ import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.world.item.equipment.trim.*;
 import net.minecraft.world.level.Level;
 import xxrexraptorxx.magmacore.main.MagmaCore;
+import xxrexraptorxx.magmacore.utils.FormattingHelper;
 
 import java.util.List;
 
@@ -25,9 +26,9 @@ public class RewardItems {
 
         certificate.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
         certificate.set(DataComponents.RARITY, Rarity.EPIC);
-        certificate.set(DataComponents.CUSTOM_NAME, Component.translatable("magmacore.item.certificate").withStyle(ChatFormatting.GOLD));
-        certificate.set(DataComponents.LORE, new ItemLore(List.of(Component.translatable("magmacore.item.certificate.lore").withStyle(ChatFormatting.YELLOW)
-                .append(Component.literal("\n- XxRexRaptorxX").withStyle(ChatFormatting.ITALIC).withStyle(ChatFormatting.GRAY)))));
+        certificate.set(DataComponents.CUSTOM_NAME, FormattingHelper.setCoreLangComponent("item", "certificate").withStyle(ChatFormatting.GOLD));
+        certificate.set(DataComponents.LORE, new ItemLore(List.of(FormattingHelper.setCoreLangComponent("item", "certificate.lore").withStyle(ChatFormatting.YELLOW)
+                .append(Component.literal(FormattingHelper.lineSeperator + "- XxRexRaptorxX").withStyle(ChatFormatting.ITALIC).withStyle(ChatFormatting.GRAY)))));
 
         return certificate;
     }
@@ -51,8 +52,8 @@ public class RewardItems {
             reward.set(DataComponents.TRIM, new ArmorTrim(lookupTrimMaterials.getOrThrow(TrimMaterials.NETHERITE), lookupTrimPatterns.getOrThrow(TrimPatterns.SILENCE)));
             reward.set(DataComponents.RARITY, Rarity.EPIC);
             reward.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
-            reward.set(DataComponents.CUSTOM_NAME, Component.translatable("magmacore.item.legendary_chestplate").withStyle(ChatFormatting.GOLD));
-            reward.set(DataComponents.LORE, new ItemLore(List.of(Component.empty(), Component.translatable("magmacore.item.legendary_chestplate.lore").append(player.getName().getString()))));
+            reward.set(DataComponents.CUSTOM_NAME, FormattingHelper.setCoreLangComponent("item", "legendary_chestplate").withStyle(ChatFormatting.GOLD));
+            reward.set(DataComponents.LORE, new ItemLore(List.of(Component.empty(), FormattingHelper.setCoreLangComponent("item", "legendary_chestplate.lore").append(player.getName().getString()))));
 
         } catch (IllegalStateException e) {
             MagmaCore.LOGGER.error("Failed to create ArmorTrim for reward: {}", e.getMessage(), e);
@@ -73,8 +74,8 @@ public class RewardItems {
             reward.set(DataComponents.TRIM, new ArmorTrim(lookupTrimMaterials.getOrThrow(TrimMaterials.NETHERITE), lookupTrimPatterns.getOrThrow(TrimPatterns.DUNE)));
             reward.set(DataComponents.RARITY, Rarity.EPIC);
             reward.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
-            reward.set(DataComponents.CUSTOM_NAME, Component.translatable("magmacore.item.legendary_leggings").withStyle(ChatFormatting.GOLD));
-            reward.set(DataComponents.LORE, new ItemLore(List.of(Component.empty(), Component.translatable("magmacore.item.legendary_leggings.lore").append(player.getName().getString()))));
+            reward.set(DataComponents.CUSTOM_NAME, FormattingHelper.setCoreLangComponent("item", "legendary_leggings").withStyle(ChatFormatting.GOLD));
+            reward.set(DataComponents.LORE, new ItemLore(List.of(Component.empty(), FormattingHelper.setCoreLangComponent("item", "legendary_leggings.lore").append(player.getName().getString()))));
 
         } catch (IllegalStateException e) {
             MagmaCore.LOGGER.error("Failed to create ArmorTrim for reward: {}", e.getMessage(), e);

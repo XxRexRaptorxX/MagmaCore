@@ -10,6 +10,10 @@ import xxrexraptorxx.magmacore.main.References;
 
 public class FormattingHelper {
 
+    public static final String lineSeperator = "\n";
+    public static final String textSeperator = ": ";
+    public static final String seperator = ".";
+
     /**
      * Capitalizes each word in the given string. Words are delineated by spaces or underscores.
      * The first letter of each word is converted to uppercase and the rest to lowercase.
@@ -45,7 +49,7 @@ public class FormattingHelper {
      * @return the concatenated prefix in the form "{prefix}.magmacore."
      */
     public static String setCoreTagPrefix(String prefix) {
-        return prefix + "." + References.MODID + ".";
+        return prefix + seperator + References.MODID + seperator;
     }
 
 
@@ -56,7 +60,7 @@ public class FormattingHelper {
      * @return the concatenated prefix in the form "{prefix}.minecraft."
      */
     public static String setMCLangTagPrefix(String prefix) {
-        return prefix + "." + ResourceLocation.DEFAULT_NAMESPACE + ".";
+        return prefix + seperator + ResourceLocation.DEFAULT_NAMESPACE + seperator;
     }
 
 
@@ -68,7 +72,7 @@ public class FormattingHelper {
      * @return the concatenated prefix in the form "{prefix}.{modId}."
      */
     public static String setLangTagPrefix(String prefix, String modId) {
-        return prefix + "." + modId + ".";
+        return prefix + seperator + modId + seperator;
     }
 
 
@@ -80,7 +84,7 @@ public class FormattingHelper {
      * @return the language tag in the form "{prefix}.magmacore.{suffix}"
      */
     public static String setCoreLangTag(String prefix, String suffix) {
-        return prefix + "." + References.MODID + "." + suffix;
+        return prefix + seperator + References.MODID + seperator + suffix;
     }
 
 
@@ -91,7 +95,7 @@ public class FormattingHelper {
      * @return the language tag in the form "magmacore.{suffix}"
      */
     public static String setCoreLangTag(String suffix) {
-        return References.MODID + "." + suffix;
+        return References.MODID + seperator + suffix;
     }
 
 
@@ -103,7 +107,7 @@ public class FormattingHelper {
      * @return the language tag in the form "{prefix}.magmacore.{suffix}"
      */
     public static String setMCLangTag(String prefix, String suffix) {
-        return prefix + "." + ResourceLocation.DEFAULT_NAMESPACE + "." + suffix;
+        return prefix + seperator + ResourceLocation.DEFAULT_NAMESPACE + seperator + suffix;
     }
 
 
@@ -117,7 +121,7 @@ public class FormattingHelper {
      * @return the language tag in the form "{prefix}.{modId}.{suffix}"
      */
     public static String setLangTag(String prefix, String modId, String suffix) {
-        return prefix + "." + modId + "." + suffix;
+        return prefix + seperator + modId + seperator + suffix;
     }
 
 
@@ -168,7 +172,7 @@ public class FormattingHelper {
      * @return a {@link MutableComponent} that will translate the key "{modId}.{suffix}"
      */
     public static MutableComponent setLangComponent(String modId, String suffix) {
-        return Component.translatable(modId + "." + suffix);
+        return Component.translatable(modId + seperator + suffix);
     }
 
 
