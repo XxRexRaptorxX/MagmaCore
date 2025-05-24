@@ -1,5 +1,7 @@
 package xxrexraptorxx.magmacore.config;
 
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
@@ -39,10 +41,10 @@ public class ConfigHelper {
      *
      * @param container the {@link ModContainer} of the mod
      */
+    @OnlyIn(Dist.CLIENT)
     public static void registerIngameConfig(ModContainer container) {
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
     }
-
 
     /**
      * Registers all provided configuration specs for this mod with the loader.

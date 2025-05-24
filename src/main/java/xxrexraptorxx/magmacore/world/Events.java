@@ -11,8 +11,6 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
@@ -104,7 +102,7 @@ public class Events {
             if (Config.getDebugMode()) MagmaCore.LOGGER.info("Supporter rewards will be distributed!");
 
             // Check if the player already has rewards
-            if (!player.getInventory().contains(new ItemStack(Items.PAPER))) {
+            if (!player.getInventory().contains(RewardItems.getCertificate())) {
                 if (player instanceof ServerPlayer serverPlayer) { // Ensure the player is a ServerPlayer
                     // Check if the player is logging in for the first time
                     if (serverPlayer.getStats().getValue(Stats.CUSTOM, Stats.PLAY_TIME) < 5) {
