@@ -27,8 +27,8 @@ This core mod contains basic code and features like update checker and much more
 
 ### Set up your Gradle build script
 
-You can integrate and automatically download Magma Core for your mod project using Gradle.
-Just add the following to your build script ```build.gradle```, we are using CurseMaven for that:
+You can integrate and automatically download [Magma Core][cf_mod] for your mod project using Gradle.
+Just add the following to your build script ```build.gradle```, we are using [CurseMaven](https://cursemaven.com/) for that:
 
 ````gradle
 repositories {
