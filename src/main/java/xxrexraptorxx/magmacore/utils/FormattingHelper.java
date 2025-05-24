@@ -85,6 +85,17 @@ public class FormattingHelper {
 
 
     /**
+     * Constructs a full language tag using the MagmaCore id.
+     *
+     * @param suffix the suffix to append (e.g. "name" or "description")
+     * @return the language tag in the form "magmacore.{suffix}"
+     */
+    public static String setCoreLangTag(String suffix) {
+        return References.MODID + "." + suffix;
+    }
+
+
+    /**
      * Constructs a full language tag using the default namespace.
      *
      * @param prefix the base prefix to use (e.g. "item" or "block")
@@ -119,6 +130,17 @@ public class FormattingHelper {
      */
     public static MutableComponent setCoreLangComponent(String prefix, String suffix) {
         return Component.translatable(setCoreLangTag(prefix, suffix));
+    }
+
+
+    /**
+     * Creates a translatable text component for a Magma Core language tag.
+     *
+     * @param suffix the suffix for the language key
+     * @return a {@link MutableComponent} that will translate the key "magmacore.{suffix}"
+     */
+    public static MutableComponent setCoreLangComponent(String suffix) {
+        return Component.translatable(setCoreLangTag(suffix));
     }
 
 

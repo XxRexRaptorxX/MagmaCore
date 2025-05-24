@@ -38,6 +38,7 @@ public class MagmaCore {
         }
     }
 
+
     @OnlyIn(Dist.CLIENT)
     private void onClientSetup(FMLClientSetupEvent event) {
         ChatLogAppender.register();
