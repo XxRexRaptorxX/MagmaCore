@@ -4,9 +4,12 @@
 
 # Magma Core for Minecraft
 
+
 ![Logo](https://github.com/XxRexRaptorxX/MagmaCore/blob/main/src/main/resources/logo.png?raw=true)
 
 ## 📖 Description
+
+-----
 
 This core mod contains basic code and features like update checker and much more that my other mods access.
 
@@ -20,12 +23,16 @@ This core mod contains basic code and features like update checker and much more
 - helper methodes (for formatting, datagen, config, integration and much more!
 - [stop-mod-reposts](https://vazkii.net/repost/) info message
 
------
+
 
 ## 📄 How to depend on Magma Core
 
+-----
 
-### Set up your Gradle build script
+
+### 1. Set up your Gradle build script
+
+-----
 
 You can integrate and automatically download [Magma Core][cf_mod] for your mod project using Gradle.
 Just add the following to your build script ```build.gradle```, we are using [CurseMaven](https://cursemaven.com/) for that:
@@ -50,7 +57,9 @@ dependencies {
 ````
 
 
-###  Set up your version property
+###  2. Set up your version property
+
+-----
 
 Now set the version in a file named ```gradle.properties```, placed in the same directory as your ```build.gradle``` file.
 
@@ -64,7 +73,9 @@ Enter the CurseForge version id as the number. You can find it at the end of the
 > https://www.curseforge.com/minecraft/mc-mods/magma-core/files/6551413
 
 
-### Add the dependency
+### 3. Add the dependency
+
+-----
 Now you just have to add MagmaCore as a dependency below the other dependencies in your ```neoforge.mods.toml```, it should look something like this:
 
 ```properties
@@ -77,6 +88,11 @@ Now you just have to add MagmaCore as a dependency below the other dependencies 
     referralUrl="https://www.curseforge.com/minecraft/mc-mods/magma-core"
     reason="Provides basic code and features such as update-checker"
 ```
+-----
+
+## 🗃️ Depending Mods
+ 
+- [Curseforge List](https://www.curseforge.com/minecraft/mc-mods/magma-core/relations/dependents?filter-related-dependents=3)
 
 -----
 
