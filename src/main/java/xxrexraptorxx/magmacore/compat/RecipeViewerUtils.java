@@ -2,7 +2,9 @@ package xxrexraptorxx.magmacore.compat;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 import xxrexraptorxx.magmacore.content.ItemHelper;
 
 import java.util.Collections;
@@ -24,6 +26,16 @@ public class RecipeViewerUtils {
         String name = ItemHelper.getName(stack);
 
         registerListInfo(modId, Collections.singletonList(stack), name);
+    }
+
+
+    public static void registerItemInfo(String modId, Item item) {
+        registerItemInfo(modId, new ItemStack(item));
+    }
+
+
+    public static void registerItemInfo(String modId, Block block) {
+        registerItemInfo(modId, new ItemStack(block));
     }
 
 

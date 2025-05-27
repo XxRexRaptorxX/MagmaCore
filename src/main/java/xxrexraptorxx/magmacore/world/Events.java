@@ -234,6 +234,7 @@ public class Events {
     @SubscribeEvent
     public static void showStopModRepostsMessage(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        if (player.getServer().isDedicatedServer()) return;
 
         Path configDir = FMLPaths.CONFIGDIR.get();
         Path marker   = configDir.resolve("#STOP_MOD_REPOSTS.txt");
@@ -295,23 +296,23 @@ public class Events {
 
                 if (!(launcher.contains("curseforge") || launcher.contains("modrinth") || launcher.contains("prism")) && Config.getModRepostsInfo()) {
                     MagmaCore.LOGGER.info("Stop-mod-reposts info message is generated. Don't worry, this message should only appear the very first time after installation!");
-                    player.sendSystemMessage(Component.literal("<-------------------------------------------------->").withStyle(ChatFormatting.RED));
+                    player.displayClientMessage(Component.literal("<-------------------------------------------------->").withStyle(ChatFormatting.RED), false);
 
-                    player.sendSystemMessage(FormattingHelper.setCoreLangComponent("message.reposts_header").withStyle(ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED));
-                    player.sendSystemMessage(FormattingHelper.setCoreLangComponent("message.reposts_warning").withStyle(ChatFormatting.RED));
-                    player.sendSystemMessage(FormattingHelper.setCoreLangComponent("message.reposts_note_intro").withStyle(ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED));
-                    player.sendSystemMessage(FormattingHelper.setCoreLangComponent("message.reposts_malware").withStyle(ChatFormatting.RED));
-                    player.sendSystemMessage(FormattingHelper.setCoreLangComponent("message.reposts_steal").withStyle(ChatFormatting.RED));
-                    player.sendSystemMessage(FormattingHelper.setCoreLangComponent("message.reposts_broken").withStyle(ChatFormatting.RED));
-                    player.sendSystemMessage(FormattingHelper.setCoreLangComponent("message.reposts_authors").withStyle(ChatFormatting.RED));
-                    player.sendSystemMessage(Component.empty());
+                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_header").withStyle(ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED), false);
+                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_warning").withStyle(ChatFormatting.RED), false);
+                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_note_intro").withStyle(ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED), false);
+                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_malware").withStyle(ChatFormatting.RED), false);
+                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_steal").withStyle(ChatFormatting.RED), false);
+                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_broken").withStyle(ChatFormatting.RED), false);
+                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_authors").withStyle(ChatFormatting.RED), false);
+                    player.displayClientMessage(Component.empty(), false);
 
                     MutableComponent url = FormattingHelper.setCoreLangComponent("message.reposts_more_info")
                             .withStyle(style -> style.withClickEvent(new ClickEvent.OpenUrl(URI.create("https://vazkii.net/repost/")))
                             .withColor(ChatFormatting.GOLD).withHoverEvent(new HoverEvent.ShowText(Component.literal("?").withStyle(ChatFormatting.GRAY))));
-                    player.sendSystemMessage(url);
+                    player.displayClientMessage(url, false);
 
-                    player.sendSystemMessage(Component.literal("<-------------------------------------------------->").withStyle(ChatFormatting.RED));
+                    player.displayClientMessage(Component.literal("<-------------------------------------------------->").withStyle(ChatFormatting.RED), false);
                 }
             }
         } catch (IOException e) {
