@@ -12,7 +12,7 @@ public class FormattingHelper {
 
     public static final String lineSeperator = "\n";
     public static final String textSeperator = ": ";
-    public static final String seperator = ".";
+    public static final String separator = ".";
 
     /**
      * Capitalizes each word in the given string. Words are delineated by spaces or underscores.
@@ -49,7 +49,7 @@ public class FormattingHelper {
      * @return the concatenated prefix in the form "{prefix}.magmacore."
      */
     public static String setCoreTagPrefix(String prefix) {
-        return prefix + seperator + References.MODID + seperator;
+        return prefix + separator + References.MODID + separator;
     }
 
 
@@ -60,7 +60,7 @@ public class FormattingHelper {
      * @return the concatenated prefix in the form "{prefix}.minecraft."
      */
     public static String setMCLangTagPrefix(String prefix) {
-        return prefix + seperator + ResourceLocation.DEFAULT_NAMESPACE + seperator;
+        return prefix + separator + ResourceLocation.DEFAULT_NAMESPACE + separator;
     }
 
 
@@ -72,7 +72,7 @@ public class FormattingHelper {
      * @return the concatenated prefix in the form "{prefix}.{modId}."
      */
     public static String setLangTagPrefix(String prefix, String modId) {
-        return prefix + seperator + modId + seperator;
+        return prefix + separator + modId + separator;
     }
 
 
@@ -84,7 +84,7 @@ public class FormattingHelper {
      * @return the language tag in the form "{prefix}.magmacore.{suffix}"
      */
     public static String setCoreLangTag(String prefix, String suffix) {
-        return prefix + seperator + References.MODID + seperator + suffix;
+        return prefix + separator + References.MODID + separator + suffix;
     }
 
 
@@ -95,7 +95,7 @@ public class FormattingHelper {
      * @return the language tag in the form "magmacore.{suffix}"
      */
     public static String setCoreLangTag(String suffix) {
-        return References.MODID + seperator + suffix;
+        return References.MODID + separator + suffix;
     }
 
 
@@ -107,7 +107,7 @@ public class FormattingHelper {
      * @return the language tag in the form "{prefix}.magmacore.{suffix}"
      */
     public static String setMCLangTag(String prefix, String suffix) {
-        return prefix + seperator + ResourceLocation.DEFAULT_NAMESPACE + seperator + suffix;
+        return prefix + separator + ResourceLocation.DEFAULT_NAMESPACE + separator + suffix;
     }
 
 
@@ -121,7 +121,7 @@ public class FormattingHelper {
      * @return the language tag in the form "{prefix}.{modId}.{suffix}"
      */
     public static String setLangTag(String prefix, String modId, String suffix) {
-        return prefix + seperator + modId + seperator + suffix;
+        return prefix + separator + modId + separator + suffix;
     }
 
 
@@ -138,6 +138,21 @@ public class FormattingHelper {
 
 
     /**
+     * Creates a translatable text component for a Magma Core language key,
+     * using the provided prefix and suffix, with the given text formatting.
+     *
+     * @param prefix     the base prefix for the translation key
+     * @param suffix     the suffix for the language key (resulting key: "prefix.magmacore.suffix")
+     * @param formatting the {@link ChatFormatting} style to apply to the text
+     * @return a {@link MutableComponent} that will translate the key "{prefix}.magmacore.{suffix}"
+     *          and apply the specified style
+     */
+    public static MutableComponent setCoreLangComponent(String prefix, String suffix, ChatFormatting formatting) {
+        return Component.translatable(setCoreLangTag(prefix, suffix)).withStyle(formatting);
+    }
+
+
+    /**
      * Creates a translatable text component for a Magma Core language tag.
      *
      * @param suffix the suffix for the language key
@@ -145,6 +160,20 @@ public class FormattingHelper {
      */
     public static MutableComponent setCoreLangComponent(String suffix) {
         return Component.translatable(setCoreLangTag(suffix));
+    }
+
+
+    /**
+     * Creates a translatable text component for a Magma Core language key,
+     * using the provided suffix, with the given text formatting.
+     *
+     * @param suffix     the suffix for the translation key (resulting key: "magmacore.suffix")
+     * @param formatting the {@link ChatFormatting} style to apply to the text
+     * @return a {@link MutableComponent} that will translate the key "magmacore.{suffix}"
+     *          and apply the specified style
+     */
+    public static MutableComponent setCoreLangComponent(String suffix, ChatFormatting formatting) {
+        return Component.translatable(setCoreLangTag(suffix)).withStyle(formatting);
     }
 
 
@@ -162,6 +191,21 @@ public class FormattingHelper {
     }
 
 
+    /**
+     * Creates a translatable text component for a mod-specific language key,
+     * using the provided prefix, mod ID, and suffix, with the given text formatting.
+     *
+     * @param prefix     the base prefix for the translation key
+     * @param modId      the mod identifier to include in the translation key
+     * @param suffix     the suffix for the language key (resulting key: "prefix.modId.suffix")
+     * @param formatting the {@link ChatFormatting} style to apply to the text
+     * @return a {@link MutableComponent} that will translate the key "{prefix}.{modId}.{suffix}"
+     *          and apply the specified style
+     */
+    public static MutableComponent setModLangComponent(String prefix, String modId, String suffix, ChatFormatting formatting) {
+        return Component.translatable(setLangTag(prefix, modId, suffix)).withStyle(formatting);
+    }
+
 
     /**
      * Creates a translatable text component for a mod-specific language tag
@@ -172,9 +216,23 @@ public class FormattingHelper {
      * @return a {@link MutableComponent} that will translate the key "{modId}.{suffix}"
      */
     public static MutableComponent setLangComponent(String modId, String suffix) {
-        return Component.translatable(modId + seperator + suffix);
+        return Component.translatable(modId + separator + suffix);
     }
 
+
+    /**
+     * Creates a translatable text component for a mod-specific language key,
+     * using the provided mod ID and suffix, with the given text formatting.
+     *
+     * @param modId     the mod identifier to include in the translation key
+     * @param suffix    the suffix for the language key (resulting key: "modId.suffix")
+     * @param formatting the {@link ChatFormatting} style to apply to the text
+     * @return a {@link MutableComponent} that will translate the key "{modId}.{suffix}"
+     *          and apply the specified style
+     */
+    public static MutableComponent setLangComponent(String modId, String suffix, ChatFormatting formatting) {
+        return Component.translatable(modId + separator + suffix).withStyle(formatting);
+    }
 
 
     /**
@@ -190,7 +248,7 @@ public class FormattingHelper {
     }
 
 
-    public static ChatFormatting getColor(Level level) {
+    public static ChatFormatting getDebugColor(Level level) {
         if (level == Level.ERROR) {
             return ChatFormatting.RED;
 

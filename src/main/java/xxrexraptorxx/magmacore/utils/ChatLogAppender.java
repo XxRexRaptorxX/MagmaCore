@@ -36,7 +36,7 @@ public class ChatLogAppender extends AbstractAppender {
                     if (mc.player != null) {
                         mc.player.displayClientMessage(Component.literal("[Log] ").withStyle(ChatFormatting.BLUE)
                                 .append(Component.literal("[" + loggerName + "] ").withStyle(ChatFormatting.GOLD))
-                                .append(Component.literal(msg).withStyle(FormattingHelper.getColor(level))), false);
+                                .append(Component.literal(msg).withStyle(FormattingHelper.getDebugColor(level))), false);
                     }
                 }
             }

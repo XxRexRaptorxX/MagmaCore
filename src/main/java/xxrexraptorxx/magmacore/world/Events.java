@@ -72,7 +72,7 @@ public class Events {
                 case OUTDATED, BETA_OUTDATED -> {
                     MutableComponent msg = FormattingHelper.setCoreLangComponent("message.update_available", entry.modName()).withStyle(style -> style.withColor(ChatFormatting.BLUE));
                     MutableComponent link = FormattingHelper.setCoreLangComponent("message.update_link").withStyle(style -> style.withColor(ChatFormatting.GREEN)
-                            .withClickEvent(new ClickEvent.OpenUrl(URI.create(entry.updateUrl()))).withHoverEvent(new HoverEvent.ShowText(FormattingHelper.setCoreLangComponent("message.official").withStyle(ChatFormatting.GOLD))));
+                            .withClickEvent(new ClickEvent.OpenUrl(URI.create(entry.updateUrl()))).withHoverEvent(new HoverEvent.ShowText(FormattingHelper.setCoreLangComponent("message.official", ChatFormatting.GOLD))));
 
                     player.displayClientMessage(msg, false);
                     player.displayClientMessage(link, false);
@@ -298,13 +298,13 @@ public class Events {
                     MagmaCore.LOGGER.info("Stop-mod-reposts info message is generated. Don't worry, this message should only appear the very first time after installation!");
                     player.displayClientMessage(Component.literal("<-------------------------------------------------->").withStyle(ChatFormatting.RED), false);
 
-                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_header").withStyle(ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED), false);
-                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_warning").withStyle(ChatFormatting.RED), false);
-                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_note_intro").withStyle(ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED), false);
-                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_malware").withStyle(ChatFormatting.RED), false);
-                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_steal").withStyle(ChatFormatting.RED), false);
-                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_broken").withStyle(ChatFormatting.RED), false);
-                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_authors").withStyle(ChatFormatting.RED), false);
+                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_header", ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED), false);
+                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_warning", ChatFormatting.RED), false);
+                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_note_intro", ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED), false);
+                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_malware", ChatFormatting.RED), false);
+                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_steal", ChatFormatting.RED), false);
+                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_broken", ChatFormatting.RED), false);
+                    player.displayClientMessage(FormattingHelper.setCoreLangComponent("message.reposts_authors", ChatFormatting.RED), false);
                     player.displayClientMessage(Component.empty(), false);
 
                     MutableComponent url = FormattingHelper.setCoreLangComponent("message.reposts_more_info")

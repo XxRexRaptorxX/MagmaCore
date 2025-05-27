@@ -26,8 +26,8 @@ public class RewardItems {
 
         certificate.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
         certificate.set(DataComponents.RARITY, Rarity.EPIC);
-        certificate.set(DataComponents.CUSTOM_NAME, FormattingHelper.setCoreLangComponent("item", "certificate").withStyle(ChatFormatting.GOLD));
-        certificate.set(DataComponents.LORE, new ItemLore(List.of(FormattingHelper.setCoreLangComponent("item", "certificate.lore").withStyle(ChatFormatting.YELLOW)
+        certificate.set(DataComponents.CUSTOM_NAME, FormattingHelper.setCoreLangComponent("item", "certificate", ChatFormatting.GOLD));
+        certificate.set(DataComponents.LORE, new ItemLore(List.of(FormattingHelper.setCoreLangComponent("item", "certificate.lore", ChatFormatting.YELLOW)
                 .append(Component.literal(FormattingHelper.lineSeperator + "- XxRexRaptorxX").withStyle(ChatFormatting.ITALIC).withStyle(ChatFormatting.GRAY)))));
 
         return certificate;
@@ -52,7 +52,7 @@ public class RewardItems {
             reward.set(DataComponents.TRIM, new ArmorTrim(lookupTrimMaterials.getOrThrow(TrimMaterials.NETHERITE), lookupTrimPatterns.getOrThrow(TrimPatterns.SILENCE)));
             reward.set(DataComponents.RARITY, Rarity.EPIC);
             reward.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
-            reward.set(DataComponents.CUSTOM_NAME, FormattingHelper.setCoreLangComponent("item", "legendary_chestplate").withStyle(ChatFormatting.GOLD));
+            reward.set(DataComponents.CUSTOM_NAME, FormattingHelper.setCoreLangComponent("item", "legendary_chestplate", ChatFormatting.GOLD));
             reward.set(DataComponents.LORE, new ItemLore(List.of(Component.empty(), FormattingHelper.setCoreLangComponent("item", "legendary_chestplate.lore").append(player.getName().getString()))));
 
         } catch (IllegalStateException e) {
@@ -74,7 +74,7 @@ public class RewardItems {
             reward.set(DataComponents.TRIM, new ArmorTrim(lookupTrimMaterials.getOrThrow(TrimMaterials.NETHERITE), lookupTrimPatterns.getOrThrow(TrimPatterns.DUNE)));
             reward.set(DataComponents.RARITY, Rarity.EPIC);
             reward.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
-            reward.set(DataComponents.CUSTOM_NAME, FormattingHelper.setCoreLangComponent("item", "legendary_leggings").withStyle(ChatFormatting.GOLD));
+            reward.set(DataComponents.CUSTOM_NAME, FormattingHelper.setCoreLangComponent("item", "legendary_leggings", ChatFormatting.GOLD));
             reward.set(DataComponents.LORE, new ItemLore(List.of(Component.empty(), FormattingHelper.setCoreLangComponent("item", "legendary_leggings.lore").append(player.getName().getString()))));
 
         } catch (IllegalStateException e) {
