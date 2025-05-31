@@ -6,6 +6,7 @@ import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+import xxrexraptorxx.magmacore.main.MagmaCore;
 
 public class TagHelper {
 
@@ -54,5 +55,31 @@ public class TagHelper {
      */
     public static TagKey<Block> createCBlockTag(String name) {
         return BlockTags.create(ResourceLocation.fromNamespaceAndPath("c", name));
+    }
+
+
+    /**
+     *  Converts the mining block tags to the old mining level format
+     */
+    public static int getMiningLevel(TagKey<Block> tag) {
+        if (tag.equals(BlockTags.INCORRECT_FOR_NETHERITE_TOOL)) {
+            return 4;
+
+        } else if (tag.equals(BlockTags.INCORRECT_FOR_DIAMOND_TOOL)) {
+            return 3;
+
+        } else if (tag.equals(BlockTags.INCORRECT_FOR_IRON_TOOL)) {
+            return 2;
+
+        } else if (tag.equals(BlockTags.INCORRECT_FOR_STONE_TOOL)) {
+            return 1;
+
+        } else if (tag.equals(BlockTags.INCORRECT_FOR_WOODEN_TOOL) || tag.equals(BlockTags.INCORRECT_FOR_GOLD_TOOL)) {
+            return 0;
+
+        } else {
+            MagmaCore.LOGGER.error("Unknown 'harvest'- block tag: " + tag.location());
+            return 2;
+        }
     }
 }

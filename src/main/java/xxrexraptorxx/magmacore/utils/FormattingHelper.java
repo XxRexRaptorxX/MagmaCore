@@ -5,6 +5,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectCategory;
 import org.apache.logging.log4j.Level;
 import xxrexraptorxx.magmacore.main.References;
 
@@ -254,11 +256,35 @@ public class FormattingHelper {
     }
 
 
+    /**
+     * Converts a decimal number to a percentage value.
+     *
+     * <p>If the input value is greater than 1, it returns 100. Otherwise, it multiplies the decimal by 100
+     * to convert it to a percentage.</p>
+     *
+     * @param decimal the decimal value to convert (expected range: 0.0 to 1.0)
+     * @return the corresponding percentage value, or 100 if the input exceeds 1
+     */
     public static double ConvertDecimalToPercentage(double decimal) {
         return decimal > 1 ? 100 : decimal * 100;
     }
 
 
+    /**
+     * Returns a {@link ChatFormatting} color associated with a given log level.
+     *
+     * <p>This method maps common {@link Level} values to specific colors for debugging output:</p>
+     * <ul>
+     *   <li>{@code ERROR} → {@code RED}</li>
+     *   <li>{@code FATAL} → {@code DARK_RED}</li>
+     *   <li>{@code DEBUG} and {@code TRACE} → {@code AQUA}</li>
+     *   <li>{@code WARN} → {@code RED}</li>
+     *   <li>Others → {@code YELLOW}</li>
+     * </ul>
+     *
+     * @param level the log level to map
+     * @return the corresponding {@link ChatFormatting} color for the level
+     */
     public static ChatFormatting getDebugColor(Level level) {
         if (level == Level.ERROR) {
             return ChatFormatting.RED;
@@ -274,6 +300,32 @@ public class FormattingHelper {
 
         } else if (level == Level.WARN) {
             return ChatFormatting.RED;
+
+        } else {
+            return ChatFormatting.YELLOW;
+        }
+    }
+
+
+    /**
+     * Returns a {@link ChatFormatting} color based on the category of a given {@link MobEffect}.
+     *
+     * <p>Category-to-color mapping:</p>
+     * <ul>
+     *   <li>{@code HARMFUL} → {@code DARK_RED}</li>
+     *   <li>{@code BENEFICIAL} → {@code GREEN}</li>
+     *   <li>Neutral or other categories → {@code YELLOW}</li>
+     * </ul>
+     *
+     * @param effect the mob effect to evaluate
+     * @return the corresponding {@link ChatFormatting} color based on the effect's category
+     */
+    public static ChatFormatting getEffectCategoryColor(MobEffect effect) {
+        if (effect.getCategory().equals(MobEffectCategory.HARMFUL)) {
+            return ChatFormatting.DARK_RED;
+
+        } else if (effect.getCategory().equals(MobEffectCategory.BENEFICIAL)) {
+            return ChatFormatting.GREEN;
 
         } else {
             return ChatFormatting.YELLOW;
