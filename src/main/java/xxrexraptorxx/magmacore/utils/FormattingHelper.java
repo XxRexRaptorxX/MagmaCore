@@ -248,6 +248,11 @@ public class FormattingHelper {
     }
 
 
+    public static double ConvertDecimalToPercentage(double decimal) {
+        return decimal > 1 ? 100 : decimal * 100;
+    }
+
+
     public static ChatFormatting getDebugColor(Level level) {
         if (level == Level.ERROR) {
             return ChatFormatting.RED;

@@ -86,4 +86,18 @@ public class ConfigHelper {
     public static void registerConfigs(ModContainer container, String modId, boolean withFolder, @Nullable ModConfigSpec serverConfig, @Nullable ModConfigSpec clientConfig) {
         registerConfigs(container, modId, withFolder, serverConfig, clientConfig, null, null);
     }
+
+
+    /**
+     * Checks whether the global debug mode is enabled.
+     *
+     * This method returns {@code true} if either the MagmaCore debug mode is enabled
+     * or the mod-specific debug mode is passed as {@code true}.
+     *
+     * @param modSpecificDebugMode a mod-specific flag indicating whether debug mode should be enabled
+     * @return {@code true} if debug mode is enabled globally or for the specific mod; {@code false} otherwise
+     */
+    public static boolean isDebugGlobalModeEnabled(boolean modSpecificDebugMode) {
+        return Config.getDebugMode() || modSpecificDebugMode;
+    }
 }
