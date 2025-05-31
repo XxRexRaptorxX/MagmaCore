@@ -52,6 +52,9 @@
 
     "magmacore.configuration.update-checker": "Update-Checker",
     "magmacore.configuration.update-checker.tooltip": "Activate whether the game should check at every world start whether the mods matches the latest version",
+    "magmacore.configuration.update-checker_blacklist": "Update-Checker Blacklist",
+    "magmacore.configuration.update-checker_blacklist.button": "Edit list",
+    "magmacore.configuration.update-checker_blacklist.tooltip": "Removes specific mods from the update check (only works for mods that uses the MagmaCore)",
     "magmacore.configuration.supporter_rewards": "Supporter Rewards",
     "magmacore.configuration.supporter_rewards.tooltip": "Enables ingame rewards on first spawn for Patreons and supporters",
     "magmacore.configuration.supporter_highlights": "Supporter Highlights",

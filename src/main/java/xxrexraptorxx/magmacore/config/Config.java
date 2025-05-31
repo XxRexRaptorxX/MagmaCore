@@ -2,6 +2,9 @@ package xxrexraptorxx.magmacore.config;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 
+import java.util.Arrays;
+import java.util.List;
+
 public class Config {
 
     private static final ModConfigSpec.Builder SERVER_BUILDER = new ModConfigSpec.Builder();
@@ -12,20 +15,23 @@ public class Config {
     public static ModConfigSpec CLIENT_CONFIG;
     public static ModConfigSpec STARTUP_CONFIG;
 
-    private static final ModConfigSpec.BooleanValue UPDATE_CHECKER;
-    private static final ModConfigSpec.BooleanValue MOD_REPOSTS_INFO;
-    private static final ModConfigSpec.BooleanValue SUPPORTER_REWARDS;
-    private static final ModConfigSpec.BooleanValue SUPPORTER_HIGHLIGHTS;
-    private static final ModConfigSpec.BooleanValue DEBUG_MODE;
-    private static final ModConfigSpec.BooleanValue INGAME_LOGS;
-    private static final ModConfigSpec.BooleanValue SHOW_ALL_LOGS;
+    private static ModConfigSpec.BooleanValue UPDATE_CHECKER;
+    private static ModConfigSpec.BooleanValue MOD_REPOSTS_INFO;
+    private static ModConfigSpec.BooleanValue SUPPORTER_REWARDS;
+    private static ModConfigSpec.BooleanValue SUPPORTER_HIGHLIGHTS;
+    private static ModConfigSpec.BooleanValue DEBUG_MODE;
+    private static ModConfigSpec.BooleanValue INGAME_LOGS;
+    private static ModConfigSpec.BooleanValue SHOW_ALL_LOGS;
+    private static ModConfigSpec.ConfigValue<List<? extends String>> UPDATE_CHECKER_BLACKLIST;
 
 
     //CLIENT
     static {
         ConfigHelper.setCategory(CLIENT_BUILDER, "general");
-        UPDATE_CHECKER =        CLIENT_BUILDER.comment("Activate whether the game should check at every world start whether the mods matches the latest version").define("update-checker", true);
-        MOD_REPOSTS_INFO =      CLIENT_BUILDER.comment("Activate whether the game should show the mod reposts info the first time the game launches. To pack makers: Please support us!").define("mod_reposts_info", true);
+        UPDATE_CHECKER =            CLIENT_BUILDER.comment("Activate whether the game should check at every world start whether the mods matches the latest version").define("update-checker", true);
+        UPDATE_CHECKER_BLACKLIST =  CLIENT_BUILDER.comment("Removes specific mods from the update check (only works for mods that uses the MagmaCore) [modid]").defineListAllowEmpty("update-checker_blacklist",
+                Arrays.asList(), () -> "modid", obj -> obj instanceof String);
+        MOD_REPOSTS_INFO =          CLIENT_BUILDER.comment("Activate whether the game should show the mod reposts info the first time the game launches. To pack makers: Please support us!").define("mod_reposts_info", true);
         CLIENT_BUILDER.pop();
 
         ConfigHelper.setCategory(CLIENT_BUILDER, "logger");
@@ -56,11 +62,12 @@ public class Config {
     }
 
 
-    public static boolean getUpdateChecker()            { return UPDATE_CHECKER.get();                          }
-    public static boolean getModRepostsInfo()           { return MOD_REPOSTS_INFO.get();                        }
-    public static boolean getSupporterRewards()         { return SUPPORTER_REWARDS.get();                       }
-    public static boolean getSupporterHighlights()      { return SUPPORTER_HIGHLIGHTS.get();                    }
-    public static boolean getIngameLogs()               { return INGAME_LOGS.get();                             }
-    public static boolean getShowAllLogs()              { return SHOW_ALL_LOGS.get();                           }
-    public static boolean getDebugMode()                { return DEBUG_MODE != null || DEBUG_MODE.get();        }
+    public static boolean       getUpdateChecker()            { return UPDATE_CHECKER.get();                          }
+    public static boolean       getModRepostsInfo()           { return MOD_REPOSTS_INFO.get();                        }
+    public static boolean       getSupporterRewards()         { return SUPPORTER_REWARDS.get();                       }
+    public static boolean       getSupporterHighlights()      { return SUPPORTER_HIGHLIGHTS.get();                    }
+    public static boolean       getIngameLogs()               { return INGAME_LOGS.get();                             }
+    public static boolean       getShowAllLogs()              { return SHOW_ALL_LOGS.get();                           }
+    public static boolean       getDebugMode()                { return DEBUG_MODE != null || DEBUG_MODE.get();        }
+    public static List<String>  getUpdateCheckerBlacklist()   { return (List<String>) UPDATE_CHECKER_BLACKLIST.get(); }
 }

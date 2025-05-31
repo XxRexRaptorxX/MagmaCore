@@ -59,7 +59,7 @@ public class Events {
         for (var entry : ModRegistry.getEntries()) {
             if (Config.getDebugMode()) MagmaCore.LOGGER.info("Update-Checker for " + entry.modName() + " is running!");
 
-            if (shownMap.getOrDefault(entry.modId(), false)) continue;
+            if (shownMap.getOrDefault(entry.modId(), false) || Config.getUpdateCheckerBlacklist().contains(entry.modId())) continue;
 
             var player = Minecraft.getInstance().player;
             if (player == null) continue;
