@@ -12,22 +12,23 @@ public class FormattingHelper {
 
     public static final String lineSeperator = "\n";
     public static final String textSeperator = ": ";
+    public static final String nameSeperator = "_";
     public static final String separator = ".";
 
     /**
-     * Capitalizes each word in the given string. Words are delineated by spaces or underscores.
+     * Capitalizes each word in the given registry_name. Words are delineated by spaces or underscores.
      * The first letter of each word is converted to uppercase and the rest to lowercase.
      *
-     * @param string the input string to capitalize; may contain spaces or underscores
-     * @return a new string with each word capitalized, or the original string if it is null or empty
+     * @param registry_name the input registry_name to capitalize; may contain spaces or underscores
+     * @return a new registry_name with each word capitalized, or the original registry_name if it is null or empty
      */
-    public static String capitalizeWords(String string) {
-        if (string == null || string.isEmpty()) {
-            return string;
+    public static String transformRegistryNames(String registry_name) {
+        if (registry_name == null || registry_name.isEmpty()) {
+            return registry_name;
         }
 
-        string = string.replace('_', ' ');
-        String[] words = string.split(" ");
+        registry_name = registry_name.replace('_', ' ');
+        String[] words = registry_name.split(" ");
         StringBuilder capitalizedString = new StringBuilder();
 
         for (String word : words) {
@@ -42,12 +43,17 @@ public class FormattingHelper {
     }
 
 
-    /**
-     * Constructs a language tag prefix using the Magma Core id.
-     *
-     * @param prefix the base prefix to use (e.g. "item" or "block")
-     * @return the concatenated prefix in the form "{prefix}.magmacore."
-     */
+    public static String capitalizeWords(String string) {
+        return transformRegistryNames(string);
+    }
+
+
+        /**
+         * Constructs a language tag prefix using the Magma Core id.
+         *
+         * @param prefix the base prefix to use (e.g. "item" or "block")
+         * @return the concatenated prefix in the form "{prefix}.magmacore."
+         */
     public static String setCoreTagPrefix(String prefix) {
         return prefix + separator + References.MODID + separator;
     }
