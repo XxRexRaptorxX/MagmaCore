@@ -8,7 +8,6 @@ import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import xxrexraptorxx.magmacore.main.MagmaCore;
-import xxrexraptorxx.magmacore.main.References;
 
 import javax.annotation.Nullable;
 
@@ -29,10 +28,12 @@ public class ConfigHelper {
      * Sets a configuration category on the given builder, pushing a new comment header and Magma Core language tag.
      *
      * @param builder the {@link ModConfigSpec.Builder} to configure
-     * @param name the category name; used both as the push key and to generate a comment
+     * @param category the {@link ConfigCategories}; used both as the push key and to generate a comment
      */
-    public static void setCoreCategory(ModConfigSpec.Builder builder, String name) {
-        builder.push(name).comment(Character.toUpperCase(name.charAt(0)) + name.substring(1)).translation(References.MODID + ".configuration." + name);
+    public static void setCategory(ModConfigSpec.Builder builder, ConfigCategories category) {
+        String name = category.getCategoryName();
+
+        builder.push(name).comment(Character.toUpperCase(name.charAt(0)) + name.substring(1)).translation(category.getCategoryLangTag());
     }
 
 
