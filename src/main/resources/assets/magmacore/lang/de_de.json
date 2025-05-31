@@ -42,7 +42,7 @@
     "magmacore.configuration.energy.tooltip": "Energie-Einstellungen konfigurieren",
 
     "magmacore.configuration.update-checker": "Update-Prüfer",
-    "magmacore.configuration.update-checker.tooltip": "Aktiviere, ob beim Weltstart geprüft werden soll, ob deine Mod auf dem neuesten Stand ist",
+    "magmacore.configuration.update-checker.tooltip": "Aktiviere, ob beim Weltstart geprüft werden soll, ob die Mods auf dem neuesten Stand sind",
     "magmacore.configuration.supporter_rewards": "Unterstützer-Belohnungen",
     "magmacore.configuration.supporter_rewards.tooltip": "Aktiviert Belohnungen im Spiel beim ersten Spawn für Patreons und Unterstützer",
     "magmacore.configuration.supporter_highlights": "Unterstützer-Hervorhebung",

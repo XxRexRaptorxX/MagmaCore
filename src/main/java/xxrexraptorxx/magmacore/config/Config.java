@@ -24,7 +24,7 @@ public class Config {
     //CLIENT
     static {
         ConfigHelper.setCategory(CLIENT_BUILDER, "general");
-        UPDATE_CHECKER =        CLIENT_BUILDER.comment("Activate whether the game should check at every world start whether your mod matches the latest version").define("update-checker", true);
+        UPDATE_CHECKER =        CLIENT_BUILDER.comment("Activate whether the game should check at every world start whether the mods matches the latest version").define("update-checker", true);
         MOD_REPOSTS_INFO =      CLIENT_BUILDER.comment("Activate whether the game should show the mod reposts info the first time the game launches. To pack makers: Please support us!").define("mod_reposts_info", true);
         CLIENT_BUILDER.pop();
 
