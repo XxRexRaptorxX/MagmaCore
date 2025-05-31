@@ -8,7 +8,7 @@ import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import xxrexraptorxx.magmacore.main.MagmaCore;
-import xxrexraptorxx.magmacore.utils.FormattingHelper;
+import xxrexraptorxx.magmacore.main.References;
 
 import javax.annotation.Nullable;
 
@@ -32,7 +32,7 @@ public class ConfigHelper {
      * @param name the category name; used both as the push key and to generate a comment
      */
     public static void setCoreCategory(ModConfigSpec.Builder builder, String name) {
-        builder.push(name).comment(Character.toUpperCase(name.charAt(0)) + name.substring(1)).translation(FormattingHelper.setCoreTagPrefix("configuration." + name));
+        builder.push(name).comment(Character.toUpperCase(name.charAt(0)) + name.substring(1)).translation(References.MODID + ".configuration." + name);
     }
 
 
