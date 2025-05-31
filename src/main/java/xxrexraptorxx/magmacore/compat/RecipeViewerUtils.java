@@ -6,6 +6,9 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import xxrexraptorxx.magmacore.content.ItemHelper;
+import xxrexraptorxx.magmacore.main.MagmaCore;
+import xxrexraptorxx.magmacore.utils.FormattingHelper;
+import xxrexraptorxx.magmacore.utils.MiscUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -23,18 +26,34 @@ public class RecipeViewerUtils {
      * @param stack the item stack to register integration info for
      */
     public static void registerItemInfo(String modId, ItemStack stack) {
-        String name = ItemHelper.getName(stack);
+        if (stack.isEmpty()) {
+            throw new IllegalArgumentException("ItemStack cannot be empty");
+        }
 
+        String name = ItemHelper.getName(stack);
         registerListInfo(modId, Collections.singletonList(stack), name);
     }
 
 
+    /**
+     * Registers integration info for an item.
+     */
     public static void registerItemInfo(String modId, Item item) {
+        if (item == null) {
+            throw new IllegalArgumentException("Item cannot be null");
+        }
         registerItemInfo(modId, new ItemStack(item));
     }
 
 
+
+    /**
+     * Registers integration info for a block.
+     */
     public static void registerItemInfo(String modId, Block block) {
+        if (block == null) {
+            throw new IllegalArgumentException("Block cannot be null");
+        }
         registerItemInfo(modId, new ItemStack(block));
     }
 
@@ -50,11 +69,32 @@ public class RecipeViewerUtils {
      * @param name  the resource name used for the translation key and recipe path (e.g. "copper_ingot")
      */
     public static void registerListInfo(String modId, List<ItemStack> list, String name) {
-        Component description = Component.translatable("message." + modId + name + "_jei_desc");
+        if (list.stream().anyMatch(ItemStack::isEmpty)) {
+            throw new IllegalArgumentException("List contains empty ItemStacks");
+        }
+
+        Component description = FormattingHelper.setModLangComponent("message", modId, name + ".jei_desc");
         ResourceLocation recipeId = ResourceLocation.fromNamespaceAndPath(modId, "info/" + name);
 
-        JEIIntegrationHelper.enqueue(list, description);
-        REIIntegrationHelper.enqueue(list, description);
-        EMIIntegrationHelper.enqueue(list, description, recipeId);
+        try {
+            if (MiscUtils.isModLoaded("jei"))
+                JEIIntegrationHelper.enqueue(list, description);
+        } catch (Exception e) {
+            MagmaCore.LOGGER.error("JEI Integration failed: " + e.getMessage());
+        }
+
+        try {
+            if (MiscUtils.isModLoaded("roughlyenoughitems"))
+                REIIntegrationHelper.enqueue(list, description);
+        } catch (Exception e) {
+            MagmaCore.LOGGER.error("REI Integration failed: " + e.getMessage());
+        }
+
+        try {
+            if (MiscUtils.isModLoaded("emi"))
+                EMIIntegrationHelper.enqueue(list, description, recipeId);
+        } catch (Exception e) {
+            MagmaCore.LOGGER.error("EMI Integration failed: " + e.getMessage());
+        }
     }
 }

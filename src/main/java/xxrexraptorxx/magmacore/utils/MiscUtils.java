@@ -5,6 +5,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.neoforged.fml.ModList;
+import xxrexraptorxx.magmacore.main.MagmaCore;
 
 import javax.annotation.Nullable;
 
@@ -74,6 +76,20 @@ public class MiscUtils {
             return null;
         } else {
             return new MobEffectInstance(fallbackEffect, duration, amplifier);
+        }
+    }
+
+
+    /**
+     * Helper method for safe mod checking
+     */
+    public static boolean isModLoaded(String modId) {
+        try {
+            return ModList.get().isLoaded(modId);
+
+        } catch (Exception e) {
+            MagmaCore.LOGGER.error(e);
+            return false;
         }
     }
 }
