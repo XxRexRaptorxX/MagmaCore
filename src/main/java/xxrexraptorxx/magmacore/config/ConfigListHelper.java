@@ -2,6 +2,8 @@ package xxrexraptorxx.magmacore.config;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
 public class ConfigListHelper {
 
@@ -12,7 +14,7 @@ public class ConfigListHelper {
      * @return true if format is valid, false otherwise
      */
     public static boolean hasValidProbabilityFormat(String input) {
-        if (input == null || input.trim().isEmpty() || !input.contains("-")) {
+        if (input == null || input.trim().isEmpty() || !input.contains("-") || !input.contains(":")) {
             return false;
         }
 
@@ -27,6 +29,36 @@ public class ConfigListHelper {
             double probability = Double.parseDouble(probabilityPart);
 
             return probability >= 0.0 && probability <= 1.0;
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+
+    /**
+     * Validates a string with item amount format: "amount*namespace:item"
+     *
+     * @param input The input string (e.g. "3*minecraft:diamond")
+     * @return true if format is valid, false otherwise
+     */
+    public static boolean hasValidCountFormat(String input) {
+        if (input == null || input.trim().isEmpty() || !input.contains("*") || !input.contains(":")) {
+            return false;
+        }
+
+        try {
+            String trimmed = input.trim();
+            int starIndex = trimmed.indexOf("*");
+
+            if (starIndex <= 0 || starIndex >= trimmed.length() - 1) {
+                return false;
+            }
+
+            String amountPart = trimmed.substring(0, starIndex);
+
+            int amount = Integer.parseInt(amountPart);
+            return amount > 0 && amount <= Item.DEFAULT_MAX_STACK_SIZE;
 
         } catch (Exception e) {
             return false;
@@ -165,11 +197,68 @@ public class ConfigListHelper {
      * Validates item with probability: "namespace:item-probability"
      */
     public static boolean isValidItemWithProbability(String input) {
-        if (!input.contains(":") || !hasValidProbabilityFormat(input)) {
+        if (!hasValidProbabilityFormat(input)) {
             return false;
         }
 
         String itemId = extractId(input);
         return itemId != null && isValidItem(itemId);
+    }
+
+
+    /**
+     * Validates loot entry format: "amount*namespace:item"
+     *
+     * @param input The loot string to validate (e.g. "3*minecraft:diamond")
+     * @return true if valid, false otherwise
+     */
+    public static boolean isValidItemWithCount(String input) {
+        if (!hasValidCountFormat(input)) {
+            return false;
+        }
+
+        try {
+            String trimmed = input.trim();
+            int starIndex = trimmed.indexOf("*");
+
+            if (starIndex <= 0 || starIndex >= trimmed.length() - 1) {
+                return false;
+            }
+
+            String amountPart = trimmed.substring(0, starIndex);
+            String itemPart = trimmed.substring(starIndex + 1);
+
+            // Validate amount is a valid integer
+            int amount = Integer.parseInt(amountPart);
+            if (amount <= 0 || amount >= Item.DEFAULT_MAX_STACK_SIZE) {
+                return false;
+            }
+
+            // Validate item exists
+            return ConfigListHelper.isValidItem(itemPart);
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+
+    public static ItemStack parseItemWithCountList(String entry) {
+        String[] parts = entry.split("\\*", 2);
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid format: " + entry);
+        }
+
+        int amount = Integer.parseInt(parts[0]);
+        String itemId = parts[1];
+
+        ResourceLocation location = ResourceLocation.parse(itemId);
+        Item item = BuiltInRegistries.ITEM.getValue(location);
+
+        if (item == null) {
+            throw new IllegalArgumentException("Unknown item: " + itemId);
+        }
+
+        return new ItemStack(item, amount);
     }
 }
