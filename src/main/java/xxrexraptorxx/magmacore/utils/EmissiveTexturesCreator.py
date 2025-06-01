@@ -1,3 +1,4 @@
+# This script ensures that an emissive textures copy in optifine format is created from certain textures in the folder
 import os
 import shutil
 

@@ -17,6 +17,7 @@ public class FormattingHelper {
     public static final String nameSeperator = "_";
     public static final String separator = ".";
 
+
     /**
      * Capitalizes each word in the given registry_name. Words are delineated by spaces or underscores.
      * The first letter of each word is converted to uppercase and the rest to lowercase.
@@ -50,12 +51,12 @@ public class FormattingHelper {
     }
 
 
-        /**
-         * Constructs a language tag prefix using the Magma Core id.
-         *
-         * @param prefix the base prefix to use (e.g. "item" or "block")
-         * @return the concatenated prefix in the form "{prefix}.magmacore."
-         */
+    /**
+     * Constructs a language tag prefix using the Magma Core id.
+     *
+     * @param prefix the base prefix to use (e.g. "item" or "block")
+     * @return the concatenated prefix in the form "{prefix}.magmacore."
+     */
     public static String setCoreTagPrefix(String prefix) {
         return prefix + separator + References.MODID + separator;
     }
@@ -117,7 +118,6 @@ public class FormattingHelper {
     public static String setMCLangTag(String prefix, String suffix) {
         return prefix + separator + ResourceLocation.DEFAULT_NAMESPACE + separator + suffix;
     }
-
 
 
     /**
