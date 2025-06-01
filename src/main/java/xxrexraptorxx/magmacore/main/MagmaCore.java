@@ -24,6 +24,7 @@ public class MagmaCore {
 
 
     public MagmaCore(IEventBus bus, ModContainer container) {
+
         ConfigHelper.registerConfigs(container, References.MODID, true, Config.SERVER_CONFIG, Config.CLIENT_CONFIG, null, Config.STARTUP_CONFIG);
         ModRegistry.register(References.MODID, References.NAME, References.URL);
 
