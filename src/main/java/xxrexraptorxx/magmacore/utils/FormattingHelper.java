@@ -244,6 +244,23 @@ public class FormattingHelper {
 
 
     /**
+     * Creates a translatable component for a mod’s creative tab label.
+     * <p>
+     * This method constructs a translatable text component using the translation key
+     * <code>"itemGroup.&lt;modId&gt;_tap"</code>. This key can be localized in language files to display the
+     * appropriate name for the mod’s item group (creative tab).
+     * </p>
+     *
+     * @param modId  The mod identifier used to build the translation key
+     * @return       A {@link net.minecraft.network.chat.MutableComponent} representing the translatable text for
+     *               the creative tab, which can be resolved at runtime to the localized name.
+     */
+    public static MutableComponent setTabLangComponent(String modId) {
+        return Component.translatable("itemGroup." + modId + "_tap");
+    }
+
+
+    /**
      * Returns either the normal or expanded tooltip component depending on
      * whether the Shift key is held down.
      *
