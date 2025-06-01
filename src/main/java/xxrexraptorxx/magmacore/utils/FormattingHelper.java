@@ -219,52 +219,77 @@ public class FormattingHelper {
 
 
     /**
-     * Creates a translatable chat message component for an item using its description translation key.
+     * Creates a translatable description message component for an item using its description translation key.
      *
      * @param modId the mod ID used to construct the translation key
      * @param item  the item whose description key will be used
      * @return a translatable {@link MutableComponent} for the item's description
      */
-    public static MutableComponent setMessageComponent(String modId, Item item) {
+    public static MutableComponent setDescComponent(String modId, Item item) {
         return Component.translatable(setLangTag("message", modId, BuiltInRegistries.ITEM.getKey(item).getPath() + ".desc"));
     }
 
 
     /**
-     * Creates a translatable and formatted chat message component for an item.
+     * Creates a translatable and formatted description message component for an item.
      *
      * @param modId      the mod ID used to construct the translation key
      * @param item       the item whose description key will be used
      * @param formatting the {@link ChatFormatting} style to apply to the message
      * @return a translatable {@link MutableComponent} with the specified formatting
      */
-    public static MutableComponent setMessageComponent(String modId, Item item, ChatFormatting formatting) {
-        return setMessageComponent(modId, item).withStyle(formatting);
+    public static MutableComponent setDescComponent(String modId, Item item, ChatFormatting formatting) {
+        return setDescComponent(modId, item).withStyle(formatting);
     }
 
 
     /**
-     * Creates a translatable chat message component for a block using its description translation key.
+     * Creates a translatable description message component for a block using its description translation key.
      *
      * @param modId the mod ID used to construct the translation key
      * @param block the block whose description key will be used
      * @return a translatable {@link MutableComponent} for the block's description
      */
-    public static MutableComponent setMessageComponent(String modId, Block block) {
+    public static MutableComponent setDescComponent(String modId, Block block) {
         return Component.translatable(setLangTag("message", modId, BuiltInRegistries.BLOCK.getKey(block).getPath() + ".desc"));
     }
 
 
     /**
-     * Creates a translatable and formatted chat message component for a block.
+     * Creates a translatable and formatted description message component for a block.
      *
      * @param modId      the mod ID used to construct the translation key
      * @param block      the block whose description key will be used
      * @param formatting the {@link ChatFormatting} style to apply to the message
      * @return a translatable {@link MutableComponent} with the specified formatting
      */
-    public static MutableComponent setMessageComponent(String modId, Block block, ChatFormatting formatting) {
-        return setMessageComponent(modId, block).withStyle(formatting);
+    public static MutableComponent setDescComponent(String modId, Block block, ChatFormatting formatting) {
+        return setDescComponent(modId, block).withStyle(formatting);
+    }
+
+
+    /**
+     * Creates a translatable description message component using a custom translation key suffix.
+     *
+     * @param modId the mod ID used to construct the translation key
+     * @param name  the custom name to append to the translation key (typically an item or block name)
+     * @return a translatable {@link MutableComponent} for the given name's description
+     */
+    public static MutableComponent setDescComponent(String modId, String name) {
+        return Component.translatable(setLangTag("message", modId, name + ".desc"));
+    }
+
+
+    /**
+     * Creates a translatable and formatted description message component using a custom translation key suffix.
+     *
+     * @param modId      the mod ID used to construct the translation key
+     * @param name       the custom name to append to the translation key
+     * @param formatting the {@link ChatFormatting} style to apply to the message
+     * @return a translatable {@link MutableComponent} with the specified formatting
+     */
+    public static MutableComponent setDescComponent(String modId, String name, ChatFormatting formatting) {
+        return setDescComponent(modId, name).withStyle(formatting);
     }
 
 
@@ -276,7 +301,7 @@ public class FormattingHelper {
      * @return a translatable {@link MutableComponent} for the given name's description
      */
     public static MutableComponent setMessageComponent(String modId, String name) {
-        return Component.translatable(setLangTag("message", modId, name + ".desc"));
+        return Component.translatable(setLangTag("message", modId, name));
     }
 
 
