@@ -6,6 +6,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.fml.loading.FMLEnvironment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xxrexraptorxx.magmacore.config.Config;
@@ -26,7 +27,9 @@ public class MagmaCore {
         ConfigHelper.registerConfigs(container, References.MODID, true, Config.SERVER_CONFIG, Config.CLIENT_CONFIG, null, Config.STARTUP_CONFIG);
         ModRegistry.register(References.MODID, References.NAME, References.URL);
 
-        bus.addListener(this::onClientSetup);
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            bus.addListener(this::onClientSetup);
+        }
     }
 
 
