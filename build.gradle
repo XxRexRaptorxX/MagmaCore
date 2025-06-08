@@ -228,7 +228,7 @@ modrinth {
     gameVersions = parsedGameVersions
     changelog = change_log
     failSilently = true
-    syncBodyFrom = rootProject.file("README.md").text
+    syncBodyFrom = rootProject.file("PROJECT_PAGE.md").text
     dependencies {
         // The scope can be `required`, `optional`, `incompatible`, or `embedded`
         // The type can either be `project` or `version`
