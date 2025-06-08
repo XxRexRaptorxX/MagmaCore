@@ -14,7 +14,6 @@
 
 This core mod contains basic code and features like update checker and much more that my other mods access.
 
------
 
 ### Features:
 
