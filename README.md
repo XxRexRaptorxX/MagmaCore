@@ -31,7 +31,9 @@ This core mod contains basic code and features like update checker and much more
 ## 📷 Presentation
 
 ![update checker](https://cdn.modrinth.com/data/rqi506vX/images/3fb9c8e313cdfb01c5f34a658d0f5eabb69a0d0f.png)
+
 ![ingame logger](https://cdn.modrinth.com/data/rqi506vX/images/81c26259a113fedaf3e100b57a9cf7f2c84d1b5e.png)
+
 ![ingame config](https://cdn.modrinth.com/data/rqi506vX/images/cb4f2d9f13c6be5c880bcce3792dd8fed43368cf.png)
 
 <p align="center">
