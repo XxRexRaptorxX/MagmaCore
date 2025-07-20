@@ -56,11 +56,6 @@ jobs:
           #all versions    
           conventional-changelog --preset angular > CHANGELOG_ALL.md
 
-      - name: Add version header to CHANGELOG.md
-        run: |
-          VERSION=${{ env.mod_version }}
-          sed -i "1s/^/## v.$VERSION\n\n/" CHANGELOG.md
-
       - name: Commit & Push CHANGELOG.md
         run: |
           git config user.name "github-actions[bot]"
