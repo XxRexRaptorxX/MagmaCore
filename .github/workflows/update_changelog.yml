@@ -54,9 +54,8 @@ jobs:
       - name: Tag last release
         if: github.event_name == 'push' && github.ref_type == 'branch'
         run: |
-          # Wir taggen hier mit dem neuen Projekt‑Version-Tag aus Gradle:
           # z.B. ./gradlew printVersion -q gibt project.version aus
-          NEW_TAG=$(./gradlew printVersion -q)
+          NEW_TAG=${mod_version}
           git tag v${NEW_TAG}
           git push origin v${NEW_TAG}
 
@@ -75,6 +74,9 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
 
       - name: Publish to Modrinth
         run: ./gradlew modrinth --no-daemon
