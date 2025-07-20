@@ -39,31 +39,31 @@ jobs:
       - name: Install changelog generator
         run: npm install -g conventional-changelog-cli
 
-      # DEBUG: Zeige gradle.properties Inhalt
+      # DEBUG: shows gradle.properties content
       - name: Debug - Show gradle.properties
         run: |
           echo "=== gradle.properties content ==="
           cat gradle.properties
           echo "=========================="
 
-      # Verbesserte Version-Extraktion mit Debug-Output
+      # version-extraktion
       - name: Get version from gradle.properties with debug
         id: get_version
         run: |
           echo "=== Extracting version ==="
           
-          # Zeige verfügbare mod_version Zeilen
+          # shows all mod_version lines
           echo "Lines containing 'mod_version':"
           grep -n 'mod_version' gradle.properties || echo "No mod_version found"
           
-          # Extrahiere Version mit verschiedenen Methoden
+          # extract version with different methods
           MOD_VERSION1=$(grep '^mod_version=' gradle.properties | cut -d'=' -f2 | tr -d ' \t\r\n' | head -1)
           MOD_VERSION2=$(awk -F'=' '/^mod_version=/ {gsub(/^[ \t]*|[ \t]*$/, "", $2); print $2}' gradle.properties | head -1)
           
           echo "Method 1 result: '$MOD_VERSION1'"
           echo "Method 2 result: '$MOD_VERSION2'"
           
-          # Verwende die erste nicht-leere Version
+          # use the first non-empty version
           if [ -n "$MOD_VERSION1" ]; then
             FINAL_VERSION="$MOD_VERSION1"
           elif [ -n "$MOD_VERSION2" ]; then
@@ -76,7 +76,7 @@ jobs:
           echo "final_version=$FINAL_VERSION" >> $GITHUB_ENV
           echo "Final version: '$FINAL_VERSION'"
           
-          # Validierung
+          # validating
           if [ -z "$FINAL_VERSION" ]; then
             echo "ERROR: Version is empty!"
             exit 1
@@ -89,7 +89,7 @@ jobs:
           echo "latest_tag=$LATEST_TAG" >> $GITHUB_ENV
           echo "Latest tag: '$LATEST_TAG'"
 
-      # Erstelle package.json mit expliziter Debug-Ausgabe
+      # create package.json
       - name: Create package.json with debug
         run: |
           echo "=== Creating package.json ==="
@@ -110,16 +110,16 @@ jobs:
           cat package.json
           echo "=========================="
           
-          # Validiere JSON
+          # validate JSON
           node -e "console.log('JSON is valid:', JSON.parse(require('fs').readFileSync('package.json', 'utf8')))"
 
-      - name: Generate CHANGELOG.md with manual version handling
+      - name: Generate CHANGELOG.md with smart header handling
         run: |
           echo "=== Generating changelog ==="
           echo "Version: '${{ env.final_version }}'"
           echo "Latest tag: '${{ env.latest_tag }}'"
           
-          # Erstelle temporären Changelog ohne Version-Header
+          # create temporary Changelogs
           if [ -z "${{ env.latest_tag }}" ]; then
             echo "No previous tag - generating full changelog"
             conventional-changelog --preset angular --pkg package.json --release-count 0 > temp_raw_changelog.md
@@ -132,35 +132,24 @@ jobs:
           head -10 temp_raw_changelog.md
           echo "=========================="
           
-          # Erstelle finalen Changelog mit manueller Version
-          {
-            echo "## [${{ env.final_version }}] ($(date '+%Y-%m-%d'))"
-            echo ""
+          # check conventional-changelog header 
+          FIRST_LINE=$(head -1 temp_raw_changelog.md | tr -d '\r\n')
+          echo "First line: '$FIRST_LINE'"
           
-            # Entferne leere Header aus conventional-changelog
-            grep -v '^## \[\]' temp_raw_changelog.md | grep -v '^# $' | grep -v '^##  (' || cat temp_raw_changelog.md
-          
-          } > new_changelog.md
-          
-          # Kombiniere mit existierendem Changelog
-          if [ -f CHANGELOG.md ]; then
-            echo "Combining with existing changelog"
-            cat new_changelog.md CHANGELOG.md > combined_changelog.md
-            mv combined_changelog.md CHANGELOG.md
-          else
-            echo "Creating new changelog"
-            mv new_changelog.md CHANGELOG.md
-          fi
-          
-          # Erstelle CHANGELOG_FULL.md
-          echo "=== Creating full changelog ==="
-          {
-            echo "# Changelog"
-            echo ""
-            echo "All notable changes to this project will be documented in this file."
-            echo ""
-            cat CHANGELOG.md
-          } > CHANGELOG_FULL.md
+          # check different Header-formats
+          if echo "$FIRST_LINE" | grep -q "^## \[${{ env.final_version }}\]"; then
+            echo "Found correct version header - using as is"
+            cp temp_raw_changelog.md new_changelog.md
+          elif echo "$FIRST_LINE" | grep -q "^## ${{ env.final_version }}"; then
+            echo "Found version header without brackets - fixing format"
+            sed "s/^## ${{ env.final_version }}/## [${{ env.final_version }}]/" temp_raw_changelog.md > new_changelog.md
+          elif echo "$FIRST_LINE" | grep -q "^## \[\]" || [ -z "$FIRST_LINE" ] || echo "$FIRST_LINE" | grep -q "^# $"; then
+            echo "Found empty or malformed header - adding manual header"
+            {
+              echo "## [${{ env.final_version }}] ($(date '+%Y-%m-%d'))"
+              echo ""
+              # Entferne leere/fehlerhafte Header
+              grep -v '^## \[\]' temp_raw_changelog.md | grep -v '^# 
 
       - name: Show final results
         run: |
@@ -168,17 +157,58 @@ jobs:
           echo "final_version: '${{ env.final_version }}'"
           echo "latest_tag: '${{ env.latest_tag }}'"
           echo ""
+          echo "=== Final CHANGELOG_LATEST.md (first 25 lines) ==="
+          head -25 CHANGELOG_LATEST.md
+          echo ""
           echo "=== Final CHANGELOG.md (first 25 lines) ==="
           head -25 CHANGELOG.md
-          echo ""
-          echo "=== Final CHANGELOG_FULL.md (first 25 lines) ==="
-          head -25 CHANGELOG_FULL.md
+          
+          # Optional: Bereinige existierende doppelte Header
+      - name: Clean up existing changelog duplicates
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            echo "=== Cleaning existing changelog ==="
+          
+            # Erstelle temporäre bereinigte Version
+            awk '
+            BEGIN { 
+              prev_line = ""
+              skip_next = 0
+            }
+            {
+              # Aktuelle Zeile ist Header
+              if (/^## /) {
+                # Wenn vorherige Zeile auch Header war, überspringe diese
+                if (prev_line ~ /^## /) {
+                  # Verwende den besseren Header (mit Klammern wenn verfügbar)
+                  if ($0 ~ /\[.*\]/ && prev_line !~ /\[.*\]/) {
+                    # Aktueller Header hat Klammern, vorheriger nicht
+                    print $0
+                  } else if (prev_line ~ /\[.*\]/ && $0 !~ /\[.*\]/) {
+                    # Vorheriger Header hat Klammern, aktueller nicht - überspringe aktuellen
+                    next
+                  } else {
+                    # Beide gleich - nimm den ersten (überspringen)
+                    next
+                  }
+                } else {
+                  print $0
+                }
+              } else {
+                print $0
+              }
+              prev_line = $0
+            }' CHANGELOG.md > CHANGELOG_CLEAN.md
+          
+            mv CHANGELOG_CLEAN.md CHANGELOG.md
+            echo "Changelog cleaned"
+          fi
 
-      - name: Commit & Push CHANGELOG.md
+      - name: Commit & Push CHANGELOG.md's
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md CHANGELOG_FULL.md
+          git add CHANGELOG_LATEST.md CHANGELOG.md
           
           if git diff --cached --quiet; then
             echo "No changes to commit"
@@ -201,6 +231,8 @@ jobs:
             git push origin "$NEW_TAG"
             echo "Created and pushed tag: $NEW_TAG"
           fi
+          
+          
 
   publish:
     needs: append-changelog
