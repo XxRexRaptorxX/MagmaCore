@@ -27,15 +27,36 @@ jobs:
         with:
           node-version: 18
 
+      - name: Setup Java 21
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
       - name: Install changelog generator
         run: npm install -g conventional-changelog-cli
 
-      - name: Get mod version from Gradle
+      # Methode 1: Vers aus gradle.properties lesen
+      - name: Get version from gradle.properties
         id: get_version
         run: |
-          VERSION=$(./gradlew -q printVersion | tail -n 1)
-          echo "mod_version=$VERSION" >> $GITHUB_ENV
-          echo "Detected version: $VERSION"
+          # Version aus gradle.properties extrahieren
+          MOD_VERSION=$(grep '^mod_version=' gradle.properties | cut -d'=' -f2 | tr -d ' ')
+          echo "mod_version=$MOD_VERSION" >> $GITHUB_ENV
+          echo "Detected version from gradle.properties: $MOD_VERSION"
+          
+          # Alternative: Version über Gradle Task (als Fallback)
+          GRADLE_VERSION=$(./gradlew -q printVersion | tail -n 1 | tr -d '\r\n ')
+          echo "gradle_version=$GRADLE_VERSION" >> $GITHUB_ENV
+          echo "Detected version from Gradle task: $GRADLE_VERSION"
+          
+          # Verwende gradle.properties Version, falls verfügbar
+          FINAL_VERSION=${MOD_VERSION:-$GRADLE_VERSION}
+          echo "final_version=$FINAL_VERSION" >> $GITHUB_ENV
+          echo "Using version: $FINAL_VERSION"
 
       - name: Get latest tag
         id: get_latest_tag
@@ -44,9 +65,24 @@ jobs:
           echo "latest_tag=$LATEST_TAG" >> $GITHUB_ENV
           echo "Latest tag: $LATEST_TAG"
 
+      # Erstelle package.json mit Version aus gradle.properties
+      - name: Create package.json with Gradle version
+        run: |
+          cat > package.json << EOF
+          {
+            "name": "${{ github.event.repository.name }}",
+            "version": "${{ env.final_version }}",
+            "repository": {
+              "type": "git",
+              "url": "https://github.com/${{ github.repository }}.git"
+            }
+          }
+          EOF
+          echo "Created package.json with version: ${{ env.final_version }}"
+
       - name: Generate CHANGELOG.md for current version
         run: |
-          echo "Generating changelog..."
+          echo "Generating changelog for version ${{ env.final_version }}..."
           
           # Erstelle aktuellen Changelog (nur letzte Änderungen)
           if [ -z "${{ env.latest_tag }}" ]; then
@@ -56,11 +92,14 @@ jobs:
             echo "Previous tag found: ${{ env.latest_tag }}"
             conventional-changelog --preset angular --release-count 1 --pkg package.json > temp_changelog.md
           
-            # Füge Version-Header hinzu falls nicht vorhanden
-            if ! grep -q "## \[${{ env.mod_version }}\]" temp_changelog.md; then
-              echo "## [${{ env.mod_version }}] ($(date '+%Y-%m-%d'))" > versioned_changelog.md
-              echo "" >> versioned_changelog.md
-              cat temp_changelog.md >> versioned_changelog.md
+            # Manuell Version-Header hinzufügen (falls conventional-changelog es nicht macht)
+            if ! grep -q "## \[${{ env.final_version }}\]" temp_changelog.md && ! grep -q "# \[${{ env.final_version }}\]" temp_changelog.md; then
+              echo "Adding manual version header"
+              {
+                echo "## [${{ env.final_version }}] ($(date '+%Y-%m-%d'))"
+                echo ""
+                cat temp_changelog.md
+              } > versioned_changelog.md
               mv versioned_changelog.md temp_changelog.md
             fi
           
@@ -76,40 +115,48 @@ jobs:
           # Erstelle vollständigen Changelog (alle Versionen)
           echo "Generating full changelog..."
           conventional-changelog --preset angular --pkg package.json > CHANGELOG_FULL.md
-
-      - name: Create package.json for conventional-changelog
-        run: |
-          cat > package.json << EOF
-          {
-            "name": "${{ github.event.repository.name }}",
-            "version": "${{ env.mod_version }}",
-            "repository": {
-              "type": "git",
-              "url": "https://github.com/${{ github.repository }}.git"
-            }
-          }
-          EOF
+          
+          # Falls CHANGELOG_FULL.md leer ist, füge Header hinzu
+          if [ ! -s CHANGELOG_FULL.md ]; then
+            echo "CHANGELOG_FULL.md is empty, creating with current version"
+            {
+              echo "# Changelog"
+              echo ""
+              echo "## [${{ env.final_version }}] ($(date '+%Y-%m-%d'))"
+              echo ""
+              echo "### Changes"
+              echo ""
+              git log --oneline --pretty=format:"* %s" "${{ env.latest_tag }}..HEAD" || git log --oneline --pretty=format:"* %s" -10
+            } > CHANGELOG_FULL.md
+          fi
 
       - name: Show generated files
         run: |
-          echo "=== CHANGELOG.md content ==="
+          echo "=== Final Version ==="
+          echo "${{ env.final_version }}"
+          echo ""
+          echo "=== package.json content ==="
+          cat package.json
+          echo ""
+          echo "=== CHANGELOG.md content (first 20 lines) ==="
           head -20 CHANGELOG.md || echo "CHANGELOG.md not found"
           echo ""
-          echo "=== CHANGELOG_FULL.md content ==="
+          echo "=== CHANGELOG_FULL.md content (first 20 lines) ==="
           head -20 CHANGELOG_FULL.md || echo "CHANGELOG_FULL.md not found"
 
       - name: Commit & Push CHANGELOG.md
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md CHANGELOG_FULL.md package.json
-          git diff --cached --quiet || git commit -m "chore: update changelogs [skip ci]"
+          git add CHANGELOG.md CHANGELOG_FULL.md
+          # package.json nicht committen, da sie nur temporär gebraucht wird
+          git diff --cached --quiet || git commit -m "chore: update changelogs for v${{ env.final_version }} [skip ci]"
           git push origin HEAD:${{ github.ref_name }}
 
       - name: Tag last release
         if: github.event_name == 'push' && github.ref_type == 'branch'
         run: |
-          NEW_TAG="v.${{ env.mod_version }}"
+          NEW_TAG="v${{ env.final_version }}"
           echo "Creating tag: $NEW_TAG"
           
           # Prüfe ob Tag bereits existiert
