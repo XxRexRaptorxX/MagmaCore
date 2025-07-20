@@ -48,7 +48,14 @@ jobs:
         run: |
           conventional-changelog --preset angular --release-count 1 -o temp_changelog.md
           
-          echo -e "## v${{ env.mod_version }}\n\n$(cat temp_changelog.md)" > temp_changelog.md
+          VERSION=${{ env.mod_version }}
+          DATE=$(date +'%Y-%m-%d')
+          
+          # Entferne leere Vergleichszeile wie "# [](https://...)"
+          sed -i '/^# \[\]/d' temp_changelog.md
+          
+          # Füge eigene Version-Zeile mit Datum ein
+          echo -e "## v.$VERSION – $DATE\n\n$(cat temp_changelog.md)" > temp_changelog.md
           
           if [ -f CHANGELOG.md ]; then
             cat temp_changelog.md CHANGELOG.md > full_changelog.md
