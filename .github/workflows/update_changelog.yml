@@ -57,6 +57,13 @@ jobs:
           fi
           
 
+      - name: Add version and date to CHANGELOG.md
+        run: |
+          VERSION=${{ env.mod_version }}
+          DATE=$(date +'%Y-%m-%d')
+          sed -i "1s/^/## v$VERSION – $DATE\n\n/" CHANGELOG.md
+
+
       - name: Commit & Push CHANGELOG.md
         run: |
           git config user.name "github-actions[bot]"
@@ -65,11 +72,6 @@ jobs:
           git diff --cached --quiet || git commit -m "chore: append changelog"
           git push origin HEAD:${{ github.ref_name }}
 
-      - name: Add version and date to CHANGELOG.md
-        run: |
-          VERSION=${{ env.mod_version }}
-          DATE=$(date +'%Y-%m-%d')
-          sed -i "1s/^/## v$VERSION – $DATE\n\n/" CHANGELOG.md
 
       - name: Tag last release
         if: github.event_name == 'push' && github.ref_type == 'branch'
