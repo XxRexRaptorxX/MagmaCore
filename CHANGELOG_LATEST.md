@@ -1,10 +1,11 @@
-## v1.3.1 (MC 1.21.5) – 2025-07-20
+# v.1.3.1 for MC 1.21.5 – 20-07-2025
 
 # [](https://github.com/XxRexRaptorxX/MagmaCore/compare/v1.3.1...v) (2025-07-20)
 
 
 ### Bug Fixes
 
+* changelog automation test ([c7d874c](https://github.com/XxRexRaptorxX/MagmaCore/commit/c7d874c36df280ce02591907f2a26cfab8e84e41))
 * changelog automation test ([5f3cfc9](https://github.com/XxRexRaptorxX/MagmaCore/commit/5f3cfc91d8672cb854117e2a11d0306d7a550a9f))
 * changelog automation test ([557d4eb](https://github.com/XxRexRaptorxX/MagmaCore/commit/557d4eb98bb9e4074c6e64fd7e66121d3325f513))
 * changelog automation test ([c7ab981](https://github.com/XxRexRaptorxX/MagmaCore/commit/c7ab98111e8a53007785f6e04125ccc29159a7a1))
