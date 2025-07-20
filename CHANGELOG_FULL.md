@@ -1,8 +1,9 @@
-#  (2025-07-20)
+## 1.3.1 (2025-07-20)
 
 
 ### Bug Fixes
 
+* changelog test ([a521791](https://github.com/XxRexRaptorxX/MagmaCore/commit/a521791b4737c82444d0de20fcf9313a8f184d6f))
 * changelog test ([5e6c1cd](https://github.com/XxRexRaptorxX/MagmaCore/commit/5e6c1cd74f663470ea815eac4c3b7d6c138f96c0))
 * changelog test ([3e41b26](https://github.com/XxRexRaptorxX/MagmaCore/commit/3e41b26638e93777b16821867f38f32decf28ebd))
 * changelog test ([214ac65](https://github.com/XxRexRaptorxX/MagmaCore/commit/214ac65fb4d333648152d93288bf99b6d7993b4c))
