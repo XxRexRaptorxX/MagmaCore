@@ -7,9 +7,11 @@ on:
     tags:
       - 'v*.*.*'
 
-
 env:
   LAST_VERSION_TAG: ${{ github.ref_name }}
+
+permissions:
+  contents: write
 
 jobs:
   append-changelog:
