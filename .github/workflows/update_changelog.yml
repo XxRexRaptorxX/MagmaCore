@@ -1,4 +1,4 @@
-name: Update Changelog & Publish
+name: Update Changelog
 
 on:
   push:
@@ -11,227 +11,48 @@ permissions:
   contents: write
 
 jobs:
-  append-changelog:
+  update-changelog:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/heads/')
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          persist-credentials: true
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - name: Setup Java 21
-        uses: actions/setup-java@v3
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-
-      - name: Install changelog generator
+      - name: Install conventional-changelog
         run: npm install -g conventional-changelog-cli
 
-      # DEBUG: shows gradle.properties content
-      - name: Debug - Show gradle.properties
+      - name: Extract version from gradle.properties
+        id: extract_version
         run: |
-          echo "=== gradle.properties content ==="
-          cat gradle.properties
-          echo "=========================="
+          # z.B. version=1.3.2-SNAPSHOT oder version=1.3.2
+          RAW=$(grep '^version=' gradle.properties | cut -d'=' -f2 | tr -d '[:space:]')
+          # falls "-SNAPSHOT" anhängt, entferne es:
+          VERSION=${RAW/-SNAPSHOT/}
+          echo "mod_version=$VERSION" >> $GITHUB_ENV
+          echo "Extracted version: $VERSION"
 
-      # version-extraktion
-      - name: Get version from gradle.properties with debug
-        id: get_version
+      - name: Generate full CHANGELOG.md
         run: |
-          echo "=== Extracting version ==="
-          
-          # shows all mod_version lines
-          echo "Lines containing 'mod_version':"
-          grep -n 'mod_version' gradle.properties || echo "No mod_version found"
-          
-          # extract version with different methods
-          MOD_VERSION1=$(grep '^mod_version=' gradle.properties | cut -d'=' -f2 | tr -d ' \t\r\n' | head -1)
-          MOD_VERSION2=$(awk -F'=' '/^mod_version=/ {gsub(/^[ \t]*|[ \t]*$/, "", $2); print $2}' gradle.properties | head -1)
-          
-          echo "Method 1 result: '$MOD_VERSION1'"
-          echo "Method 2 result: '$MOD_VERSION2'"
-          
-          # use the first non-empty version
-          if [ -n "$MOD_VERSION1" ]; then
-            FINAL_VERSION="$MOD_VERSION1"
-          elif [ -n "$MOD_VERSION2" ]; then
-            FINAL_VERSION="$MOD_VERSION2"
-          else
-            echo "ERROR: Could not extract version!"
-            exit 1
-          fi
-          
-          echo "final_version=$FINAL_VERSION" >> $GITHUB_ENV
-          echo "Final version: '$FINAL_VERSION'"
-          
-          # validating
-          if [ -z "$FINAL_VERSION" ]; then
-            echo "ERROR: Version is empty!"
-            exit 1
-          fi
+          # vollständige History aller Releases
+          conventional-changelog --preset angular --output CHANGELOG.md
+          # Header nur mit Version (kein Datum)
+          sed -i "1s/^/## v${{ env.mod_version }}\n\n/" CHANGELOG.md
 
-      - name: Get latest tag
-        id: get_latest_tag
-        run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          echo "latest_tag=$LATEST_TAG" >> $GITHUB_ENV
-          echo "Latest tag: '$LATEST_TAG'"
-
-      # create package.json
-      - name: Create package.json with debug
-        run: |
-          echo "=== Creating package.json ==="
-          echo "Using version: '${{ env.final_version }}'"
-          
-          cat > package.json << EOF
-          {
-            "name": "${{ github.event.repository.name }}",
-            "version": "${{ env.final_version }}",
-            "repository": {
-              "type": "git",
-              "url": "https://github.com/${{ github.repository }}.git"
-            }
-          }
-          EOF
-          
-          echo "=== package.json created ==="
-          cat package.json
-          echo "=========================="
-          
-          # validate JSON
-          node -e "console.log('JSON is valid:', JSON.parse(require('fs').readFileSync('package.json', 'utf8')))"
-
-      - name: Generate CHANGELOG.md with smart header handling
-        run: |
-          echo "=== Generating changelog ==="
-          echo "Version: '${{ env.final_version }}'"
-          echo "Latest tag: '${{ env.latest_tag }}'"
-          
-          # create temporary Changelogs
-          if [ -z "${{ env.latest_tag }}" ]; then
-            echo "No previous tag - generating full changelog"
-            conventional-changelog --preset angular --pkg package.json --release-count 0 > temp_raw_changelog.md
-          else
-            echo "Previous tag found - generating since last tag"
-            conventional-changelog --preset angular --pkg package.json --release-count 1 > temp_raw_changelog.md
-          fi
-          
-          echo "=== Raw changelog content ==="
-          head -10 temp_raw_changelog.md
-          echo "=========================="
-          
-          # check conventional-changelog header 
-          FIRST_LINE=$(head -1 temp_raw_changelog.md | tr -d '\r\n')
-          echo "First line: '$FIRST_LINE'"
-          
-          # check different Header-formats
-          if echo "$FIRST_LINE" | grep -q "^## \[${{ env.final_version }}\]"; then
-            echo "Found correct version header - using as is"
-            cp temp_raw_changelog.md new_changelog.md
-          elif echo "$FIRST_LINE" | grep -q "^## ${{ env.final_version }}"; then
-            echo "Found version header without brackets - fixing format"
-            sed "s/^## ${{ env.final_version }}/## [${{ env.final_version }}]/" temp_raw_changelog.md > new_changelog.md
-          elif echo "$FIRST_LINE" | grep -q "^## \[\]" || [ -z "$FIRST_LINE" ] || echo "$FIRST_LINE" | grep -q "^# $"; then
-            echo "Found empty or malformed header - adding manual header"
-            {
-              echo "## [${{ env.final_version }}] ($(date '+%Y-%m-%d'))"
-              echo ""
-              # Entferne leere/fehlerhafte Header
-              grep -v '^## \[\]' temp_raw_changelog.md | grep -v '^# 
-
-      - name: Show final results
-        run: |
-          echo "=== Environment Variables ==="
-          echo "final_version: '${{ env.final_version }}'"
-          echo "latest_tag: '${{ env.latest_tag }}'"
-          echo ""
-          echo "=== Final CHANGELOG_LATEST.md (first 25 lines) ==="
-          head -25 CHANGELOG_LATEST.md
-          echo ""
-          echo "=== Final CHANGELOG.md (first 25 lines) ==="
-          head -25 CHANGELOG.md
-          
-          # Optional: Bereinige existierende doppelte Header
-      - name: Clean up existing changelog duplicates
-        run: |
-          if [ -f CHANGELOG.md ]; then
-            echo "=== Cleaning existing changelog ==="
-          
-            # Erstelle temporäre bereinigte Version
-            awk '
-            BEGIN { 
-              prev_line = ""
-              skip_next = 0
-            }
-            {
-              # Aktuelle Zeile ist Header
-              if (/^## /) {
-                # Wenn vorherige Zeile auch Header war, überspringe diese
-                if (prev_line ~ /^## /) {
-                  # Verwende den besseren Header (mit Klammern wenn verfügbar)
-                  if ($0 ~ /\[.*\]/ && prev_line !~ /\[.*\]/) {
-                    # Aktueller Header hat Klammern, vorheriger nicht
-                    print $0
-                  } else if (prev_line ~ /\[.*\]/ && $0 !~ /\[.*\]/) {
-                    # Vorheriger Header hat Klammern, aktueller nicht - überspringe aktuellen
-                    next
-                  } else {
-                    # Beide gleich - nimm den ersten (überspringen)
-                    next
-                  }
-                } else {
-                  print $0
-                }
-              } else {
-                print $0
-              }
-              prev_line = $0
-            }' CHANGELOG.md > CHANGELOG_CLEAN.md
-          
-            mv CHANGELOG_CLEAN.md CHANGELOG.md
-            echo "Changelog cleaned"
-          fi
-
-      - name: Commit & Push CHANGELOG.md's
+      - name: Commit & Push CHANGELOG.md
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG_LATEST.md CHANGELOG.md
-          
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "chore: update changelogs for v${{ env.final_version }} [skip ci]"
-            git push origin HEAD:${{ github.ref_name }}
-            echo "Changes committed and pushed"
-          fi
-
-      - name: Tag last release
-        if: github.event_name == 'push' && github.ref_type == 'branch'
-        run: |
-          NEW_TAG="v${{ env.final_version }}"
-          echo "Checking tag: $NEW_TAG"
-          
-          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
-            echo "Tag $NEW_TAG already exists"
-          else
-            git tag "$NEW_TAG"
-            git push origin "$NEW_TAG"
-            echo "Created and pushed tag: $NEW_TAG"
-          fi
-          
+          git add CHANGELOG.md
+          git diff --cached --quiet || git commit -m "chore: update CHANGELOG.md"
+          git push origin HEAD:${{ github.ref_name }}
           
 
   publish:
