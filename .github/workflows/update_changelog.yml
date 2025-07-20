@@ -39,35 +39,62 @@ jobs:
       - name: Install changelog generator
         run: npm install -g conventional-changelog-cli
 
-      # Methode 1: Vers aus gradle.properties lesen
-      - name: Get version from gradle.properties
+      # DEBUG: Zeige gradle.properties Inhalt
+      - name: Debug - Show gradle.properties
+        run: |
+          echo "=== gradle.properties content ==="
+          cat gradle.properties
+          echo "=========================="
+
+      # Verbesserte Version-Extraktion mit Debug-Output
+      - name: Get version from gradle.properties with debug
         id: get_version
         run: |
-          # Version aus gradle.properties extrahieren
-          MOD_VERSION=$(grep '^mod_version=' gradle.properties | cut -d'=' -f2 | tr -d ' ')
-          echo "mod_version=$MOD_VERSION" >> $GITHUB_ENV
-          echo "Detected version from gradle.properties: $MOD_VERSION"
+          echo "=== Extracting version ==="
           
-          # Alternative: Version über Gradle Task (als Fallback)
-          GRADLE_VERSION=$(./gradlew -q printVersion | tail -n 1 | tr -d '\r\n ')
-          echo "gradle_version=$GRADLE_VERSION" >> $GITHUB_ENV
-          echo "Detected version from Gradle task: $GRADLE_VERSION"
+          # Zeige verfügbare mod_version Zeilen
+          echo "Lines containing 'mod_version':"
+          grep -n 'mod_version' gradle.properties || echo "No mod_version found"
           
-          # Verwende gradle.properties Version, falls verfügbar
-          FINAL_VERSION=${MOD_VERSION:-$GRADLE_VERSION}
+          # Extrahiere Version mit verschiedenen Methoden
+          MOD_VERSION1=$(grep '^mod_version=' gradle.properties | cut -d'=' -f2 | tr -d ' \t\r\n' | head -1)
+          MOD_VERSION2=$(awk -F'=' '/^mod_version=/ {gsub(/^[ \t]*|[ \t]*$/, "", $2); print $2}' gradle.properties | head -1)
+          
+          echo "Method 1 result: '$MOD_VERSION1'"
+          echo "Method 2 result: '$MOD_VERSION2'"
+          
+          # Verwende die erste nicht-leere Version
+          if [ -n "$MOD_VERSION1" ]; then
+            FINAL_VERSION="$MOD_VERSION1"
+          elif [ -n "$MOD_VERSION2" ]; then
+            FINAL_VERSION="$MOD_VERSION2"
+          else
+            echo "ERROR: Could not extract version!"
+            exit 1
+          fi
+          
           echo "final_version=$FINAL_VERSION" >> $GITHUB_ENV
-          echo "Using version: $FINAL_VERSION"
+          echo "Final version: '$FINAL_VERSION'"
+          
+          # Validierung
+          if [ -z "$FINAL_VERSION" ]; then
+            echo "ERROR: Version is empty!"
+            exit 1
+          fi
 
       - name: Get latest tag
         id: get_latest_tag
         run: |
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           echo "latest_tag=$LATEST_TAG" >> $GITHUB_ENV
-          echo "Latest tag: $LATEST_TAG"
+          echo "Latest tag: '$LATEST_TAG'"
 
-      # Erstelle package.json mit Version aus gradle.properties
-      - name: Create package.json with Gradle version
+      # Erstelle package.json mit expliziter Debug-Ausgabe
+      - name: Create package.json with debug
         run: |
+          echo "=== Creating package.json ==="
+          echo "Using version: '${{ env.final_version }}'"
+          
           cat > package.json << EOF
           {
             "name": "${{ github.event.repository.name }}",
@@ -78,88 +105,95 @@ jobs:
             }
           }
           EOF
-          echo "Created package.json with version: ${{ env.final_version }}"
-
-      - name: Generate CHANGELOG.md for current version
-        run: |
-          echo "Generating changelog for version ${{ env.final_version }}..."
           
-          # Erstelle aktuellen Changelog (nur letzte Änderungen)
-          if [ -z "${{ env.latest_tag }}" ]; then
-            echo "No previous tag found, generating full changelog"
-            conventional-changelog --preset angular --pkg package.json > CHANGELOG.md
-          else
-            echo "Previous tag found: ${{ env.latest_tag }}"
-            conventional-changelog --preset angular --release-count 1 --pkg package.json > temp_changelog.md
-          
-            # Manuell Version-Header hinzufügen (falls conventional-changelog es nicht macht)
-            if ! grep -q "## \[${{ env.final_version }}\]" temp_changelog.md && ! grep -q "# \[${{ env.final_version }}\]" temp_changelog.md; then
-              echo "Adding manual version header"
-              {
-                echo "## [${{ env.final_version }}] ($(date '+%Y-%m-%d'))"
-                echo ""
-                cat temp_changelog.md
-              } > versioned_changelog.md
-              mv versioned_changelog.md temp_changelog.md
-            fi
-          
-            # Kombiniere mit bestehendem Changelog
-            if [ -f CHANGELOG.md ]; then
-              cat temp_changelog.md CHANGELOG.md > full_changelog.md
-              mv full_changelog.md CHANGELOG.md
-            else
-              mv temp_changelog.md CHANGELOG.md
-            fi
-          fi
-          
-          # Erstelle vollständigen Changelog (alle Versionen)
-          echo "Generating full changelog..."
-          conventional-changelog --preset angular --pkg package.json > CHANGELOG_FULL.md
-          
-          # Falls CHANGELOG_FULL.md leer ist, füge Header hinzu
-          if [ ! -s CHANGELOG_FULL.md ]; then
-            echo "CHANGELOG_FULL.md is empty, creating with current version"
-            {
-              echo "# Changelog"
-              echo ""
-              echo "## [${{ env.final_version }}] ($(date '+%Y-%m-%d'))"
-              echo ""
-              echo "### Changes"
-              echo ""
-              git log --oneline --pretty=format:"* %s" "${{ env.latest_tag }}..HEAD" || git log --oneline --pretty=format:"* %s" -10
-            } > CHANGELOG_FULL.md
-          fi
-
-      - name: Show generated files
-        run: |
-          echo "=== Final Version ==="
-          echo "${{ env.final_version }}"
-          echo ""
-          echo "=== package.json content ==="
+          echo "=== package.json created ==="
           cat package.json
+          echo "=========================="
+          
+          # Validiere JSON
+          node -e "console.log('JSON is valid:', JSON.parse(require('fs').readFileSync('package.json', 'utf8')))"
+
+      - name: Generate CHANGELOG.md with manual version handling
+        run: |
+          echo "=== Generating changelog ==="
+          echo "Version: '${{ env.final_version }}'"
+          echo "Latest tag: '${{ env.latest_tag }}'"
+          
+          # Erstelle temporären Changelog ohne Version-Header
+          if [ -z "${{ env.latest_tag }}" ]; then
+            echo "No previous tag - generating full changelog"
+            conventional-changelog --preset angular --pkg package.json --release-count 0 > temp_raw_changelog.md
+          else
+            echo "Previous tag found - generating since last tag"
+            conventional-changelog --preset angular --pkg package.json --release-count 1 > temp_raw_changelog.md
+          fi
+          
+          echo "=== Raw changelog content ==="
+          head -10 temp_raw_changelog.md
+          echo "=========================="
+          
+          # Erstelle finalen Changelog mit manueller Version
+          {
+            echo "## [${{ env.final_version }}] ($(date '+%Y-%m-%d'))"
+            echo ""
+          
+            # Entferne leere Header aus conventional-changelog
+            grep -v '^## \[\]' temp_raw_changelog.md | grep -v '^# $' | grep -v '^##  (' || cat temp_raw_changelog.md
+          
+          } > new_changelog.md
+          
+          # Kombiniere mit existierendem Changelog
+          if [ -f CHANGELOG.md ]; then
+            echo "Combining with existing changelog"
+            cat new_changelog.md CHANGELOG.md > combined_changelog.md
+            mv combined_changelog.md CHANGELOG.md
+          else
+            echo "Creating new changelog"
+            mv new_changelog.md CHANGELOG.md
+          fi
+          
+          # Erstelle CHANGELOG_FULL.md
+          echo "=== Creating full changelog ==="
+          {
+            echo "# Changelog"
+            echo ""
+            echo "All notable changes to this project will be documented in this file."
+            echo ""
+            cat CHANGELOG.md
+          } > CHANGELOG_FULL.md
+
+      - name: Show final results
+        run: |
+          echo "=== Environment Variables ==="
+          echo "final_version: '${{ env.final_version }}'"
+          echo "latest_tag: '${{ env.latest_tag }}'"
           echo ""
-          echo "=== CHANGELOG.md content (first 20 lines) ==="
-          head -20 CHANGELOG.md || echo "CHANGELOG.md not found"
+          echo "=== Final CHANGELOG.md (first 25 lines) ==="
+          head -25 CHANGELOG.md
           echo ""
-          echo "=== CHANGELOG_FULL.md content (first 20 lines) ==="
-          head -20 CHANGELOG_FULL.md || echo "CHANGELOG_FULL.md not found"
+          echo "=== Final CHANGELOG_FULL.md (first 25 lines) ==="
+          head -25 CHANGELOG_FULL.md
 
       - name: Commit & Push CHANGELOG.md
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md CHANGELOG_FULL.md
-          # package.json nicht committen, da sie nur temporär gebraucht wird
-          git diff --cached --quiet || git commit -m "chore: update changelogs for v${{ env.final_version }} [skip ci]"
-          git push origin HEAD:${{ github.ref_name }}
+          
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update changelogs for v${{ env.final_version }} [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+            echo "Changes committed and pushed"
+          fi
 
       - name: Tag last release
         if: github.event_name == 'push' && github.ref_type == 'branch'
         run: |
           NEW_TAG="v${{ env.final_version }}"
-          echo "Creating tag: $NEW_TAG"
+          echo "Checking tag: $NEW_TAG"
           
-          # Prüfe ob Tag bereits existiert
           if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
             echo "Tag $NEW_TAG already exists"
           else
