@@ -213,20 +213,40 @@ idea {
     }
 }
 
+//CHANGELOG
+def generateLatestChangelog() {
+    def proc = "git describe --tags --abbrev=0".execute()
+    def lastTag = proc.text.trim()
+    if (!proc.exitValue()) {
+        println "Using tag: $lastTag"
+    }
+
+    def logCmd = ["git", "log", "${lastTag}..HEAD", "--pretty=format:* %s"]
+    def log = new ByteArrayOutputStream()
+    exec {
+        commandLine logCmd
+        standardOutput = log
+    }
+    return log.toString("UTF-8").trim()
+}
+
+def latestChangelog = generateLatestChangelog()
+
 //MODRINTH
 def rawGameVersions = project.findProperty("game_versions")?.toString() ?: "" //Game version transformator for Modrinth
 def parsedGameVersions = rawGameVersions.split(",").collect { it.trim() }
-def modrinthToken = project.findProperty("modrinthToken")?.toString() //token getter
-if (modrinthToken == null) {
-    throw new GradleException("Missing token in ~/.gradle/gradle.properties => 'modrinthToken'")
-}
+def modrinthToken = System.getenv("MODRINTH_TOKEN") ?: project.findProperty("modrinthToken")?.toString()
+    if (modrinthToken == null) {
+             throw new GradleException("Missing MODRINTH_TOKEN: set it either as ENV (MODRINTH_TOKEN) or in ~/.gradle/gradle.properties (modrinthToken)")
+    }
+
 modrinth {
     token = modrinthToken
     projectId = mr_id
     versionType = release_type //can be `release`, `beta` or `alpha`
     uploadFile = jar
     gameVersions = parsedGameVersions
-    changelog = change_log
+    changelog = latestChangelog
     failSilently = true
     syncBodyFrom = rootProject.file("PROJECT_PAGE.md").text
     dependencies {
@@ -240,10 +260,10 @@ tasks.modrinth.uploadInfo
 
 
 //CURSEFORGE
-def cfToken = project.findProperty("curseforgeToken")?.toString()
-if (cfToken == null) {
-    throw new GradleException("Missing token in ~/.gradle/gradle.properties => 'curseforgeToken'")
-}
+def cfToken = System.getenv("CURSEFORGE_TOKEN") ?: project.findProperty("curseforgeToken")?.toString()
+    if (cfToken == null) {
+        throw new GradleException("Missing CURSEFORGE_TOKEN: set it either as ENV (CURSEFORGE_TOKEN) or in ~/.gradle/gradle.properties (curseforgeToken)")
+    }
 def cfId = project.findProperty("cf_id")?.toString()
 
 task publishCurseForge(type: TaskPublishCurseForge) {
@@ -254,6 +274,6 @@ task publishCurseForge(type: TaskPublishCurseForge) {
     // file.
     def mainFile = upload(cfId as Integer, jar)
     mainFile.releaseType   = release_type
-    mainFile.changelog     = change_log
+    mainFile.changelog     = latestChangelog
     mainFile.changelogType = 'markdown'
 }
