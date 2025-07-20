@@ -59,11 +59,11 @@ jobs:
           fi
           
 
-      - name: Add version and date to CHANGELOG.md
+      - name: Add version header to CHANGELOG.md
         run: |
           VERSION=${{ env.mod_version }}
-          DATE=$(date +'%Y-%m-%d')
-          sed -i "1s/^/## v$VERSION – $DATE\n\n/" CHANGELOG.md
+          sed -i "1s/^/## v$VERSION\n\n/" CHANGELOG.md
+
 
 
       - name: Commit & Push CHANGELOG.md
