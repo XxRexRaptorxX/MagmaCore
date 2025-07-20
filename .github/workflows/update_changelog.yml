@@ -7,10 +7,8 @@ on:
     tags:
       - 'v*.*.*'
 
-
 permissions:
   contents: write
-
 
 jobs:
   append-changelog:
@@ -37,14 +35,36 @@ jobs:
         run: |
           VERSION=$(./gradlew -q printVersion | tail -n 1)
           echo "mod_version=$VERSION" >> $GITHUB_ENV
+          echo "Detected version: $VERSION"
+
+      - name: Get latest tag
+        id: get_latest_tag
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_ENV
+          echo "Latest tag: $LATEST_TAG"
 
       - name: Generate CHANGELOG.md for current version
         run: |
-          if [ -z "$latest_tag" ]; then
-            conventional-changelog --preset angular > CHANGELOG.md
+          echo "Generating changelog..."
+          
+          # Erstelle aktuellen Changelog (nur letzte Änderungen)
+          if [ -z "${{ env.latest_tag }}" ]; then
+            echo "No previous tag found, generating full changelog"
+            conventional-changelog --preset angular --pkg package.json > CHANGELOG.md
           else
-            conventional-changelog --preset angular --release-count 1 > temp_changelog.md
-        
+            echo "Previous tag found: ${{ env.latest_tag }}"
+            conventional-changelog --preset angular --release-count 1 --pkg package.json > temp_changelog.md
+          
+            # Füge Version-Header hinzu falls nicht vorhanden
+            if ! grep -q "## \[${{ env.mod_version }}\]" temp_changelog.md; then
+              echo "## [${{ env.mod_version }}] ($(date '+%Y-%m-%d'))" > versioned_changelog.md
+              echo "" >> versioned_changelog.md
+              cat temp_changelog.md >> versioned_changelog.md
+              mv versioned_changelog.md temp_changelog.md
+            fi
+          
+            # Kombiniere mit bestehendem Changelog
             if [ -f CHANGELOG.md ]; then
               cat temp_changelog.md CHANGELOG.md > full_changelog.md
               mv full_changelog.md CHANGELOG.md
@@ -53,24 +73,53 @@ jobs:
             fi
           fi
           
-          #all versions    
-          conventional-changelog --preset angular > CHANGELOG_ALL.md
+          # Erstelle vollständigen Changelog (alle Versionen)
+          echo "Generating full changelog..."
+          conventional-changelog --preset angular --pkg package.json > CHANGELOG_FULL.md
+
+      - name: Create package.json for conventional-changelog
+        run: |
+          cat > package.json << EOF
+          {
+            "name": "${{ github.event.repository.name }}",
+            "version": "${{ env.mod_version }}",
+            "repository": {
+              "type": "git",
+              "url": "https://github.com/${{ github.repository }}.git"
+            }
+          }
+          EOF
+
+      - name: Show generated files
+        run: |
+          echo "=== CHANGELOG.md content ==="
+          head -20 CHANGELOG.md || echo "CHANGELOG.md not found"
+          echo ""
+          echo "=== CHANGELOG_FULL.md content ==="
+          head -20 CHANGELOG_FULL.md || echo "CHANGELOG_FULL.md not found"
 
       - name: Commit & Push CHANGELOG.md
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md CHANGELOG_FULL.md
-          git diff --cached --quiet || git commit -m "chore: update changelogs"
+          git add CHANGELOG.md CHANGELOG_FULL.md package.json
+          git diff --cached --quiet || git commit -m "chore: update changelogs [skip ci]"
           git push origin HEAD:${{ github.ref_name }}
 
       - name: Tag last release
         if: github.event_name == 'push' && github.ref_type == 'branch'
         run: |
-          NEW_TAG=${{ env.mod_version }}
-          git tag v.${NEW_TAG}
-          git push origin v.${NEW_TAG}
-
+          NEW_TAG="v.${{ env.mod_version }}"
+          echo "Creating tag: $NEW_TAG"
+          
+          # Prüfe ob Tag bereits existiert
+          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+            echo "Tag $NEW_TAG already exists"
+          else
+            git tag "$NEW_TAG"
+            git push origin "$NEW_TAG"
+            echo "Created and pushed tag: $NEW_TAG"
+          fi
 
   publish:
     needs: append-changelog
