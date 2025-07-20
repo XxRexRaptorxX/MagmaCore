@@ -7,9 +7,6 @@ on:
     tags:
       - 'v*.*.*'
 
-env:
-  LAST_VERSION_TAG: ${{ github.ref_name }}
-
 permissions:
   contents: write
 
@@ -35,6 +32,11 @@ jobs:
 
       - name: Install changelog generator
         run: npm install -g conventional-changelog-cli
+
+
+      - name: Get mod version from Gradle
+        id: get_version
+        run: echo "mod_version=$(./gradlew -q printVersion)" >> $GITHUB_ENV
 
 
       - name: Generate CHANGELOG.md for current version
