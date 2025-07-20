@@ -40,15 +40,11 @@ jobs:
 
       - name: Generate CHANGELOG.md for current version
         run: |
-          git fetch --tags
-          latest_tag=$(git describe --tags --abbrev=0 || echo "")
-          echo "Latest tag: $latest_tag"
           if [ -z "$latest_tag" ]; then
             conventional-changelog --preset angular > CHANGELOG.md
           else
             conventional-changelog --preset angular --release-count 1 > temp_changelog.md
-          
-            # prepend new changelog to existing file
+        
             if [ -f CHANGELOG.md ]; then
               cat temp_changelog.md CHANGELOG.md > full_changelog.md
               mv full_changelog.md CHANGELOG.md
@@ -63,7 +59,7 @@ jobs:
       - name: Add version header to CHANGELOG.md
         run: |
           VERSION=${{ env.mod_version }}
-          sed -i "1s/^/## $VERSION\n\n/" CHANGELOG.md
+          sed -i "1s/^/## v.$VERSION\n\n/" CHANGELOG.md
 
       - name: Commit & Push CHANGELOG.md
         run: |
@@ -77,8 +73,8 @@ jobs:
         if: github.event_name == 'push' && github.ref_type == 'branch'
         run: |
           NEW_TAG=${{ env.mod_version }}
-          git tag v${NEW_TAG}
-          git push origin v${NEW_TAG}
+          git tag v.${NEW_TAG}
+          git push origin v.${NEW_TAG}
 
 
   publish:
