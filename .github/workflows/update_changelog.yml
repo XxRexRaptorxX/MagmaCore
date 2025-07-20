@@ -5,7 +5,7 @@ on:
     branches:
       - '**'
     tags:
-      - 'v.*.*.*'
+      - 'v*.*.*'
 
 permissions:
   contents: write
@@ -52,7 +52,7 @@ jobs:
           VERSION=${{ env.mod_version }}
           MC_VERSION=${{ env.mc_version }}
           DATE=$(date +'%Y-%m-%d')
-          sed -i "1s/^/# v${VERSION} (MC ${MC_VERSION}) – ${DATE}\n\n/" CHANGELOG.md
+          sed -i "1s/^/# v.${VERSION} (MC ${MC_VERSION}) – ${DATE}\n\n/" CHANGELOG.md
 
       - name: Add header with version and MC version to CHANGELOG_LATEST.md
         run: |
@@ -69,8 +69,8 @@ jobs:
           git diff --cached --quiet || git commit -m "chore: update changelogs"
           git push origin HEAD:${{ github.ref_name }}
           
-          git tag v.${{ env.mod_version }}
-          git push origin v.${{ env.mod_version }}
+          git tag v${{ env.mod_version }}
+          git push origin v${{ env.mod_version }}
 
    
 
