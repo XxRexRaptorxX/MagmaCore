@@ -56,7 +56,7 @@ jobs:
           sed -i '/^# \[\]/d' temp_changelog.md
           
           # Füge eigene Version-Zeile mit Datum ein
-          echo -e "# v.$VERSION – MC$MCVERSION - $DATE\n\n$(cat temp_changelog.md)" > temp_changelog.md
+          echo -e "# v.$VERSION for MC $MCVERSION               $DATE\n\n$(cat temp_changelog.md)" > temp_changelog.md
           
           if [ -f CHANGELOG.md ]; then
             cat temp_changelog.md CHANGELOG.md > full_changelog.md
@@ -82,6 +82,7 @@ jobs:
           else
             git commit -m "chore: update CHANGELOG.md"
             git push origin HEAD:${{ github.ref_name }}
+            git pull --rebase
           fi
           
 
