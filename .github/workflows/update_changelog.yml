@@ -37,53 +37,37 @@ jobs:
           echo "mod_version=$MOD_VERSION" >> $GITHUB_ENV
           echo "mc_version=$MC_VERSION" >> $GITHUB_ENV
 
-      - name: Generate full CHANGELOG.md
+      - name: Generate full changelog (all versions)
         run: |
-          # vollständige History aller Releases
-          conventional-changelog --preset angular --output CHANGELOG.md
-          # Header nur mit Version (kein Datum)
-          sed -i "1s/^/## v${{ env.mod_version }}\n\n/" CHANGELOG.md
+          git fetch --tags
+          conventional-changelog --preset angular > CHANGELOG.md
 
-      - name: Generate and prepend to CHANGELOG.md
+      - name: Generate latest changelog
         run: |
-          conventional-changelog --preset angular --release-count 1 -o temp_changelog.md
-          
+          git fetch --tags
+          conventional-changelog --preset angular --release-count 1 > CHANGELOG_LATEST.md
+
+      - name: Add header with version and MC version to CHANGELOG.md
+        run: |
           VERSION=${{ env.mod_version }}
-          MCVERSION=${{ env.mc_version }}
-          DATE=$(date +'%d.%m.%Y')
-          
-          # Entferne leere Vergleichszeile wie "# [](https://...)"
-          sed -i '/^# \[\]/d' temp_changelog.md
-          
-          # Füge eigene Version-Zeile mit Datum ein
-          echo -e "# v.$VERSION for MC $MCVERSION               $DATE\n\n$(cat temp_changelog.md)" > temp_changelog.md
-          
-          if [ -f CHANGELOG.md ]; then
-            cat temp_changelog.md CHANGELOG.md > full_changelog.md
-            mv full_changelog.md CHANGELOG.md
-          else
-            mv temp_changelog.md CHANGELOG.md
-          fi
+          MC_VERSION=${{ env.mc_version }}
+          DATE=$(date +'%Y-%m-%d')
+          sed -i "1s/^/## v${VERSION} (MC ${MC_VERSION}) – ${DATE}\n\n/" CHANGELOG.md
 
-      - name: Debug git status
+      - name: Add header with version and MC version to CHANGELOG_LATEST.md
         run: |
-          git status
-          git diff
-          git diff --cached
+          VERSION=${{ env.mod_version }}
+          MC_VERSION=${{ env.mc_version }}
+          DATE=$(date +'%Y-%m-%d')
+          sed -i "1s/^/## v${VERSION} (MC ${MC_VERSION}) – ${DATE}\n\n/" CHANGELOG_LATEST.md
 
-      - name: Commit & Push CHANGELOG.md
+      - name: Commit & push changelogs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git add CHANGELOG.md
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "chore: update CHANGELOG.md"
-            git push origin HEAD:${{ github.ref_name }}
-            git pull --rebase
-          fi
+          git add CHANGELOG.md CHANGELOG_LATEST.md
+          git diff --cached --quiet || git commit -m "chore: update changelogs"
+          git push origin HEAD:${{ github.ref_name }}
           
 
   publish:
