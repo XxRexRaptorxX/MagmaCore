@@ -61,6 +61,11 @@ jobs:
           DATE=$(date +'%d-%m-%Y')
           sed -i "1s/^/# v.${VERSION} for MC ${MC_VERSION} – ${DATE}\n\n/" CHANGELOG_LATEST.md
 
+      - name: Remove compare link line from changelogs
+        run: |
+          sed -i '/^# \[\](.*compare.*)/d' CHANGELOG.md
+          sed -i '/^# \[\](.*compare.*)/d' CHANGELOG_LATEST.md
+
       - name: Commit & push changelogs
         run: |
           git config user.name "github-actions[bot]"

@@ -215,8 +215,53 @@ idea {
 
 //CHANGELOG
 task printVersion {
+    group = "changelog"
+    description = "shows the actual mod version"
+
     doLast {
         println mod_version
+    }
+}
+
+tasks.register("resetChangelog") {
+    group = "changelog"
+    description = "resets the changelog"
+
+    doLast {
+        def changelogFiles = [
+                file("CHANGELOG.md"),
+        ]
+
+        changelogFiles.each { f ->
+            if (f.exists()) {
+                //f.text = ""
+                f.delete()
+                println "Reset completed: ${f.name}"
+            } else {
+                println "File not found: ${f.name}"
+            }
+        }
+    }
+}
+
+tasks.register("resetLatestChangelog") {
+    group = "changelog"
+    description = "resets the latest changelog"
+
+    doLast {
+        def changelogFiles = [
+                file("CHANGELOG_LATEST.md")
+        ]
+
+        changelogFiles.each { f ->
+            if (f.exists()) {
+                //f.text = ""
+                f.delete()
+                println "Reset completed: ${f.name}"
+            } else {
+                println "File not found: ${f.name}"
+            }
+        }
     }
 }
 
