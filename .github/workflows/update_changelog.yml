@@ -13,10 +13,12 @@ env:
 permissions:
   contents: write
 
+
 jobs:
   append-changelog:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/heads/')
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -24,24 +26,36 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
+
       - name: Install changelog generator
         run: npm install -g conventional-changelog-cli
 
-      - name: Append new commits to CHANGELOG.md
+
+      - name: Generate CHANGELOG.md for current version
         run: |
           git fetch --tags
           latest_tag=$(git describe --tags --abbrev=0 || echo "")
           echo "Latest tag: $latest_tag"
           if [ -z "$latest_tag" ]; then
-            conventional-changelog --preset angular >> CHANGELOG.md
+            conventional-changelog --preset angular > CHANGELOG.md
           else
-            conventional-changelog --preset angular --append --release-count 1 >> CHANGELOG.md
+            conventional-changelog --preset angular --release-count 1 > temp_changelog.md
+          
+            # prepend new changelog to existing file
+            if [ -f CHANGELOG.md ]; then
+              cat temp_changelog.md CHANGELOG.md > full_changelog.md
+              mv full_changelog.md CHANGELOG.md
+            else
+              mv temp_changelog.md CHANGELOG.md
+            fi
           fi
+          
 
       - name: Commit & Push CHANGELOG.md
         run: |
@@ -51,23 +65,31 @@ jobs:
           git diff --cached --quiet || git commit -m "chore: append changelog"
           git push origin HEAD:${{ github.ref_name }}
 
+      - name: Add version and date to CHANGELOG.md
+        run: |
+          VERSION=${{ env.mod_version }}
+          DATE=$(date +'%Y-%m-%d')
+          sed -i "1s/^/## v$VERSION – $DATE\n\n/" CHANGELOG.md
+
       - name: Tag last release
         if: github.event_name == 'push' && github.ref_type == 'branch'
         run: |
-          # z.B. ./gradlew printVersion -q gibt project.version aus
-          NEW_TAG=${mod_version}
+          NEW_TAG=${{ env.mod_version }}
           git tag v${NEW_TAG}
           git push origin v${NEW_TAG}
+
 
   publish:
     needs: append-changelog
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
 
       - name: Setup Java 21
         uses: actions/setup-java@v3
@@ -75,13 +97,16 @@ jobs:
           distribution: temurin
           java-version: 21
 
+
       - name: Make gradlew executable
         run: chmod +x ./gradlew
+
 
       - name: Publish to Modrinth
         run: ./gradlew modrinth --no-daemon
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+
 
       - name: Publish to CurseForge
         run: ./gradlew publishCurseForge --no-daemon
