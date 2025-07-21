@@ -1,5 +1,6 @@
 package xxrexraptorxx.magmacore.config;
 
+import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -260,5 +261,28 @@ public class ConfigListHelper {
         }
 
         return new ItemStack(item, amount);
+    }
+
+
+        // GENERIC //
+    /**
+     * Validates entry format: "id:mame"
+     *
+     * @param name The name string to validate (e.g. "minecraft:saturation")
+     * @param registry The registry type of the entry
+     * @return true if valid, false otherwise
+     */
+    public static boolean isValid(String name, Registry<?> registry) {
+        if (name == null || name.trim().isEmpty() || !name.contains(":")) {
+            return false;
+        }
+
+        try {
+            ResourceLocation location = ResourceLocation.parse(name.trim());
+            return registry.containsKey(location);
+
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
