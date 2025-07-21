@@ -37,28 +37,45 @@ jobs:
           echo "mod_version=$MOD_VERSION" >> $GITHUB_ENV
           echo "mc_version=$MC_VERSION" >> $GITHUB_ENV
 
-      - name: Generate full changelog (all versions)
+      - name: Update full changelog (prepend new version)
         run: |
           VERSION=${{ env.mod_version }}
           MC_VERSION=${{ env.mc_version }}
           DATE=$(date +'%d.%m.%Y')
-          
-          # Check if this is the first version
-          if [ ! -f "CHANGELOG.md" ] || [ ! -s "CHANGELOG.md" ]; then
-          # First version - just use the latest changelog
-          cp CHANGELOG_LATEST.md CHANGELOG.md
-          else
-          # Prepend new version to existing changelog
-          {
-           echo "# v.${VERSION} for MC ${MC_VERSION} – ${DATE}"
-           echo ""
-           tail -n +2 CHANGELOG_LATEST.md
-           echo ""
-           echo ""
-           cat CHANGELOG.md
-          } > CHANGELOG_NEW.md
-          mv CHANGELOG_NEW.md CHANGELOG.md
+          VERSION_HEADER="# v.${VERSION} for MC ${MC_VERSION} – ${DATE}"
+
+          # checks if version already exists
+          if [ -f "CHANGELOG.md" ] && grep -q "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
+            echo "Version ${VERSION} for MC ${MC_VERSION} already exists in CHANGELOG.md, skipping update"
+            # Trotzdem CHANGELOG_LATEST.md aktualisieren für andere Zwecke
+            exit 0
           fi
+
+          # backup existing changelog
+          if [ -f "CHANGELOG.md" ]; then
+            cp CHANGELOG.md CHANGELOG_OLD.md
+          else
+            touch CHANGELOG_OLD.md
+          fi
+
+          # create new changelog with latest version at top
+          echo "${VERSION_HEADER}" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+
+          # add latest changelog content (without the header we already added)
+          tail -n +2 CHANGELOG_LATEST.md >> CHANGELOG.md
+
+          # add separator and old changelog content
+          if [ -s CHANGELOG_OLD.md ]; then
+            echo "" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            cat CHANGELOG_OLD.md >> CHANGELOG.md
+          fi
+
+          # Cleanup
+          rm -f CHANGELOG_OLD.md
+
+          echo "Added new version ${VERSION} to CHANGELOG.md"
 
       - name: Generate latest changelog
         run: |
@@ -88,16 +105,39 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md CHANGELOG_LATEST.md
-          git diff --cached --quiet || git commit -m "chore: update changelogs"
-          git push origin HEAD:${{ github.ref_name }}
+          
+          # check if changelogs are changed
+          CHANGES_MADE=false
+          if git diff --quiet CHANGELOG.md; then
+            echo "No changes to CHANGELOG.md"
+          else
+            echo "Changes detected in CHANGELOG.md"
+            CHANGES_MADE=true
+          fi
+          
+          if git diff --quiet CHANGELOG_LATEST.md; then
+            echo "No changes to CHANGELOG_LATEST.md"
+          else
+            echo "Changes detected in CHANGELOG_LATEST.md"
+            CHANGES_MADE=true
+          fi
+          
+          if [ "$CHANGES_MADE" = true ]; then
+            git add CHANGELOG.md CHANGELOG_LATEST.md
+            git commit -m "chore: update changelogs"
+            git push origin HEAD:${{ github.ref_name }}
+            echo "Changelogs updated and pushed"
+          else
+            echo "No changelog changes to commit"
+          fi
           
           # create tag if not existing
           if ! git rev-parse v${{ env.mod_version }} >/dev/null 2>&1; then
-          git tag v${{ env.mod_version }}
-          git push origin v${{ env.mod_version }}
+            git tag v${{ env.mod_version }}
+            git push origin v${{ env.mod_version }}
+            echo "Created and pushed tag v${{ env.mod_version }}"
           else
-          echo "Tag v${{ env.mod_version }} already exists, skipping tag creation"
+            echo "Tag v${{ env.mod_version }} already exists, skipping tag creation"
           fi
 
    
