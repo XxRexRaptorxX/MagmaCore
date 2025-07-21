@@ -39,8 +39,26 @@ jobs:
 
       - name: Generate full changelog (all versions)
         run: |
-          git fetch --tags
-          conventional-changelog --preset angular > CHANGELOG.md
+          VERSION=${{ env.mod_version }}
+          MC_VERSION=${{ env.mc_version }}
+          DATE=$(date +'%d.%m.%Y')
+          
+          # Check if this is the first version
+          if [ ! -f "CHANGELOG.md" ] || [ ! -s "CHANGELOG.md" ]; then
+          # First version - just use the latest changelog
+          cp CHANGELOG_LATEST.md CHANGELOG.md
+          else
+          # Prepend new version to existing changelog
+          {
+           echo "# v.${VERSION} for MC ${MC_VERSION} – ${DATE}"
+           echo ""
+           tail -n +2 CHANGELOG_LATEST.md
+           echo ""
+           echo ""
+           cat CHANGELOG.md
+          } > CHANGELOG_NEW.md
+          mv CHANGELOG_NEW.md CHANGELOG.md
+          fi
 
       - name: Generate latest changelog
         run: |
