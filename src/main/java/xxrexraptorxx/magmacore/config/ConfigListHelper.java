@@ -264,7 +264,7 @@ public class ConfigListHelper {
     }
 
 
-        // GENERIC //
+         // GENERIC //
     /**
      * Validates entry format: "id:mame"
      *
