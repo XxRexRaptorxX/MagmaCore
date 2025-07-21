@@ -103,8 +103,13 @@ jobs:
           git diff --cached --quiet || git commit -m "chore: update changelogs"
           git push origin HEAD:${{ github.ref_name }}
           
+          # create tag if not existing
+          if ! git rev-parse v${{ env.mod_version }} >/dev/null 2>&1; then
           git tag v${{ env.mod_version }}
           git push origin v${{ env.mod_version }}
+          else
+          echo "Tag v${{ env.mod_version }} already exists, skipping tag creation"
+          fi
 
    
 
