@@ -1,6 +1,11 @@
 # v.1.3.2 for MC 1.21.5 – 21.07.2025
 
 
+### Bug Fixes
+
+* update changelog automation ([7a3e2b7](https://github.com/XxRexRaptorxX/MagmaCore/commit/7a3e2b7d298a6ab7b11879ee82bb53833853cce8))
+
+
 ### Features
 
 * additional block helper methods added ([41ec153](https://github.com/XxRexRaptorxX/MagmaCore/commit/41ec15311c7d0ad69a47397bf88e2f3ccd2369c6))
