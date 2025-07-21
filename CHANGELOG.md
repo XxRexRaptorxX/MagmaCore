@@ -3,6 +3,9 @@
 
 ### Bug Fixes
 
+* automation tests ([1adada2](https://github.com/XxRexRaptorxX/MagmaCore/commit/1adada248a6bd150b9e14ff185efdbf871227911))
+* automation tests ([6218196](https://github.com/XxRexRaptorxX/MagmaCore/commit/6218196868c852176e3b7ef8e76f886cfe5a0aff))
+* automation tests ([f5c0ab5](https://github.com/XxRexRaptorxX/MagmaCore/commit/f5c0ab5f13413a1b861a5612611613e3297f37d4))
 * automation tests ([9e805ba](https://github.com/XxRexRaptorxX/MagmaCore/commit/9e805bafdd1fc04519a2c76137708f4b08887d17))
 * automation tests ([ae56956](https://github.com/XxRexRaptorxX/MagmaCore/commit/ae569565cf6a4d4d2a8a28cd75dd43d974c2d953))
 * changelog automation test ([a7d8d01](https://github.com/XxRexRaptorxX/MagmaCore/commit/a7d8d017cdb20c822ddc05b7da269546aa832a24))
