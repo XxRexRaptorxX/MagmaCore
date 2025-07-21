@@ -21,7 +21,6 @@ public class ChatLogAppender extends AbstractAppender {
         super(name, filter, layout, false);
     }
 
-
     @Override
     public void append(LogEvent event) {
         if (Config.getIngameLogs()) {
@@ -34,19 +33,21 @@ public class ChatLogAppender extends AbstractAppender {
                     Minecraft mc = Minecraft.getInstance();
 
                     if (mc.player != null) {
-                        mc.player.displayClientMessage(Component.literal("[Log] ").withStyle(ChatFormatting.BLUE)
-                                .append(Component.literal("[" + loggerName + "] ").withStyle(ChatFormatting.GOLD))
-                                .append(Component.literal(msg).withStyle(FormattingHelper.getDebugColor(level))), false);
+                        mc.player.displayClientMessage(
+                                Component.literal("[Log] ")
+                                        .withStyle(ChatFormatting.BLUE)
+                                        .append(Component.literal("[" + loggerName + "] ")
+                                                .withStyle(ChatFormatting.GOLD))
+                                        .append(Component.literal(msg)
+                                                .withStyle(FormattingHelper.getDebugColor(level))),
+                                false);
                     }
                 }
             }
         }
     }
 
-
-    /**
-     * Registers this appender on the root logger, listening to all levels.
-     */
+    /** Registers this appender on the root logger, listening to all levels. */
     public static void register() {
         LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
         Configuration config = ctx.getConfiguration();
@@ -57,7 +58,8 @@ public class ChatLogAppender extends AbstractAppender {
         config.addAppender(appender);
 
         // Attach to root logger
-        LoggerConfig rootLoggerConfig = config.getLoggerConfig(LogUtils.getLogger().getName());
+        LoggerConfig rootLoggerConfig =
+                config.getLoggerConfig(LogUtils.getLogger().getName());
         rootLoggerConfig.addAppender(appender, Level.ALL, null);
 
         // Apply changes

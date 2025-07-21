@@ -19,8 +19,10 @@ public abstract class RecipeUtils extends RecipeProvider {
         super(registries, output);
     }
 
-    protected final void helmetItem(RecipeOutput consumer, Supplier<? extends ItemLike> result, Supplier<? extends ItemLike> material) {
-        MagmaCore.LOGGER.info("Generate crafting recipe for " + getItemName(result.get().asItem()));
+    protected final void helmetItem(
+            RecipeOutput consumer, Supplier<? extends ItemLike> result, Supplier<? extends ItemLike> material) {
+        MagmaCore.LOGGER.info(
+                "Generate crafting recipe for " + getItemName(result.get().asItem()));
 
         ShapedRecipeBuilder.shaped(this.registries.lookupOrThrow(Registries.ITEM), RecipeCategory.COMBAT, result.get())
                 .pattern("###")
@@ -30,9 +32,10 @@ public abstract class RecipeUtils extends RecipeProvider {
                 .save(consumer);
     }
 
-
-    protected final void chestplateItem(RecipeOutput consumer, Supplier<? extends ItemLike> result, Supplier<? extends ItemLike> material) {
-        MagmaCore.LOGGER.info("Generate crafting recipe for " + getItemName(result.get().asItem()));
+    protected final void chestplateItem(
+            RecipeOutput consumer, Supplier<? extends ItemLike> result, Supplier<? extends ItemLike> material) {
+        MagmaCore.LOGGER.info(
+                "Generate crafting recipe for " + getItemName(result.get().asItem()));
 
         ShapedRecipeBuilder.shaped(this.registries.lookupOrThrow(Registries.ITEM), RecipeCategory.COMBAT, result.get())
                 .pattern("# #")
@@ -43,9 +46,10 @@ public abstract class RecipeUtils extends RecipeProvider {
                 .save(consumer);
     }
 
-
-    protected final void leggingsItem(RecipeOutput consumer, Supplier<? extends ItemLike> result, Supplier<? extends ItemLike> material) {
-        MagmaCore.LOGGER.info("Generate crafting recipe for " + getItemName(result.get().asItem()));
+    protected final void leggingsItem(
+            RecipeOutput consumer, Supplier<? extends ItemLike> result, Supplier<? extends ItemLike> material) {
+        MagmaCore.LOGGER.info(
+                "Generate crafting recipe for " + getItemName(result.get().asItem()));
 
         ShapedRecipeBuilder.shaped(this.registries.lookupOrThrow(Registries.ITEM), RecipeCategory.COMBAT, result.get())
                 .pattern("###")
@@ -56,9 +60,10 @@ public abstract class RecipeUtils extends RecipeProvider {
                 .save(consumer);
     }
 
-
-    protected final void bootsItem(RecipeOutput consumer, Supplier<? extends ItemLike> result, Supplier<? extends ItemLike> material) {
-        MagmaCore.LOGGER.info("Generate crafting recipe for " + getItemName(result.get().asItem()));
+    protected final void bootsItem(
+            RecipeOutput consumer, Supplier<? extends ItemLike> result, Supplier<? extends ItemLike> material) {
+        MagmaCore.LOGGER.info(
+                "Generate crafting recipe for " + getItemName(result.get().asItem()));
 
         ShapedRecipeBuilder.shaped(this.registries.lookupOrThrow(Registries.ITEM), RecipeCategory.COMBAT, result.get())
                 .pattern("# #")
@@ -68,9 +73,13 @@ public abstract class RecipeUtils extends RecipeProvider {
                 .save(consumer);
     }
 
-
-    protected final void pickaxeItem(RecipeOutput consumer, Supplier<? extends ItemLike> result, Supplier<? extends ItemLike> material, TagKey<Item> handle) {
-        MagmaCore.LOGGER.info("Generate crafting recipe for " + getItemName(result.get().asItem()));
+    protected final void pickaxeItem(
+            RecipeOutput consumer,
+            Supplier<? extends ItemLike> result,
+            Supplier<? extends ItemLike> material,
+            TagKey<Item> handle) {
+        MagmaCore.LOGGER.info(
+                "Generate crafting recipe for " + getItemName(result.get().asItem()));
 
         ShapedRecipeBuilder.shaped(this.registries.lookupOrThrow(Registries.ITEM), RecipeCategory.TOOLS, result.get())
                 .pattern("###")
@@ -82,9 +91,13 @@ public abstract class RecipeUtils extends RecipeProvider {
                 .save(consumer);
     }
 
-
-    protected final void swordItem(RecipeOutput consumer, Supplier<? extends ItemLike> result, Supplier<? extends ItemLike> material, TagKey<Item> handle) {
-        MagmaCore.LOGGER.info("Generate crafting recipe for " + getItemName(result.get().asItem()));
+    protected final void swordItem(
+            RecipeOutput consumer,
+            Supplier<? extends ItemLike> result,
+            Supplier<? extends ItemLike> material,
+            TagKey<Item> handle) {
+        MagmaCore.LOGGER.info(
+                "Generate crafting recipe for " + getItemName(result.get().asItem()));
 
         ShapedRecipeBuilder.shaped(this.registries.lookupOrThrow(Registries.ITEM), RecipeCategory.COMBAT, result.get())
                 .pattern("#")
@@ -96,9 +109,13 @@ public abstract class RecipeUtils extends RecipeProvider {
                 .save(consumer);
     }
 
-
-    protected final void axeItem(RecipeOutput consumer, Supplier<? extends ItemLike> result, Supplier<? extends ItemLike> material, TagKey<Item> handle) {
-        MagmaCore.LOGGER.info("Generate crafting recipe for " + getItemName(result.get().asItem()));
+    protected final void axeItem(
+            RecipeOutput consumer,
+            Supplier<? extends ItemLike> result,
+            Supplier<? extends ItemLike> material,
+            TagKey<Item> handle) {
+        MagmaCore.LOGGER.info(
+                "Generate crafting recipe for " + getItemName(result.get().asItem()));
 
         ShapedRecipeBuilder.shaped(this.registries.lookupOrThrow(Registries.ITEM), RecipeCategory.TOOLS, result.get())
                 .pattern("##")
@@ -110,9 +127,13 @@ public abstract class RecipeUtils extends RecipeProvider {
                 .save(consumer);
     }
 
-
-    protected final void shovelItem(RecipeOutput consumer, Supplier<? extends ItemLike> result, Supplier<? extends ItemLike> material, TagKey<Item> handle) {
-        MagmaCore.LOGGER.info("Generate crafting recipe for " + getItemName(result.get().asItem()));
+    protected final void shovelItem(
+            RecipeOutput consumer,
+            Supplier<? extends ItemLike> result,
+            Supplier<? extends ItemLike> material,
+            TagKey<Item> handle) {
+        MagmaCore.LOGGER.info(
+                "Generate crafting recipe for " + getItemName(result.get().asItem()));
 
         ShapedRecipeBuilder.shaped(this.registries.lookupOrThrow(Registries.ITEM), RecipeCategory.TOOLS, result.get())
                 .pattern("#")
@@ -124,9 +145,13 @@ public abstract class RecipeUtils extends RecipeProvider {
                 .save(consumer);
     }
 
-
-    protected final void hoeItem(RecipeOutput consumer, Supplier<? extends ItemLike> result, Supplier<? extends ItemLike> material, TagKey<Item> handle) {
-        MagmaCore.LOGGER.info("Generate crafting recipe for " + getItemName(result.get().asItem()));
+    protected final void hoeItem(
+            RecipeOutput consumer,
+            Supplier<? extends ItemLike> result,
+            Supplier<? extends ItemLike> material,
+            TagKey<Item> handle) {
+        MagmaCore.LOGGER.info(
+                "Generate crafting recipe for " + getItemName(result.get().asItem()));
 
         ShapedRecipeBuilder.shaped(this.registries.lookupOrThrow(Registries.ITEM), RecipeCategory.TOOLS, result.get())
                 .pattern("##")

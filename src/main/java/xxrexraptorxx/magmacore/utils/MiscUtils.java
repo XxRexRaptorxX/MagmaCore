@@ -6,9 +6,7 @@ import xxrexraptorxx.magmacore.main.MagmaCore;
 
 public class MiscUtils {
 
-    /**
-     * Helper method for safe mod checking
-     */
+    /** Helper method for safe mod checking */
     public static boolean isModLoaded(String modId) {
         try {
             return ModList.get().isLoaded(modId);
@@ -19,9 +17,7 @@ public class MiscUtils {
         }
     }
 
-
     public static ResourceLocation setLoc(String modId, String location) {
         return ResourceLocation.fromNamespaceAndPath(modId, location);
     }
-
 }

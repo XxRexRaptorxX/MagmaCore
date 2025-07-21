@@ -49,9 +49,7 @@ public class Events {
     private static final Map<String, Boolean> shownMap = new HashMap<>();
     private static boolean hasShownUp = false;
 
-    /**
-     * Handles update checking for registered mods after world joining.
-     */
+    /** Handles update checking for registered mods after world joining. */
     @SubscribeEvent
     public static void UpdateChecker(ClientTickEvent.Pre event) {
         if (Minecraft.getInstance().screen != null || !Config.getUpdateChecker() || hasShownUp) return;
@@ -59,7 +57,8 @@ public class Events {
         for (var entry : ModRegistry.getEntries()) {
             if (Config.getDebugMode()) MagmaCore.LOGGER.info("Update-Checker for " + entry.modName() + " is running!");
 
-            if (shownMap.getOrDefault(entry.modId(), false) || Config.getUpdateCheckerBlacklist().contains(entry.modId())) continue;
+            if (shownMap.getOrDefault(entry.modId(), false)
+                    || Config.getUpdateCheckerBlacklist().contains(entry.modId())) continue;
 
             var player = Minecraft.getInstance().player;
             if (player == null) continue;
@@ -70,9 +69,13 @@ public class Events {
             var result = VersionChecker.getResult(modContainer.getModInfo());
             switch (result.status()) {
                 case OUTDATED, BETA_OUTDATED -> {
-                    MutableComponent msg = FormattingHelper.setMessageComponent(entry.modName(), "update_available").withStyle(style -> style.withColor(ChatFormatting.BLUE));
-                    MutableComponent link = FormattingHelper.setMessageComponent(References.MODID, "update_link").withStyle(style -> style.withColor(ChatFormatting.GREEN)
-                            .withClickEvent(new ClickEvent.OpenUrl(URI.create(entry.updateUrl()))).withHoverEvent(new HoverEvent.ShowText(FormattingHelper.setCoreLangComponent("message.official", ChatFormatting.GOLD))));
+                    MutableComponent msg = FormattingHelper.setMessageComponent(entry.modName(), "update_available")
+                            .withStyle(style -> style.withColor(ChatFormatting.BLUE));
+                    MutableComponent link = FormattingHelper.setMessageComponent(References.MODID, "update_link")
+                            .withStyle(style -> style.withColor(ChatFormatting.GREEN)
+                                    .withClickEvent(new ClickEvent.OpenUrl(URI.create(entry.updateUrl())))
+                                    .withHoverEvent(new HoverEvent.ShowText(FormattingHelper.setCoreLangComponent(
+                                            "message.official", ChatFormatting.GOLD))));
 
                     player.displayClientMessage(msg, false);
                     player.displayClientMessage(link, false);
@@ -83,7 +86,9 @@ public class Events {
                     MagmaCore.LOGGER.error("Update-Checker for {} is failed!", entry.modName());
                     shownMap.put(entry.modId(), true);
                 }
-                default -> { /* up to date */ }
+                default -> {
+                    /* up to date */
+                }
             }
         }
 
@@ -91,16 +96,16 @@ public class Events {
         hasShownUp = true;
     }
 
-
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
-    public static URI supporterList = URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Supporter");
-    public static URI premiumSupporterList = URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Premium%20Supporter");
-    public static URI eliteSupporterList = URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Elite");
+    public static URI supporterList =
+            URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Supporter");
+    public static URI premiumSupporterList =
+            URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Premium%20Supporter");
+    public static URI eliteSupporterList =
+            URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Elite");
     public static Set<String> supporterSet = new HashSet<>();
 
-    /**
-     * Distributes supporter rewards on first login.
-     */
+    /** Distributes supporter rewards on first login. */
     @SubscribeEvent
     public static void DistributeSupporterRewards(PlayerEvent.PlayerLoggedInEvent event) {
         Player player = event.getEntity();
@@ -134,7 +139,6 @@ public class Events {
         }
     }
 
-
     /**
      * Checks if the player is in the supporter list from the given URI.
      *
@@ -157,15 +161,19 @@ public class Events {
         }
     }
 
-
     private static void giveSupporterReward(Player player, Level level) {
         if (Config.getDebugMode()) MagmaCore.LOGGER.info("Supporter found! " + player.getDisplayName());
 
-        level.playSound(null, player.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.5F, level.random.nextFloat() * 0.15F + 0.8F);
+        level.playSound(
+                null,
+                player.blockPosition(),
+                SoundEvents.PLAYER_LEVELUP,
+                SoundSource.PLAYERS,
+                0.5F,
+                level.random.nextFloat() * 0.15F + 0.8F);
         player.getInventory().add(RewardItems.getPlayerHead(player));
         player.getInventory().add(RewardItems.getCertificate());
     }
-
 
     private static void givePremiumSupporterReward(Player player, Level level) {
         if (Config.getDebugMode()) MagmaCore.LOGGER.info("Premium Supporter found! " + player.getDisplayName());
@@ -173,13 +181,11 @@ public class Events {
         player.getInventory().add(RewardItems.getLeggings(level, player));
     }
 
-
     private static void giveEliteReward(Player player, Level level) {
         if (Config.getDebugMode()) MagmaCore.LOGGER.info("Elite Supporter found! " + player.getDisplayName());
 
         player.getInventory().add(RewardItems.getChestplate(level, player));
     }
-
 
     @SubscribeEvent
     public static void onServerStart(ServerStartedEvent event) {
@@ -190,10 +196,10 @@ public class Events {
         });
     }
 
-
     private static Set<String> fetchList(URI uri) {
         try {
-            HttpResponse<String> resp = HTTP_CLIENT.send(HttpRequest.newBuilder(uri).GET().build(), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp =
+                    HTTP_CLIENT.send(HttpRequest.newBuilder(uri).GET().build(), HttpResponse.BodyHandlers.ofString());
             return new HashSet<>(List.of(resp.body().split("\\R")));
 
         } catch (Exception ex) {
@@ -203,7 +209,6 @@ public class Events {
         }
     }
 
-
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         if (Config.getSupporterHighlights()) {
@@ -211,7 +216,9 @@ public class Events {
             Level level = player.level();
             boolean isDev = player.getName().getString().equals("Dev");
 
-            if (!level.isClientSide() && supporterSet.contains(event.getEntity().getUUID().toString()) || Config.getDebugMode() && isDev) {
+            if (!level.isClientSide()
+                            && supporterSet.contains(event.getEntity().getUUID().toString())
+                    || Config.getDebugMode() && isDev) {
                 Vec3 pos = player.position();
                 double d0 = pos.x + (level.random.nextFloat() - 0.5F);
                 double d1 = pos.y + (level.random.nextFloat() * 1.5F - 0.75F);
@@ -222,14 +229,12 @@ public class Events {
         }
     }
 
-
     /**
      * @author XxRexRaptorxX (RexRaptor)
-     *
-     * When entering a new MC installation for the first time, a message appears informing about the risks of mod reposts.
-     * Then generates a marker file in the configs folder with more details. Supports implementation in multiple mods.
-     *
-     * You are welcome to implement this method in your own mods!
+     *     <p>When entering a new MC installation for the first time, a message appears informing
+     *     about the risks of mod reposts. Then generates a marker file in the configs folder with
+     *     more details. Supports implementation in multiple mods.
+     *     <p>You are welcome to implement this method in your own mods!
      */
     @SubscribeEvent
     public static void showStopModRepostsMessage(PlayerEvent.PlayerLoggedInEvent event) {
@@ -237,15 +242,16 @@ public class Events {
         if (player.getServer().isDedicatedServer()) return;
 
         Path configDir = FMLPaths.CONFIGDIR.get();
-        Path marker   = configDir.resolve("#STOP_MOD_REPOSTS.txt");
+        Path marker = configDir.resolve("#STOP_MOD_REPOSTS.txt");
 
         try {
             if (Files.notExists(marker)) {
-                String fileContent = """
+                String fileContent =
+                        """
                         Sites like 9minecraft.net, mc-mod.net, and many others, are known for reuploading mod files without permission from the authors. These sites will also contain a bunch of ads, to try to make money from mods they did not create.
-                        
+
                         These sites will use various methods to appear higher in Google when you search for the mod name, so a lot of people will download mods from them instead of the proper place. If you were linked to this site, you're one of these people.
-                        
+
                         FOR YOU, AS A PLAYER, THIS CAN MEAN ANY OF THE FOLLOWING:
                         > Getting versions of the mods advertised for the wrong Minecraft versions, which will 100% crash when you load them.
                         > Getting old, and broken, versions of the mods, possibly causing problems in your game.
@@ -255,64 +261,97 @@ public class Events {
 
                         WHAT DO I DO NOW?
                         The most important thing to do now is to make sure you stop visiting these sites, and get the mods from official sources. We also recommend you do the following:
-                        
+
                         > Delete all the mods you've downloaded from these sites.
                         > Install the StopModReposts plugin, which makes sure you never visit them again.
                         > Run a virus/malware scan. We recommend MalwareBytes.
                         > Check out the #StopModReposts campaign, that tries to put an end to these sites. (https://stopmodreposts.org/)
                         > Spread the word. If you have any friends that use these sites, inform them to keep them safe.
-                        
+
                         WHERE DO I GET MODS NOW?
                         Here's a bunch of links to places where you can download official versions of mods, hosted by their real authors:
-                        
+
                         > CurseForge, where most modders host their mods. If it exists, it's probably there.
                         > Modrinth, a new hosting platform for mods that's also legit and more popular by the day.
                         > OptiFine.net, the official OptiFine site.
                         > Neoforged.net, which you need for any other Neoforge mods.
                         > FabricMC.net, which you need for any other Fabric mods.
                         > MinecraftForge Files, which you need for any other Forge mods.
-                        
+
                         This doesn't mean other sites aren't legit. In general, the first place to look for a mod is CurseForge and Modrinth, so look there first.
-                        
+
                         FAQ
                         Q: What if I've never had problems before?
                         > Just because you've never had problems with these sites before doesn't mean they're good. You should still avoid them for all the reasons listed above.
-                        
+
                         Q: Is there a list of these sites I can check out?
                         > Yes, however, due to these showing up all the time, it's possible to be incomplete. (https://github.com/StopModReposts/Illegal-Mod-Sites/blob/master/SITES.md)
-                        
+
                         Q: Why can't you just take these sites down?
                         > Unfortunately, these sites are often hosted in countries like Russia or Vietnam, where doing so isn't as feasible.
-                        
+
                         Q: What if it says "Official Download" on the sites?
                         > Sometimes they'll do that to trick you. If you're uncertain, you should verify with the StopModReposts list linked above.
-                        
-                        
+
+
                         Credits: XxRexRaptorxX, Vazkii, StopModReposts campaign
                     """;
 
                 Files.writeString(marker, fileContent, StandardCharsets.UTF_8);
                 String launcher = FMLLoader.getLauncherInfo().toLowerCase();
 
-                if (!(launcher.contains("curseforge") || launcher.contains("modrinth") || launcher.contains("prism")) && Config.getModRepostsInfo()) {
-                    MagmaCore.LOGGER.info("Stop-mod-reposts info message is generated. Don't worry, this message should only appear the very first time after installation!");
-                    player.displayClientMessage(Component.literal("<-------------------------------------------------->").withStyle(ChatFormatting.RED), false);
+                if (!(launcher.contains("curseforge") || launcher.contains("modrinth") || launcher.contains("prism"))
+                        && Config.getModRepostsInfo()) {
+                    MagmaCore.LOGGER.info(
+                            "Stop-mod-reposts info message is generated. Don't worry, this message should only appear the very first time after installation!");
+                    player.displayClientMessage(
+                            Component.literal("<-------------------------------------------------->")
+                                    .withStyle(ChatFormatting.RED),
+                            false);
 
-                    player.displayClientMessage(FormattingHelper.setMessageComponent(References.MODID, "reposts_header", ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED), false);
-                    player.displayClientMessage(FormattingHelper.setMessageComponent(References.MODID, "reposts_warning", ChatFormatting.RED), false);
-                    player.displayClientMessage(FormattingHelper.setMessageComponent(References.MODID, "reposts_note_intro", ChatFormatting.UNDERLINE).withStyle(ChatFormatting.DARK_RED), false);
-                    player.displayClientMessage(FormattingHelper.setMessageComponent(References.MODID, "reposts_malware", ChatFormatting.RED), false);
-                    player.displayClientMessage(FormattingHelper.setMessageComponent(References.MODID, "reposts_steal", ChatFormatting.RED), false);
-                    player.displayClientMessage(FormattingHelper.setMessageComponent(References.MODID, "reposts_broken", ChatFormatting.RED), false);
-                    player.displayClientMessage(FormattingHelper.setMessageComponent(References.MODID, "reposts_authors", ChatFormatting.RED), false);
+                    player.displayClientMessage(
+                            FormattingHelper.setMessageComponent(
+                                            References.MODID, "reposts_header", ChatFormatting.UNDERLINE)
+                                    .withStyle(ChatFormatting.DARK_RED),
+                            false);
+                    player.displayClientMessage(
+                            FormattingHelper.setMessageComponent(
+                                    References.MODID, "reposts_warning", ChatFormatting.RED),
+                            false);
+                    player.displayClientMessage(
+                            FormattingHelper.setMessageComponent(
+                                            References.MODID, "reposts_note_intro", ChatFormatting.UNDERLINE)
+                                    .withStyle(ChatFormatting.DARK_RED),
+                            false);
+                    player.displayClientMessage(
+                            FormattingHelper.setMessageComponent(
+                                    References.MODID, "reposts_malware", ChatFormatting.RED),
+                            false);
+                    player.displayClientMessage(
+                            FormattingHelper.setMessageComponent(References.MODID, "reposts_steal", ChatFormatting.RED),
+                            false);
+                    player.displayClientMessage(
+                            FormattingHelper.setMessageComponent(
+                                    References.MODID, "reposts_broken", ChatFormatting.RED),
+                            false);
+                    player.displayClientMessage(
+                            FormattingHelper.setMessageComponent(
+                                    References.MODID, "reposts_authors", ChatFormatting.RED),
+                            false);
                     player.displayClientMessage(Component.empty(), false);
 
                     MutableComponent url = FormattingHelper.setMessageComponent(References.MODID, "reposts_more_info")
-                            .withStyle(style -> style.withClickEvent(new ClickEvent.OpenUrl(URI.create("https://vazkii.net/repost/")))
-                            .withColor(ChatFormatting.GOLD).withHoverEvent(new HoverEvent.ShowText(Component.literal("?").withStyle(ChatFormatting.GRAY))));
+                            .withStyle(style -> style.withClickEvent(
+                                            new ClickEvent.OpenUrl(URI.create("https://vazkii.net/repost/")))
+                                    .withColor(ChatFormatting.GOLD)
+                                    .withHoverEvent(new HoverEvent.ShowText(
+                                            Component.literal("?").withStyle(ChatFormatting.GRAY))));
                     player.displayClientMessage(url, false);
 
-                    player.displayClientMessage(Component.literal("<-------------------------------------------------->").withStyle(ChatFormatting.RED), false);
+                    player.displayClientMessage(
+                            Component.literal("<-------------------------------------------------->")
+                                    .withStyle(ChatFormatting.RED),
+                            false);
                 }
             }
         } catch (IOException e) {

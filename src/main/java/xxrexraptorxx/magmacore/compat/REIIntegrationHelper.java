@@ -16,7 +16,6 @@ public class REIIntegrationHelper {
 
     private static final List<Consumer<DisplayRegistry>> actions = new ArrayList<>();
 
-
     public static void enqueue(List<ItemStack> stacks, Component desc) {
         actions.add(registry -> {
             try {
@@ -33,7 +32,6 @@ public class REIIntegrationHelper {
             }
         });
     }
-
 
     public static void apply(DisplayRegistry registry) {
         actions.forEach(action -> action.accept(registry));

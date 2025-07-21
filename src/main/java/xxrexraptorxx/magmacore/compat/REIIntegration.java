@@ -11,6 +11,4 @@ public class REIIntegration implements REIClientPlugin {
     public void registerDisplays(DisplayRegistry registry) {
         REIIntegrationHelper.apply(registry);
     }
-
 }
-

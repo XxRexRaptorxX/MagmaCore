@@ -14,19 +14,13 @@ public class JEIIntegrationHelper {
 
     private static final List<JeiAction> actions = new ArrayList<>();
 
-
     public static void enqueue(List<ItemStack> stacks, Component desc) {
         actions.add(new JeiAction(stacks, desc));
     }
 
-
     public static void apply(IRecipeRegistration registry) {
         for (JeiAction action : actions) {
-            registry.addIngredientInfo(
-                    action.stacks(),
-                    VanillaTypes.ITEM_STACK,
-                    action.desc()
-            );
+            registry.addIngredientInfo(action.stacks(), VanillaTypes.ITEM_STACK, action.desc());
         }
         actions.clear();
     }

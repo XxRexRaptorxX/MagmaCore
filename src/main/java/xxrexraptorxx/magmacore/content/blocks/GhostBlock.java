@@ -18,24 +18,28 @@ public class GhostBlock extends Block {
         super(properties);
     }
 
-
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return Shapes.empty();
     }
 
-
     @Override
-    public void entityInside(BlockState state, Level level, BlockPos pos, Entity entity, InsideBlockEffectApplier effectApplier) {
-        if(!level.isClientSide) {
-            if(entity instanceof LivingEntity livingEntity) {
+    public void entityInside(
+            BlockState state, Level level, BlockPos pos, Entity entity, InsideBlockEffectApplier effectApplier) {
+        if (!level.isClientSide) {
+            if (entity instanceof LivingEntity livingEntity) {
                 setInsideEffects(livingEntity, entity, state, level, pos, effectApplier);
             }
         }
     }
 
-
-    private static void setInsideEffects(LivingEntity livingEntity, Entity entity, BlockState state, Level level, BlockPos pos, InsideBlockEffectApplier effectApplier) {
-        //do stuff
+    private static void setInsideEffects(
+            LivingEntity livingEntity,
+            Entity entity,
+            BlockState state,
+            Level level,
+            BlockPos pos,
+            InsideBlockEffectApplier effectApplier) {
+        // do stuff
     }
 }

@@ -36,7 +36,6 @@ public class ConfigListHelper {
         }
     }
 
-
     /**
      * Validates a string with item amount format: "amount*namespace:item"
      *
@@ -66,7 +65,6 @@ public class ConfigListHelper {
         }
     }
 
-
     /**
      * Extracts the ID part from a probability string
      *
@@ -82,7 +80,6 @@ public class ConfigListHelper {
 
         return input.trim().substring(0, lastDashIndex);
     }
-
 
     /**
      * Extracts the probability from a probability string
@@ -106,11 +103,8 @@ public class ConfigListHelper {
         }
     }
 
-
-            // ENTITIES //
-    /**
-     * Validates entity string: "namespace:entity"
-     */
+    // ENTITIES //
+    /** Validates entity string: "namespace:entity" */
     public static boolean isValidEntity(String entityString) {
         if (entityString == null || entityString.trim().isEmpty() || !entityString.contains(":")) {
             return false;
@@ -125,10 +119,7 @@ public class ConfigListHelper {
         }
     }
 
-
-    /**
-     * Validates entity spawning string: "namespace:entity-probability"
-     */
+    /** Validates entity spawning string: "namespace:entity-probability" */
     public static boolean isValidEntityWithProbability(String input) {
         if (!input.contains(":") || !hasValidProbabilityFormat(input)) {
             return false;
@@ -138,8 +129,7 @@ public class ConfigListHelper {
         return entityId != null && isValidEntity(entityId);
     }
 
-
-            // BLOCKS //
+    // BLOCKS //
     /**
      * Validates if a block string exists in Minecraft's registry
      *
@@ -160,11 +150,7 @@ public class ConfigListHelper {
         }
     }
 
-
-
-    /**
-     * Validates block with probability: "namespace:block-probability"
-     */
+    /** Validates block with probability: "namespace:block-probability" */
     public static boolean isValidBlockWithProbability(String input) {
         if (!input.contains(":") || !hasValidProbabilityFormat(input)) {
             return false;
@@ -174,11 +160,8 @@ public class ConfigListHelper {
         return blockId != null && isValidBlock(blockId);
     }
 
-
-                // ITEMS //
-    /**
-     * Validates item string: "namespace:item"
-     */
+    // ITEMS //
+    /** Validates item string: "namespace:item" */
     public static boolean isValidItem(String itemString) {
         if (itemString == null || itemString.trim().isEmpty() || !itemString.contains(":")) {
             return false;
@@ -193,10 +176,7 @@ public class ConfigListHelper {
         }
     }
 
-
-    /**
-     * Validates item with probability: "namespace:item-probability"
-     */
+    /** Validates item with probability: "namespace:item-probability" */
     public static boolean isValidItemWithProbability(String input) {
         if (!hasValidProbabilityFormat(input)) {
             return false;
@@ -205,7 +185,6 @@ public class ConfigListHelper {
         String itemId = extractId(input);
         return itemId != null && isValidItem(itemId);
     }
-
 
     /**
      * Validates loot entry format: "amount*namespace:item"
@@ -243,7 +222,6 @@ public class ConfigListHelper {
         }
     }
 
-
     public static ItemStack parseItemWithCountList(String entry) {
         String[] parts = entry.split("\\*", 2);
         if (parts.length != 2) {
@@ -263,8 +241,7 @@ public class ConfigListHelper {
         return new ItemStack(item, amount);
     }
 
-
-         // GENERIC //
+    // GENERIC //
     /**
      * Validates entry format: "id:mame"
      *

@@ -11,5 +11,4 @@ public class EMIIntegration implements EmiPlugin {
     public void register(EmiRegistry registry) {
         EMIIntegrationHelper.apply(registry);
     }
-
 }
