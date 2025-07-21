@@ -3,6 +3,8 @@
 
 ### Bug Fixes
 
+* automation tests ([1e488ca](https://github.com/XxRexRaptorxX/MagmaCore/commit/1e488cab9846db591be01ab15f562f7031d2728c))
+* automation tests ([2100d5f](https://github.com/XxRexRaptorxX/MagmaCore/commit/2100d5f538d1ce4dd7ac84bde3ede55b53b62916))
 * automation tests ([ce7ad30](https://github.com/XxRexRaptorxX/MagmaCore/commit/ce7ad3042a7f8b31ece1429722042e8d81cc808f))
 * automation tests ([efffc91](https://github.com/XxRexRaptorxX/MagmaCore/commit/efffc91c29e7162809ae1ad12798253f1bc5f26c))
 * automation tests ([1adada2](https://github.com/XxRexRaptorxX/MagmaCore/commit/1adada248a6bd150b9e14ff185efdbf871227911))
@@ -28,6 +30,11 @@
 * changelog test ([0dc9dfd](https://github.com/XxRexRaptorxX/MagmaCore/commit/0dc9dfd61da4fd2cf8f83ae14060aa59064ab37e))
 * changelog test ([d441db0](https://github.com/XxRexRaptorxX/MagmaCore/commit/d441db031e2e5da7b4dfc54416f81440826583a5))
 * changelog test ([decfc3a](https://github.com/XxRexRaptorxX/MagmaCore/commit/decfc3a36c337878cb3286ad8ecc0f28bb12facb))
+
+
+### Features
+
+* generic config validator added ([bc0f89d](https://github.com/XxRexRaptorxX/MagmaCore/commit/bc0f89d0f7fd12c2892c1c6608ca25163768f2e4))
 
 
 
