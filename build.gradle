@@ -284,6 +284,19 @@ tasks.register("resetLatestChangelog") {
 }
 
 def generateLatestChangelog() {
+    def changelogFile = file("CHANGELOG_LATEST.md")
+
+    if (changelogFile.exists()) {
+        def content = changelogFile.text.trim()
+        def lines = content.split('\n')
+        if (lines.length > 1) {
+            return lines[1..-1].join('\n').trim()
+        }
+        return content
+    }
+
+    // Fallback: Git-based generation
+    println "CHANGELOG_LATEST.md not found, generating from git..."
     def proc = "git describe --tags --abbrev=0".execute()
     def lastTag = proc.text.trim()
     if (!proc.exitValue()) {
@@ -300,6 +313,17 @@ def generateLatestChangelog() {
 }
 
 def latestChangelog = generateLatestChangelog()
+
+tasks.register("showLatestChangelog") {
+    group = "changelog"
+    description = "Shows the latest changelog that will be used for publishing"
+
+    doLast {
+        println "=== LATEST CHANGELOG ==="
+        println latestChangelog
+        println "========================"
+    }
+}
 
 //MODRINTH
 def rawGameVersions = project.findProperty("game_versions")?.toString() ?: "" //Game version transformator for Modrinth
