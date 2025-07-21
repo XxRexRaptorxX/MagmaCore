@@ -26,6 +26,24 @@ jobs:
         with:
           node-version: 18
 
+      - name: Check for accidentally committed secrets
+        run: |
+          echo "Scanning last commit for secrets..."
+          BAD_PATTERNS=(
+            'ghp_[A-Za-z0-9]{36}'         # GitHub PAT
+            '[A-Za-z0-9_\-]{20,}'         # allgemein lange Tokens
+            'eyJ[A-Za-z0-9_\-]{10,}'      # JWT Tokens
+          )
+          
+          for PATTERN in "${BAD_PATTERNS[@]}"; do
+            if git show HEAD | grep -E "$PATTERN"; then
+              echo "Potential secret/token detected matching pattern: $PATTERN"
+              exit 1
+            fi
+          done
+          
+          echo "No secrets found."
+
       - name: Install conventional-changelog
         run: npm install -g conventional-changelog-cli
 
@@ -51,15 +69,15 @@ jobs:
         run: |
           VERSION=${{ env.mod_version }}
           MC_VERSION=${{ env.mc_version }}
-          DATE=$(date +'%d-%m-%Y')
-          sed -i "1s/^/# v.${VERSION} for MC ${MC_VERSION}) – ${DATE}\n\n/" CHANGELOG.md
+          DATE=$(date +'%d.%m.%Y')
+          sed -i "1s/^/# v.${VERSION} for MC ${MC_VERSION} – ${DATE}\n/" CHANGELOG.md
 
       - name: Add header with version and MC version to CHANGELOG_LATEST.md
         run: |
           VERSION=${{ env.mod_version }}
           MC_VERSION=${{ env.mc_version }}
           DATE=$(date +'%d.%m.%Y')
-          sed -i "1s/^/# v.${VERSION} for MC ${MC_VERSION} – ${DATE}\n\n/" CHANGELOG_LATEST.md
+          sed -i "1s/^/# v.${VERSION} for MC ${MC_VERSION} – ${DATE}\n/" CHANGELOG_LATEST.md
 
       - name: Remove compare link line from changelogs
         run: |
