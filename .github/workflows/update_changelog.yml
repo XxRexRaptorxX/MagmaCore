@@ -35,14 +35,25 @@ jobs:
             'eyJ[A-Za-z0-9_\-]{10,}'      # JWT Tokens
           )
           
+          git show HEAD --unified=0 | grep -E '^\+' | grep -v '^+++ ' > .diff_lines.txt
+      
+          FOUND=0
           for PATTERN in "${BAD_PATTERNS[@]}"; do
-            if git show HEAD | grep -E "$PATTERN"; then
-              echo "Potential secret/token detected matching pattern: $PATTERN"
-              exit 1
-            fi
+          echo "Checking for pattern: $PATTERN"
+          MATCHES=$(grep -En "$PATTERN" .diff_lines.txt || true)
+          if [ -n "$MATCHES" ]; then
+          echo "Potential secret detected:"
+          echo "$MATCHES"
+          FOUND=1
+          fi
           done
-          
-          echo "No secrets found."
+      
+          if [ "$FOUND" -eq 1 ]; then
+          echo "::error title=Secret detected::One or more lines appear to contain a secret/token. Please remove them immediately!"
+          exit 1
+          fi
+
+          echo "No secrets found in last commit."
 
       - name: Install conventional-changelog
         run: npm install -g conventional-changelog-cli
