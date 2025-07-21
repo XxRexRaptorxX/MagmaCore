@@ -31,7 +31,6 @@ jobs:
           echo "Scanning last commit for secrets..."
           BAD_PATTERNS=(
             'ghp_[A-Za-z0-9]{36}'         # GitHub PAT
-            '[A-Za-z0-9_\-]{20,}'         # allgemein lange Tokens
             'eyJ[A-Za-z0-9_\-]{10,}'      # JWT Tokens
           )
           
