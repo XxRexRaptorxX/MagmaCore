@@ -10,6 +10,26 @@ import net.minecraft.world.level.block.Block;
 
 public class BlockHelper {
 
+    public static Block getBlock(String modId, String name) {
+        return BuiltInRegistries.BLOCK.getValue(getLocation(modId, name));
+    }
+
+
+    public static Item getItem(Block block) {
+        return block.asItem();
+    }
+
+
+    public static ItemStack getStack(String modId, String name) {
+        return getStack(modId, name, 0);
+    }
+
+
+    public static ItemStack getStack(String modId, String name, int count) {
+        return new ItemStack(BuiltInRegistries.BLOCK.getValue(getLocation(modId, name)), count);
+    }
+
+
     /**
      * Creates a {@link ResourceKey} for a {@link Block} given a mod ID and block name.
      *
