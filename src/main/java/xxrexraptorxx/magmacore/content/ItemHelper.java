@@ -15,6 +15,20 @@ public class ItemHelper {
 
     public static final Set<String> TOOL_KEYWORDS = Set.of("pickaxe", "axe", "sword", "shovel", "hoe");
 
+    public static Item getItem(String modId, String name) {
+        return BuiltInRegistries.ITEM.getValue(getLocation(modId, name));
+    }
+
+
+    public static ItemStack getStack(String modId, String name) {
+        return getStack(modId, name, 0);
+    }
+
+
+    public static ItemStack getStack(String modId, String name, int count) {
+        return new ItemStack(BuiltInRegistries.ITEM.getValue(getLocation(modId, name)), count);
+    }
+
 
     /**
      * Creates a {@link ResourceKey} for an {@link Item} given a mod ID and item name.
