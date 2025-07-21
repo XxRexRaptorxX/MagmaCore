@@ -7,6 +7,7 @@ plugins {
     id 'idea'
     id "com.modrinth.minotaur" version "2.+" //Modrinth
     id 'net.darkhax.curseforgegradle' version '1.1.26' //Curseforge
+    id 'com.diffplug.spotless' version '6.25.0' // Spotless
 }
 
 tasks.named('wrapper', Wrapper).configure {
@@ -195,14 +196,8 @@ publishing {
     }
 }
 
-//Naming of the built mod jar file
-tasks.named('jar').configure {
-    archiveBaseName.set(mod_name.replace(" " , ""))
-    archiveVersion.set("${minecraft_version}-(v.${mod_version}-NEO)")
-}
-
 tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+    options.encoding = 'UTF-8'
 }
 
 // IDEA no longer automatically downloads sources/javadoc jars for dependencies, so we need to explicitly enable the behavior.
@@ -213,8 +208,31 @@ idea {
     }
 }
 
+
+//Naming of the built mod jar file
+tasks.named('jar').configure {
+    archiveBaseName.set(mod_name.replace(" " , ""))
+    archiveVersion.set("${minecraft_version}-(v.${mod_version}-NEO)")
+}
+
+//SPOTLESS
+spotless {
+    java {
+        target 'src/**/*.java'
+        palantirJavaFormat()
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    json {
+        target '**/*.json'
+        prettier().config(['tabWidth': 2])
+        endWithNewline()
+    }
+}
+
 //CHANGELOG
-task printVersion {
+tasks.register('printVersion') {
     group = "changelog"
     description = "shows the actual mod version"
 
