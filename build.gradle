@@ -26,7 +26,7 @@ base {
     archivesName = mod_id
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.toolchain.languageVersion = JavaLanguageVersion.of(java_version)
 
 neoForge {
     // Specify the version of NeoForge to use.
@@ -368,14 +368,65 @@ task publishCurseForge(type: TaskPublishCurseForge) {
     // return a UploadArtifact object that can be used to further configure the
     // file.
     def mainFile = upload(cfId as Integer, jar)
+    mainFile.displayName = "${mod_name.replace(' ', '')} v.${mod_version}-NEO"
     mainFile.releaseType   = release_type
     mainFile.changelog     = latestChangelog
     mainFile.changelogType = 'markdown'
+    mainFile.addModLoader('NeoForge')
+    mainFile.addGameVersion(parsedGameVersions)
+    mainFile.addJavaVersion(java_version)
+    mainFile.addEnvironment()
+    environment_type.split(',').each { env ->
+        mainFile.addEnvironment(env.trim())
+    }
+
 }
 
 
 //MANUAL PUBLISH TASKS
-tasks.register("manualPublish") {
+def updateVersionJson() {
+    def updateFile = file("versions.json")
+    def currentVersion = mod_version
+    def currentMcVersion = minecraft_version
+
+    def jsonContent
+    if (updateFile.exists()) {
+        jsonContent = new groovy.json.JsonSlurper().parseText(updateFile.text)
+    } else {
+        jsonContent = [
+                "homepage": "https://www.curseforge.com/members/xxrexraptorxx/projects",
+                "promos": [:]
+        ]
+    }
+
+    // update mod version
+    def latestKey = "${currentMcVersion}-latest"
+    def recommendedKey = "${currentMcVersion}-recommended"
+
+    jsonContent.promos[latestKey] = currentVersion
+    jsonContent.promos[recommendedKey] = currentVersion
+
+    // Schreibe die aktualisierte JSON zurück
+    def jsonBuilder = new groovy.json.JsonBuilder(jsonContent)
+    updateFile.text = jsonBuilder.toPrettyString()
+
+    println "Updated versions.json:"
+    println "  ${latestKey}: ${currentVersion}"
+    println "  ${recommendedKey}: ${currentVersion}"
+}
+
+// Task to update the version file
+tasks.register("updateVersionJson") {
+    group = "versioning"
+    description = "Updates the versions.json file with current version"
+
+    doLast {
+        updateVersionJson()
+    }
+}
+
+//PUBLISH TASKS
+tasks.register("publishNewVersion") {
     group = "publishing"
     description = "Manually publish to both Modrinth and CurseForge"
 
@@ -383,47 +434,63 @@ tasks.register("manualPublish") {
     dependsOn "modrinth"
     dependsOn "publishCurseForge"
 
+    doFirst {
+        updateVersionJson()
+    }
+
     doLast {
-        println "=== Manual Publish Completed ==="
+        println "=== Publish Completed ==="
         println "Mod Version: ${mod_version}"
         println "Minecraft Version: ${minecraft_version}"
         println "Published to Modrinth and CurseForge"
+        println "Updated versions.json with current version"
     }
 }
 
-tasks.register("publishModrinthOnly") {
+tasks.register("#publishModrinthOnly") {
     group = "publishing"
-    description = "Manually publish only to Modrinth"
+    description = "Publish only to Modrinth"
 
     dependsOn "build"
     dependsOn "modrinth"
+
+    doFirst {
+        updateVersionJson()
+    }
 
     doLast {
         println "=== Modrinth Publish Completed ==="
         println "Mod Version: ${mod_version}"
         println "Published to Modrinth only"
+        println "Updated versions.json with current version"
     }
 }
 
-tasks.register("publishCurseForgeOnly") {
+tasks.register("#publishCurseForgeOnly") {
     group = "publishing"
-    description = "Manually publish only to CurseForge"
+    description = "Publish only to CurseForge"
 
     dependsOn "build"
     dependsOn "publishCurseForge"
+
+    doFirst {
+        updateVersionJson()
+    }
 
     doLast {
         println "=== CurseForge Publish Completed ==="
         println "Mod Version: ${mod_version}"
         println "Published to CurseForge only"
+        println "Updated versions.json with current version"
     }
 }
 
-tasks.register("generateAndPublish") {
+tasks.register("#generateAndPublish") {
     group = "publishing"
     description = "Generate changelog and publish to both platforms"
 
     doFirst {
+        // Changelog Generation
         try {
             def proc = "conventional-changelog --preset angular --release-count 1".execute()
             proc.waitFor()
@@ -443,6 +510,9 @@ tasks.register("generateAndPublish") {
             println "Warning: Could not generate changelog automatically - ${e.message}"
             println "Please ensure conventional-changelog is installed: npm install -g conventional-changelog-cli"
         }
+
+        // Update version JSON
+        updateVersionJson()
     }
 
     dependsOn "build"
@@ -452,10 +522,11 @@ tasks.register("generateAndPublish") {
     doLast {
         println "=== Generate and Publish Completed ==="
         println "Generated changelog and published to both platforms"
+        println "Updated versions.json with current version"
     }
 }
 
-tasks.register("dryRunPublish") {
+tasks.register("#dryRunPublish") {
     group = "publishing"
     description = "Dry run - shows what would be published without actually publishing"
 
@@ -482,6 +553,15 @@ tasks.register("dryRunPublish") {
         println changelogContent.take(500) + (changelogContent.length() > 500 ? "..." : "")
         println "==================="
         println ""
+
+        // Update.json preview
+        println "versions.json changes that would be made:"
+        def currentVersion = mod_version
+        def currentMcVersion = minecraft_version
+        println "  ${currentMcVersion}-latest: ${currentVersion}"
+        println "  ${currentMcVersion}-recommended: ${currentVersion}"
+        println ""
+
         println "Environment Variables:"
         println "MODRINTH_TOKEN: ${System.getenv("MODRINTH_TOKEN") ? "SET" : "NOT SET"}"
         println "CURSEFORGE_TOKEN: ${System.getenv("CURSEFORGE_TOKEN") ? "SET" : "NOT SET"}"
