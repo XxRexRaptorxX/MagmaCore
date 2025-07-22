@@ -208,14 +208,17 @@ idea {
     }
 }
 
+//              CUSTOM
+//<==================================================>
 
-//Naming of the built mod jar file
+
+//BUILD
 tasks.named('jar').configure {
     archiveBaseName.set(mod_name.replace(" " , ""))
     archiveVersion.set("${minecraft_version}-(v.${mod_version}-NEO)")
 }
 
-//SPOTLESS
+//SPOTLESS FORMATTING
 spotless {
     java {
         target 'src/**/*.java'
@@ -382,8 +385,7 @@ task publishCurseForge(type: TaskPublishCurseForge) {
 
 }
 
-
-//MANUAL PUBLISH TASKS
+//VERSIONING
 def updateVersionJson() {
     def updateFile = file("versions.json")
     def currentVersion = mod_version
@@ -406,7 +408,7 @@ def updateVersionJson() {
     jsonContent.promos[latestKey] = currentVersion
     jsonContent.promos[recommendedKey] = currentVersion
 
-    // Schreibe die aktualisierte JSON zurück
+    // update versions.json
     def jsonBuilder = new groovy.json.JsonBuilder(jsonContent)
     updateFile.text = jsonBuilder.toPrettyString()
 
@@ -415,7 +417,6 @@ def updateVersionJson() {
     println "  ${recommendedKey}: ${currentVersion}"
 }
 
-//VERSIONING
 tasks.register("updateVersionFile") {
     group = "versioning"
     description = "Updates the versions.json file with current version"
@@ -442,14 +443,15 @@ tasks.register("syncVersionFile") {
                 }
             }
 
-            // Prüfe ob versions.json im main branch existiert
+            // check if versions.json exists in main
             proc = "git cat-file -e ${mainBranch}:versions.json".execute()
             if (proc.waitFor() == 0) {
-                // Hole versions.json vom main branch
+
+                // get versions.json from main
                 proc = "git show ${mainBranch}:versions.json".execute()
                 def content = proc.text
 
-                // Schreibe in aktuelle versions.json
+                // write versions.json
                 file("versions.json").text = content
                 println "Successfully synced versions.json from ${mainBranch} branch"
             } else {
@@ -462,10 +464,10 @@ tasks.register("syncVersionFile") {
 }
 
 
-//PUBLISH TASKS
-tasks.register("publishNewVersion") {
+//PUBLISHING
+tasks.register("#publishNewVersion") {
     group = "publishing"
-    description = "Manually publish to both Modrinth and CurseForge"
+    description = "Publish to both Modrinth and CurseForge"
 
     dependsOn "build"
     dependsOn "modrinth"
@@ -527,7 +529,7 @@ tasks.register("#generateAndPublish") {
     description = "Generate changelog and publish to both platforms"
 
     doFirst {
-        // Changelog Generation
+        // changelog generation
         try {
             def proc = "conventional-changelog --preset angular --release-count 1".execute()
             proc.waitFor()
@@ -583,7 +585,7 @@ tasks.register("#dryRunPublish") {
         println "JAR Path: ${jar.destinationDirectory.get()}/${jar.archiveFileName.get()}"
         println ""
 
-        // Changelog preview
+        // changelog preview
         def changelogContent = generateLatestChangelog()
         println "Changelog Preview:"
         println "==================="
@@ -591,7 +593,7 @@ tasks.register("#dryRunPublish") {
         println "==================="
         println ""
 
-        // Update.json preview
+        // versions.json preview
         println "versions.json changes that would be made:"
         def currentVersion = mod_version
         def currentMcVersion = minecraft_version
