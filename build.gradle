@@ -14,6 +14,7 @@ apply from: "$rootDir/gradle/dependencies.gradle"
 apply from: "$rootDir/gradle/changelogs.gradle"
 apply from: "$rootDir/gradle/versioning.gradle"
 apply from: "$rootDir/gradle/publishing.gradle"
+apply from: "$rootDir/gradle/building.gradle"
 
 // ========================================
 // PROJECT CONFIGURATION
@@ -153,8 +154,6 @@ neoForge.ideSyncTask generateModMetadata
 // ========================================
 // BUILD & FORMATTING
 // ========================================
-
-apply from: "$rootDir/gradle/building.gradle"
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
