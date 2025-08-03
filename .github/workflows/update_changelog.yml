@@ -37,72 +37,189 @@ jobs:
           echo "mod_version=$MOD_VERSION" >> $GITHUB_ENV
           echo "mc_version=$MC_VERSION" >> $GITHUB_ENV
 
-      - name: Generate latest changelog
-        run: |
-          git fetch --tags
-          conventional-changelog --preset angular --release-count 1 > CHANGELOG_LATEST_TEMP.md
-
-      - name: Create CHANGELOG_LATEST.md with header
+      - name: Generate new changelog content
         run: |
           VERSION=${{ env.mod_version }}
           MC_VERSION=${{ env.mc_version }}
           DATE=$(date +'%d.%m.%Y')
-          VERSION_HEADER="# v.${VERSION} for MC ${MC_VERSION} – ${DATE}"
+          CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} – ${DATE}"
           
-          # Create new CHANGELOG_LATEST.md with header
-          echo "${VERSION_HEADER}" > CHANGELOG_LATEST.md
-          echo "" >> CHANGELOG_LATEST.md
+          # Generate changelog for all commits since last tag (or all commits if no tags exist)
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           
-          # Add generated changelog content (skip empty lines at start)
-          tail -n +1 CHANGELOG_LATEST_TEMP.md | sed '/^$/d;q;:a;N;s/\n$//;ta' >> CHANGELOG_LATEST.md
-          
-          # Clean up temp file
-          rm -f CHANGELOG_LATEST_TEMP.md
-
-      - name: Update main changelog (prepend new version)
-        run: |
-          VERSION=${{ env.mod_version }}
-          MC_VERSION=${{ env.mc_version }}
-          DATE=$(date +'%d.%m.%Y')
-          VERSION_HEADER="# v.${VERSION} for MC ${MC_VERSION} – ${DATE}"
-
-          # Check if version already exists in CHANGELOG.md
-          if [ -f "CHANGELOG.md" ] && grep -q "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
-            echo "Version ${VERSION} for MC ${MC_VERSION} already exists in CHANGELOG.md, skipping update"
-            exit 0
-          fi
-
-          # Backup existing changelog
-          if [ -f "CHANGELOG.md" ]; then
-            cp CHANGELOG.md CHANGELOG_OLD.md
+          if [ -z "$LAST_TAG" ]; then
+            echo "No previous tags found, generating changelog for all commits"
+            conventional-changelog --preset angular --release-count 0 > CHANGELOG_NEW_CONTENT.md
           else
-            touch CHANGELOG_OLD.md
+            echo "Generating changelog since tag: $LAST_TAG"
+            conventional-changelog --preset angular --release-count 1 > CHANGELOG_NEW_CONTENT.md
           fi
 
-          # Create new changelog with latest version at top
-          cp CHANGELOG_LATEST.md CHANGELOG.md
-
-          # Add separator and old changelog content if it exists and is not empty
-          if [ -s CHANGELOG_OLD.md ]; then
-            echo "" >> CHANGELOG.md
-            echo "" >> CHANGELOG.md
-            cat CHANGELOG_OLD.md >> CHANGELOG.md
-          fi
-
-          # Cleanup
-          rm -f CHANGELOG_OLD.md
-
-          echo "Added new version ${VERSION} to CHANGELOG.md"
-
-      - name: Remove compare link lines from changelogs
+      - name: Process and merge changelog content
         run: |
-          # Remove compare links and empty lines at the beginning
-          sed -i '/^# \[\](.*compare.*)/d' CHANGELOG.md || true
-          sed -i '/^# \[\](.*compare.*)/d' CHANGELOG_LATEST.md || true
+          VERSION=${{ env.mod_version }}
+          MC_VERSION=${{ env.mc_version }}
+          DATE=$(date +'%d.%m.%Y')
+          CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} – ${DATE}"
           
-          # Remove multiple consecutive empty lines
-          sed -i '/^$/N;/^\n$/d' CHANGELOG.md || true
-          sed -i '/^$/N;/^\n$/d' CHANGELOG_LATEST.md || true
+          # Check if CHANGELOG.md exists and if current version already exists
+          VERSION_EXISTS=false
+          if [ -f "CHANGELOG.md" ] && grep -q "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
+            VERSION_EXISTS=true
+            echo "Version ${VERSION} for MC ${MC_VERSION} already exists, will merge new commits"
+          fi
+          
+          if [ "$VERSION_EXISTS" = true ]; then
+            # Merge scenario: Extract existing content for this version and merge with new content
+          
+            # Extract the existing section for this version
+            awk "
+              BEGIN { in_section = 0; found_section = 0 }
+              /^# v\.${VERSION} for MC ${MC_VERSION}/ { 
+                in_section = 1; 
+                found_section = 1; 
+                print; 
+                next 
+              }
+              /^# v\./ && in_section && !/^# v\.${VERSION} for MC ${MC_VERSION}/ { 
+                in_section = 0 
+              }
+              in_section { print }
+              END { 
+                if (!found_section) exit 1 
+              }
+            " CHANGELOG.md > EXISTING_VERSION_CONTENT.md
+          
+            # Process new changelog content (remove header if present)
+            if [ -s CHANGELOG_NEW_CONTENT.md ]; then
+              # Skip the first line if it's a header, extract just the content
+              if head -n 1 CHANGELOG_NEW_CONTENT.md | grep -q "^##\? \[.*\]"; then
+                tail -n +2 CHANGELOG_NEW_CONTENT.md > NEW_CONTENT_ONLY.md
+              else
+                cp CHANGELOG_NEW_CONTENT.md NEW_CONTENT_ONLY.md
+              fi
+            else
+              touch NEW_CONTENT_ONLY.md
+            fi
+          
+            # Merge: Start with custom header, then existing content, then new content
+            echo "${CUSTOM_HEADER}" > MERGED_SECTION.md
+          
+            # Add existing content (skip the header line)
+            if [ -s EXISTING_VERSION_CONTENT.md ]; then
+              tail -n +2 EXISTING_VERSION_CONTENT.md >> MERGED_SECTION.md
+            fi
+          
+            # Add new content if it exists and is not empty
+            if [ -s NEW_CONTENT_ONLY.md ] && grep -q '[^[:space:]]' NEW_CONTENT_ONLY.md; then
+              echo "" >> MERGED_SECTION.md
+              cat NEW_CONTENT_ONLY.md >> MERGED_SECTION.md
+            fi
+          
+            # Create new CHANGELOG_LATEST.md with merged content
+            cp MERGED_SECTION.md CHANGELOG_LATEST.md
+          
+            # Rebuild full CHANGELOG.md: merged section + rest of changelog
+            cp MERGED_SECTION.md CHANGELOG.md
+          
+            # Add the rest of the changelog (everything after the current version section)
+            awk "
+              BEGIN { in_current_section = 0; past_current_section = 0 }
+              /^# v\.${VERSION} for MC ${MC_VERSION}/ { 
+                in_current_section = 1; 
+                next 
+              }
+              /^# v\./ && in_current_section { 
+                in_current_section = 0; 
+                past_current_section = 1 
+              }
+              past_current_section { print }
+            " CHANGELOG.md.bak >> CHANGELOG.md 2>/dev/null || {
+              # If CHANGELOG.md.bak doesn't exist, use original
+              awk "
+                BEGIN { in_current_section = 0; past_current_section = 0 }
+                /^# v\.${VERSION} for MC ${MC_VERSION}/ { 
+                  in_current_section = 1; 
+                  next 
+                }
+                /^# v\./ && in_current_section { 
+                  in_current_section = 0; 
+                  past_current_section = 1 
+                }
+                past_current_section { print }
+              " CHANGELOG.md >> CHANGELOG_TEMP.md
+              mv CHANGELOG_TEMP.md CHANGELOG.md
+            }
+          
+            # Cleanup temp files
+            rm -f EXISTING_VERSION_CONTENT.md NEW_CONTENT_ONLY.md MERGED_SECTION.md
+          
+          else
+            # New version scenario: Process normally
+            if [ -s CHANGELOG_NEW_CONTENT.md ]; then
+              # Replace or add header
+              if head -n 1 CHANGELOG_NEW_CONTENT.md | grep -q "^##\? \[.*\]"; then
+                # Replace the version header but keep everything else
+                {
+                  echo "${CUSTOM_HEADER}"
+                  tail -n +2 CHANGELOG_NEW_CONTENT.md
+                } > CHANGELOG_LATEST.md
+              elif head -n 1 CHANGELOG_NEW_CONTENT.md | grep -q "^#"; then
+                # Replace existing header
+                sed "1s/.*/${CUSTOM_HEADER//\//\\/}/" CHANGELOG_NEW_CONTENT.md > CHANGELOG_LATEST.md
+              else
+                # Prepend header
+                {
+                  echo "${CUSTOM_HEADER}"
+                  echo ""
+                  cat CHANGELOG_NEW_CONTENT.md
+                } > CHANGELOG_LATEST.md
+              fi
+            else
+              # Fallback: create minimal changelog
+              echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
+              echo "" >> CHANGELOG_LATEST.md
+              echo "### Changes" >> CHANGELOG_LATEST.md
+              echo "" >> CHANGELOG_LATEST.md
+              echo "* Release version ${VERSION}" >> CHANGELOG_LATEST.md
+              echo "" >> CHANGELOG_LATEST.md
+            fi
+          
+            # Update main changelog: prepend new version
+            if [ -f "CHANGELOG.md" ]; then
+              cp CHANGELOG.md CHANGELOG_OLD.md
+            else
+              touch CHANGELOG_OLD.md
+            fi
+          
+            # Create new changelog with latest version at top
+            cp CHANGELOG_LATEST.md CHANGELOG.md
+          
+            # Add separator and old changelog content if it exists and is not empty
+            if [ -s CHANGELOG_OLD.md ]; then
+              echo "" >> CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              cat CHANGELOG_OLD.md >> CHANGELOG.md
+            fi
+          
+            # Cleanup
+            rm -f CHANGELOG_OLD.md
+          fi
+          
+          # Cleanup
+          rm -f CHANGELOG_NEW_CONTENT.md
+          
+          echo "Processed changelog for version ${VERSION}"
+
+      - name: Clean up excessive empty lines only
+        run: |
+          # Only clean up multiple consecutive empty lines, keep all content and links
+          for file in CHANGELOG.md CHANGELOG_LATEST.md; do
+            if [ -f "$file" ]; then
+              # Clean up multiple empty lines (keep maximum of 2)
+              awk 'BEGIN{blank=0} /^$/{blank++; if(blank<=2) print} !/^$/{blank=0; print}' "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
+            fi
+          done
 
       - name: Commit & push changelogs
         run: |
@@ -137,8 +254,9 @@ jobs:
           # Create tag if not existing
           if ! git rev-parse v${{ env.mod_version }} >/dev/null 2>&1; then
             git tag v${{ env.mod_version }}
+            echo "Created tag v${{ env.mod_version }}"
             git push origin v${{ env.mod_version }}
-            echo "Created and pushed tag v${{ env.mod_version }}"
+            echo "Pushed tag v${{ env.mod_version }}"
           else
             echo "Tag v${{ env.mod_version }} already exists, skipping tag creation"
           fi
