@@ -215,7 +215,7 @@ idea {
 //BUILD
 tasks.named('jar').configure {
     archiveBaseName.set(mod_name.replace(" " , ""))
-    archiveVersion.set("${minecraft_version}-(v.${mod_version}-NEO)")
+    archiveVersion.set("${minecraft_version}-(v.${mod_version}-${mod_loader})")
 }
 
 //SPOTLESS FORMATTING
@@ -371,7 +371,7 @@ task publishCurseForge(type: TaskPublishCurseForge) {
     // return a UploadArtifact object that can be used to further configure the
     // file.
     def mainFile = upload(cfId as Integer, jar)
-    mainFile.displayName = "${mod_name.replace(' ', '')} v.${mod_version}-NEO"
+    mainFile.displayName = "${mod_name.replace(' ', '')} v.${mod_version}-${mod_loader}"
     mainFile.releaseType   = release_type
     mainFile.changelog     = latestChangelog
     mainFile.changelogType = 'markdown'
