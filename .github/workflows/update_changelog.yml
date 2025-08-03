@@ -29,123 +29,6 @@ jobs:
       - name: Install conventional-changelog
         run: npm install -g conventional-changelog-cli
 
-      - name: Create custom changelog configuration
-        run: |
-          cat > changelog-config.js << 'EOF'
-          module.exports = {
-            writerOpts: {
-              transform: (commit, context) => {
-                const issues = []
-          
-                commit.notes.forEach(note => {
-                  note.title = 'BREAKING CHANGES'
-                  issues.push(note)
-                })
-          
-                if (commit.type === 'feat') {
-                  commit.type = 'Features'
-                } else if (commit.type === 'fix') {
-                  commit.type = 'Bug Fixes'
-                } else if (commit.type === 'perf') {
-                  commit.type = 'Performance Improvements'
-                } else if (commit.type === 'revert') {
-                  commit.type = 'Reverts'
-                } else if (commit.type === 'docs') {
-                  commit.type = 'Documentation'
-                } else if (commit.type === 'style') {
-                  commit.type = 'Styles'
-                } else if (commit.type === 'refactor') {
-                  commit.type = 'Code Refactoring'
-                } else if (commit.type === 'test') {
-                  commit.type = 'Tests'
-                } else if (commit.type === 'build') {
-                  commit.type = 'Build System'
-                } else if (commit.type === 'ci') {
-                  commit.type = 'Continuous Integration'
-                } else if (commit.type === 'chore') {
-                  commit.type = 'Chores'
-                } else {
-                  return
-                }
-          
-                if (commit.scope === '*') {
-                  commit.scope = ''
-                }
-          
-                if (typeof commit.hash === 'string') {
-                  commit.shortHash = commit.hash.substring(0, 7)
-                }
-          
-                if (typeof commit.subject === 'string') {
-                  let url = context.repository
-                    ? `${context.host}/${context.owner}/${context.repository}`
-                    : context.repoUrl
-                  if (url) {
-                    url = `${url}/commit/${commit.hash}`
-                    commit.subject = commit.subject.replace(/#([0-9]+)/g, (_, issue) => {
-                      issues.push(issue)
-                      const url = context.repository
-                        ? `${context.host}/${context.owner}/${context.repository}`
-                        : context.repoUrl
-                      if (url) {
-                        return `[#${issue}](${url}/issues/${issue})`
-                      } else {
-                        return `#${issue}`
-                      }
-                    })
-                    commit.subject = `${commit.subject} ([${commit.shortHash}](${url}))`
-                  } else {
-                    commit.subject = `${commit.subject} ${commit.shortHash}`
-                  }
-                }
-          
-                commit.references = commit.references.filter(reference => {
-                  if (issues.indexOf(reference.issue) === -1) {
-                    return true
-                  }
-                  return false
-                })
-          
-                return commit
-              },
-              groupBy: 'type',
-              // Custom sorting
-              commitGroupsSort: (a, b) => {
-                const order = [
-                  'BREAKING CHANGES',
-                  'Features',
-                  'Bug Fixes', 
-                  'Performance Improvements',
-                  'Reverts',
-                  'Documentation',
-                  'Styles',
-                  'Code Refactoring',
-                  'Tests',
-                  'Build System',
-                  'Continuous Integration',
-                  'Chores'
-                ]
-          
-                const aIndex = order.indexOf(a.title)
-                const bIndex = order.indexOf(b.title)
-          
-                // If both are in the order array, sort by their position
-                if (aIndex !== -1 && bIndex !== -1) {
-                  return aIndex - bIndex
-                }
-                // If only one is in the order array, prioritize it
-                if (aIndex !== -1) return -1
-                if (bIndex !== -1) return 1
-                // If neither is in the order array, sort alphabetically
-                return a.title.localeCompare(b.title)
-              },
-              commitsSort: ['scope', 'subject'],
-              noteGroupsSort: 'title',
-              notesSort: 'text'
-            }
-          }
-          EOF
-
       - name: Read versions from gradle.properties
         id: read_versions
         run: |
@@ -154,244 +37,117 @@ jobs:
           echo "mod_version=$MOD_VERSION" >> $GITHUB_ENV
           echo "mc_version=$MC_VERSION" >> $GITHUB_ENV
 
-      - name: Generate new changelog content
+      - name: Generate and sort changelog
         run: |
           VERSION=${{ env.mod_version }}
           MC_VERSION=${{ env.mc_version }}
           DATE=$(date +'%d.%m.%Y')
           CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} – ${DATE}"
           
-          echo "=== DEBUG: Generating changelog ==="
-          echo "Version: $VERSION"
-          echo "MC Version: $MC_VERSION"
-          echo "Date: $DATE"
-          
-          # Check what tags exist
-          echo "=== Available tags ==="
-          git tag -l | sort -V | tail -5
-          
-          # Find the last tag
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          echo "Last tag found: '$LAST_TAG'"
-          
-          # Check commits since last tag
-          if [ -n "$LAST_TAG" ]; then
-            echo "=== Commits since $LAST_TAG ==="
-            git log --oneline "${LAST_TAG}..HEAD" | head -10
-            COMMIT_COUNT=$(git rev-list --count "${LAST_TAG}..HEAD")
-            echo "Number of commits since last tag: $COMMIT_COUNT"
-          else
-            echo "=== All commits ==="
-            git log --oneline | head -10
+          # Check if version already exists in CHANGELOG.md
+          if [ -f "CHANGELOG.md" ] && grep -q "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
+            echo "Version ${VERSION} for MC ${MC_VERSION} already exists in CHANGELOG.md, skipping update"
+            exit 0
           fi
           
-          # Generate changelog
-          if [ -z "$LAST_TAG" ]; then
-            echo "No previous tags found, generating changelog for all commits"
-            conventional-changelog --preset angular --release-count 0 --config changelog-config.js > CHANGELOG_NEW_CONTENT.md
-          else
-            echo "Generating changelog since tag: $LAST_TAG"
-            conventional-changelog --preset angular --release-count 1 --config changelog-config.js > CHANGELOG_NEW_CONTENT.md
-          fi
+          # Generate raw changelog
+          conventional-changelog --preset angular --release-count 1 > CHANGELOG_RAW.md
           
-          echo "=== Generated changelog content ==="
-          if [ -s CHANGELOG_NEW_CONTENT.md ]; then
-            echo "Changelog file size: $(wc -l < CHANGELOG_NEW_CONTENT.md) lines"
-            echo "--- First 20 lines ---"
-            head -20 CHANGELOG_NEW_CONTENT.md
-            echo "--- End preview ---"
-          else
-            echo "ERROR: CHANGELOG_NEW_CONTENT.md is empty!"
-            echo "Trying alternative approach..."
+          # Process the changelog and reorder sections
+          if [ -s CHANGELOG_RAW.md ]; then
+            # Replace the header
+            if head -n 1 CHANGELOG_RAW.md | grep -q "^##\? \[.*\]"; then
+              {
+                echo "${CUSTOM_HEADER}"
+                tail -n +2 CHANGELOG_RAW.md
+              } > CHANGELOG_TEMP.md
+            else
+              {
+                echo "${CUSTOM_HEADER}"
+                echo ""
+                cat CHANGELOG_RAW.md
+              } > CHANGELOG_TEMP.md
+            fi
           
-            # Fallback: generate changelog from recent commits manually
+            # Reorder sections: Features first, then others
             {
-              echo "### Changes"
+              echo "${CUSTOM_HEADER}"
               echo ""
-              if [ -n "$LAST_TAG" ]; then
-                git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "${LAST_TAG}..HEAD"
-              else
-                git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" --max-count=10
-              fi
-              echo ""
-            } > CHANGELOG_NEW_CONTENT.md
           
-            echo "=== Fallback changelog generated ==="
-            cat CHANGELOG_NEW_CONTENT.md
+              # Extract Features section
+              awk '/^### Features/,/^### [^F]|^## |^# |$/{
+                if(/^### [^F]/ && !/^### Features/) exit
+                if(/^## / || /^# /) exit
+                print
+              }' CHANGELOG_TEMP.md
+          
+              # Extract all other sections except Features
+              awk '
+              BEGIN { in_features = 0; print_section = 1 }
+              /^### Features/ { in_features = 1; print_section = 0; next }
+              /^### / && !/^### Features/ { 
+                if(in_features) in_features = 0
+                print_section = 1
+              }
+              /^## / || /^# / { 
+                if(in_features) in_features = 0
+                print_section = 0
+              }
+              print_section && !in_features { print }
+              ' CHANGELOG_TEMP.md
+          
+            } > CHANGELOG_LATEST.md
+          
+            # Clean up temp files
+            rm -f CHANGELOG_RAW.md CHANGELOG_TEMP.md
+          else
+            # Fallback
+            echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
+            echo "" >> CHANGELOG_LATEST.md
+            echo "### Features" >> CHANGELOG_LATEST.md
+            echo "" >> CHANGELOG_LATEST.md
+            echo "* Release version ${VERSION}" >> CHANGELOG_LATEST.md
+            echo "" >> CHANGELOG_LATEST.md
           fi
 
-      - name: Process and merge changelog content
+      - name: Update main changelog
         run: |
           VERSION=${{ env.mod_version }}
           MC_VERSION=${{ env.mc_version }}
-          DATE=$(date +'%d.%m.%Y')
-          CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} – ${DATE}"
           
-          echo "=== Processing changelog for version $VERSION ==="
-          
-          # Check if CHANGELOG.md exists and if current version already exists
-          VERSION_EXISTS=false
+          # Skip if version already exists
           if [ -f "CHANGELOG.md" ] && grep -q "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
-            VERSION_EXISTS=true
-            echo "✓ Version ${VERSION} for MC ${MC_VERSION} already exists, will merge new commits"
-          else
-            echo "✓ New version ${VERSION} for MC ${MC_VERSION}, will create new section"
+            echo "Version already exists in main changelog, skipping"
+            exit 0
           fi
           
-          # Backup current changelog
+          # Backup existing changelog
           if [ -f "CHANGELOG.md" ]; then
-            cp CHANGELOG.md CHANGELOG_BACKUP.md
-            echo "✓ Backed up existing CHANGELOG.md"
-          fi
-          
-          if [ "$VERSION_EXISTS" = true ]; then
-            echo "=== MERGE MODE ==="
-          
-            # Extract the existing section for this version
-            echo "Extracting existing version section..."
-            awk "
-              BEGIN { in_section = 0; found_section = 0 }
-              /^# v\.${VERSION} for MC ${MC_VERSION}/ { 
-                in_section = 1; 
-                found_section = 1; 
-                print; 
-                next 
-              }
-              /^# v\./ && in_section && !/^# v\.${VERSION} for MC ${MC_VERSION}/ { 
-                in_section = 0 
-              }
-              in_section { print }
-              END { 
-                if (!found_section) exit 1 
-              }
-            " CHANGELOG.md > EXISTING_VERSION_CONTENT.md
-          
-            if [ -s EXISTING_VERSION_CONTENT.md ]; then
-              echo "✓ Extracted existing content ($(wc -l < EXISTING_VERSION_CONTENT.md) lines)"
-            else
-              echo "⚠ Could not extract existing content, creating new section"
-              VERSION_EXISTS=false
-            fi
-          fi
-          
-          if [ "$VERSION_EXISTS" = true ]; then
-            # MERGE: Combine existing and new content
-            echo "Merging existing and new content..."
-          
-            # Start with custom header
-            echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
-          
-            # Add existing content (skip the header line)
-            if [ -s EXISTING_VERSION_CONTENT.md ]; then
-              tail -n +2 EXISTING_VERSION_CONTENT.md >> CHANGELOG_LATEST.md
-            fi
-          
-            # Process and add new content
-            if [ -s CHANGELOG_NEW_CONTENT.md ]; then
-              # Remove any headers from new content
-              if head -n 1 CHANGELOG_NEW_CONTENT.md | grep -q "^##\? \[.*\]"; then
-                tail -n +2 CHANGELOG_NEW_CONTENT.md > NEW_CONTENT_CLEAN.md
-              else
-                cp CHANGELOG_NEW_CONTENT.md NEW_CONTENT_CLEAN.md
-              fi
-          
-              # Add new content if it's not empty
-              if [ -s NEW_CONTENT_CLEAN.md ] && grep -q '[^[:space:]]' NEW_CONTENT_CLEAN.md; then
-                echo "" >> CHANGELOG_LATEST.md
-                echo "### New Changes" >> CHANGELOG_LATEST.md
-                echo "" >> CHANGELOG_LATEST.md
-                cat NEW_CONTENT_CLEAN.md >> CHANGELOG_LATEST.md
-              fi
-          
-              rm -f NEW_CONTENT_CLEAN.md
-            fi
-          
-            # Rebuild full CHANGELOG.md
-            cp CHANGELOG_LATEST.md CHANGELOG.md
-          
-            # Add the rest of the changelog (everything after the current version section)
-            if [ -f "CHANGELOG_BACKUP.md" ]; then
-              awk "
-                BEGIN { in_current_section = 0; past_current_section = 0 }
-                /^# v\.${VERSION} for MC ${MC_VERSION}/ { 
-                  in_current_section = 1; 
-                  next 
-                }
-                /^# v\./ && in_current_section { 
-                  in_current_section = 0; 
-                  past_current_section = 1 
-                }
-                past_current_section { print }
-              " CHANGELOG_BACKUP.md >> CHANGELOG.md
-            fi
-          
-            rm -f EXISTING_VERSION_CONTENT.md
-          
+            cp CHANGELOG.md CHANGELOG_OLD.md
           else
-            echo "=== NEW VERSION MODE ==="
+            touch CHANGELOG_OLD.md
+          fi
           
-            # Process new version
-            if [ -s CHANGELOG_NEW_CONTENT.md ]; then
-              # Replace or add header
-              if head -n 1 CHANGELOG_NEW_CONTENT.md | grep -q "^##\? \[.*\]"; then
-                # Replace the version header
-                {
-                  echo "${CUSTOM_HEADER}"
-                  tail -n +2 CHANGELOG_NEW_CONTENT.md
-                } > CHANGELOG_LATEST.md
-              elif head -n 1 CHANGELOG_NEW_CONTENT.md | grep -q "^#"; then
-                # Replace existing header
-                sed "1s/.*/${CUSTOM_HEADER//\//\\/}/" CHANGELOG_NEW_CONTENT.md > CHANGELOG_LATEST.md
-              else
-                # Prepend header
-                {
-                  echo "${CUSTOM_HEADER}"
-                  echo ""
-                  cat CHANGELOG_NEW_CONTENT.md
-                } > CHANGELOG_LATEST.md
-              fi
-            else
-              # Fallback: create minimal changelog
-              echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
-              echo "" >> CHANGELOG_LATEST.md
-              echo "### Changes" >> CHANGELOG_LATEST.md
-              echo "" >> CHANGELOG_LATEST.md
-              echo "* Release version ${VERSION}" >> CHANGELOG_LATEST.md
-              echo "" >> CHANGELOG_LATEST.md
-            fi
+          # Create new changelog with latest version at top
+          cp CHANGELOG_LATEST.md CHANGELOG.md
           
-            # Update main changelog: prepend new version
-            if [ -f "CHANGELOG_BACKUP.md" ]; then
-              # Create new changelog with latest version at top
-              cp CHANGELOG_LATEST.md CHANGELOG.md
-              echo "" >> CHANGELOG.md
-              echo "" >> CHANGELOG.md
-              cat CHANGELOG_BACKUP.md >> CHANGELOG.md
-            else
-              cp CHANGELOG_LATEST.md CHANGELOG.md
-            fi
+          # Add separator and old changelog content if it exists and is not empty
+          if [ -s CHANGELOG_OLD.md ]; then
+            echo "" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            cat CHANGELOG_OLD.md >> CHANGELOG.md
           fi
           
           # Cleanup
-          rm -f CHANGELOG_NEW_CONTENT.md CHANGELOG_BACKUP.md
+          rm -f CHANGELOG_OLD.md
           
-          echo "=== Final results ==="
-          echo "CHANGELOG_LATEST.md size: $(wc -l < CHANGELOG_LATEST.md 2>/dev/null || echo 0) lines"
-          echo "CHANGELOG.md size: $(wc -l < CHANGELOG.md 2>/dev/null || echo 0) lines"
-          
-          echo "=== CHANGELOG_LATEST.md preview ==="
-          head -30 CHANGELOG_LATEST.md 2>/dev/null || echo "File not found or empty"
+          echo "Added new version ${VERSION} to CHANGELOG.md"
 
       - name: Clean up excessive empty lines only
         run: |
-          # Only clean up multiple consecutive empty lines, keep all content and links
           for file in CHANGELOG.md CHANGELOG_LATEST.md; do
-            if [ -f "$file" ] && [ -s "$file" ]; then
-              # Clean up multiple empty lines (keep maximum of 2)
+            if [ -f "$file" ]; then
               awk 'BEGIN{blank=0} /^$/{blank++; if(blank<=2) print} !/^$/{blank=0; print}' "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
-              echo "✓ Cleaned up $file"
-            else
-              echo "⚠ Skipping cleanup for $file (not found or empty)"
             fi
           done
 
@@ -402,36 +158,34 @@ jobs:
           
           # Check if changelogs have changes
           CHANGES_MADE=false
-          
-          if [ -f "CHANGELOG.md" ] && ! git diff --quiet CHANGELOG.md 2>/dev/null; then
-            echo "✓ Changes detected in CHANGELOG.md"
+          if ! git diff --quiet CHANGELOG.md 2>/dev/null; then
+            echo "Changes detected in CHANGELOG.md"
             CHANGES_MADE=true
           else
-            echo "✗ No changes to CHANGELOG.md"
+            echo "No changes to CHANGELOG.md"
           fi
           
-          if [ -f "CHANGELOG_LATEST.md" ] && ! git diff --quiet CHANGELOG_LATEST.md 2>/dev/null; then
-            echo "✓ Changes detected in CHANGELOG_LATEST.md"
+          if ! git diff --quiet CHANGELOG_LATEST.md 2>/dev/null; then
+            echo "Changes detected in CHANGELOG_LATEST.md"
             CHANGES_MADE=true
           else
-            echo "✗ No changes to CHANGELOG_LATEST.md"
+            echo "No changes to CHANGELOG_LATEST.md"
           fi
           
           if [ "$CHANGES_MADE" = true ]; then
             git add CHANGELOG.md CHANGELOG_LATEST.md
             git commit -m "chore: update changelogs for v${{ env.mod_version }}"
             git push origin HEAD:${{ github.ref_name }}
-            echo "✓ Changelogs updated and pushed"
+            echo "Changelogs updated and pushed"
           else
-            echo "✗ No changelog changes to commit"
+            echo "No changelog changes to commit"
           fi
           
           # Create tag if not existing
           if ! git rev-parse v${{ env.mod_version }} >/dev/null 2>&1; then
             git tag v${{ env.mod_version }}
-            echo "✓ Created tag v${{ env.mod_version }}"
             git push origin v${{ env.mod_version }}
-            echo "✓ Pushed tag v${{ env.mod_version }}"
+            echo "Created and pushed tag v${{ env.mod_version }}"
           else
-            echo "✓ Tag v${{ env.mod_version }} already exists, skipping tag creation"
+            echo "Tag v${{ env.mod_version }} already exists, skipping tag creation"
           fi
