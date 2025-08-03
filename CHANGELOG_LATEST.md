@@ -13,4 +13,3 @@
 * generic config list validator added ([462dc5c](https://github.com/XxRexRaptorxX/MagmaCore/commit/462dc5c54fa51155a94fc3e24a695fea1f5e4647))
 
 
-
