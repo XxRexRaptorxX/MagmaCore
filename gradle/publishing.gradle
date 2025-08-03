@@ -1,0 +1,141 @@
+tasks.register("#publishNewVersion") {
+    group = "publishing"
+    description = "Publish to both Modrinth and CurseForge"
+
+    dependsOn "build", "modrinth", "publishCurseForge"
+
+    doFirst { updateVersionJson() }
+
+    doLast {
+        println "=== Publish Completed ==="
+        println "Mod Version: ${mod_version}"
+        println "Minecraft Version: ${minecraft_version}"
+        println "Published to Modrinth and CurseForge"
+        println "Updated versions.json with current version"
+    }
+}
+
+tasks.register("#publishModrinthOnly") {
+    group = "publishing"
+    description = "Publish only to Modrinth"
+
+    dependsOn "build", "modrinth"
+
+    doFirst { updateVersionJson() }
+
+    doLast {
+        println "=== Modrinth Publish Completed ==="
+        println "Mod Version: ${mod_version}"
+        println "Published to Modrinth only"
+        println "Updated versions.json with current version"
+    }
+}
+
+tasks.register("#publishCurseForgeOnly") {
+    group = "publishing"
+    description = "Publish only to CurseForge"
+
+    dependsOn "build", "publishCurseForge"
+
+    doFirst { updateVersionJson() }
+
+    doLast {
+        println "=== CurseForge Publish Completed ==="
+        println "Mod Version: ${mod_version}"
+        println "Published to CurseForge only"
+        println "Updated versions.json with current version"
+    }
+}
+
+tasks.register("#generateAndPublish") {
+    group = "publishing"
+    description = "Generate changelog and publish to both platforms"
+
+    dependsOn "build", "modrinth", "publishCurseForge"
+
+    doFirst {
+        // Changelog generation
+        try {
+            def proc = "conventional-changelog --preset angular --release-count 1".execute()
+            proc.waitFor()
+            if (proc.exitValue() == 0) {
+                def changelogContent = proc.text.trim()
+                def changelogFile = file("CHANGELOG_LATEST.md")
+
+                def version = mod_version
+                def mcVersion = minecraft_version
+                def date = new Date().format('dd.MM.yyyy')
+                def header = "# v.${version} for MC ${mcVersion} – ${date}"
+
+                changelogFile.text = "${header}\n${changelogContent}"
+                println "Generated CHANGELOG_LATEST.md"
+            }
+        } catch (Exception e) {
+            println "Warning: Could not generate changelog automatically - ${e.message}"
+            println "Please ensure conventional-changelog is installed: npm install -g conventional-changelog-cli"
+        }
+
+        updateVersionJson()
+    }
+
+    doLast {
+        println "=== Generate and Publish Completed ==="
+        println "Generated changelog and published to both platforms"
+        println "Updated versions.json with current version"
+    }
+}
+
+tasks.register("#dryRunPublish") {
+    group = "publishing"
+    description = "Dry run - shows what would be published without actually publishing"
+
+    doLast {
+        println "=== DRY RUN - PUBLISH PREVIEW ==="
+        println "Mod ID: ${mod_id}"
+        println "Mod Name: ${mod_name}"
+        println "Mod Version: ${mod_version}"
+        println "Minecraft Version: ${minecraft_version}"
+        println "Release Type: ${release_type}"
+        println "Game Versions: ${project.findProperty("game_versions")}"
+        println ""
+        println "Modrinth Project ID: ${mr_id}"
+        println "CurseForge Project ID: ${project.findProperty("cf_id")}"
+        println ""
+        println "JAR File: ${jar.archiveFileName.get()}"
+        println "JAR Path: ${jar.destinationDirectory.get()}/${jar.archiveFileName.get()}"
+        println ""
+
+        def changelogContent = generateLatestChangelog()
+        println "Changelog Preview:"
+        println "==================="
+        println changelogContent.take(500) + (changelogContent.length() > 500 ? "..." : "")
+        println "==================="
+        println ""
+
+        println "versions.json changes that would be made:"
+        def currentVersion = mod_version
+        def currentMcVersion = minecraft_version
+        println "  ${currentMcVersion}-latest: ${currentVersion}"
+        println "  ${currentMcVersion}-recommended: ${currentVersion}"
+        println ""
+
+        println "Environment Variables:"
+        println "MODRINTH_TOKEN: ${System.getenv("MODRINTH_TOKEN") ? 'SET' : 'NOT SET'}"
+        println "CURSEFORGE_TOKEN: ${System.getenv("CURSEFORGE_TOKEN") ? 'SET' : 'NOT SET'}"
+    }
+}
+
+ext.validateTokens = {
+    def modrinthToken = System.getenv("MODRINTH_TOKEN") ?: project.findProperty("modrinthToken")?.toString()
+    def cfToken = System.getenv("CURSEFORGE_TOKEN") ?: project.findProperty("curseforgeToken")?.toString()
+
+    if (modrinthToken == null) {
+        throw new GradleException("Missing MODRINTH_TOKEN: set it either as ENV (MODRINTH_TOKEN) or in ~/.gradle/gradle.properties (modrinthToken)")
+    }
+
+    if (cfToken == null) {
+        throw new GradleException("Missing CURSEFORGE_TOKEN: set it either as ENV (CURSEFORGE_TOKEN) or in ~/.gradle/gradle.properties (curseforgeToken)")
+    }
+
+    return [modrinthToken, cfToken]
+}

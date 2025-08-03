@@ -1,0 +1,229 @@
+tasks.register('printVersion') {
+    group = "changelog"
+    description = "Shows the actual mod version"
+    doLast { println mod_version }
+}
+
+tasks.register("resetChangelog") {
+    group = "changelog"
+    description = "Resets the changelog"
+    doLast {
+        def changelogFiles = [file("CHANGELOG.md")]
+        changelogFiles.each { f ->
+            if (f.exists()) {
+                f.delete()
+                println "Reset completed: ${f.name}"
+            } else {
+                println "File not found: ${f.name}"
+            }
+        }
+    }
+}
+
+tasks.register("resetLatestChangelog") {
+    group = "changelog"
+    description = "Resets the latest changelog"
+    doLast {
+        def changelogFiles = [file("CHANGELOG_LATEST.md")]
+        changelogFiles.each { f ->
+            if (f.exists()) {
+                f.delete()
+                println "Reset completed: ${f.name}"
+            } else {
+                println "File not found: ${f.name}"
+            }
+        }
+    }
+}
+
+tasks.register("showLatestChangelog") {
+    group = "changelog"
+    description = "Shows the latest changelog that will be used for publishing"
+    doLast {
+        def latestChangelog = generateLatestChangelog()
+        println "=== LATEST CHANGELOG ==="
+        println latestChangelog
+        println "========================"
+    }
+}
+
+tasks.register("cleanupDuplicateHeaders") {
+    group = "changelog"
+    description = "Removes duplicate headers from CHANGELOG.md"
+    doLast {
+        def changelogFile = file("CHANGELOG.md")
+        if (!changelogFile.exists()) {
+            println "CHANGELOG.md not found"
+            return
+        }
+
+        // Create backup
+        def timestamp = new Date().format('yyyyMMdd_HHmmss')
+        def backupFile = file("CHANGELOG_BACKUP_${timestamp}.md")
+        changelogFile.renameTo(backupFile)
+        println "Backup created: ${backupFile.name}"
+
+        // Remove duplicates
+        def lines = backupFile.readLines()
+        def cleanedLines = []
+        def seenVersions = new HashSet()
+        def skipUntilNextVersion = false
+
+        lines.each { line ->
+            def versionMatch = line =~ /^# v\.(\d+\.\d+\.\d+) for MC ([\d\.]+)/
+            if (versionMatch) {
+                def versionKey = "${versionMatch[0][1]}_${versionMatch[0][2]}"
+
+                if (seenVersions.contains(versionKey)) {
+                    skipUntilNextVersion = true
+                    println "Skipping duplicate version: ${line}"
+                } else {
+                    seenVersions.add(versionKey)
+                    skipUntilNextVersion = false
+                    cleanedLines.add(line)
+                }
+            } else if (line.startsWith("# v.")) {
+                skipUntilNextVersion = false
+                cleanedLines.add(line)
+            } else if (!skipUntilNextVersion) {
+                cleanedLines.add(line)
+            }
+        }
+
+        // Clean up excessive empty lines
+        def finalLines = []
+        def emptyLineCount = 0
+
+        cleanedLines.each { line ->
+            if (line.trim().isEmpty()) {
+                emptyLineCount++
+                if (emptyLineCount <= 2) {
+                    finalLines.add(line)
+                }
+            } else {
+                emptyLineCount = 0
+                finalLines.add(line)
+            }
+        }
+
+        changelogFile.text = finalLines.join('\n')
+        println "Cleanup completed!"
+    }
+}
+
+tasks.register("validateChangelog") {
+    group = "changelog"
+    description = "Validates CHANGELOG.md for duplicate headers"
+    doLast {
+        def changelogFile = file("CHANGELOG.md")
+        if (!changelogFile.exists()) {
+            println "CHANGELOG.md not found"
+            return
+        }
+
+        def lines = changelogFile.readLines()
+        def versions = [:]
+        def duplicates = []
+
+        lines.each { line ->
+            def versionMatch = line =~ /^# v\.(\d+\.\d+\.\d+) for MC ([\d\.]+)/
+            if (versionMatch) {
+                def versionKey = "${versionMatch[0][1]}_${versionMatch[0][2]}"
+                if (versions.containsKey(versionKey)) {
+                    duplicates.add("${versionMatch[0][1]} for MC ${versionMatch[0][2]}")
+                    versions[versionKey]++
+                } else {
+                    versions[versionKey] = 1
+                }
+            }
+        }
+
+        println "=== CHANGELOG VALIDATION ==="
+        if (duplicates.isEmpty()) {
+            println "✓ No duplicate headers found"
+        } else {
+            println "❌ Found duplicate headers:"
+            duplicates.each { duplicate -> println "  - ${duplicate}" }
+            println "\nRun 'gradle cleanupDuplicateHeaders' to fix"
+        }
+
+        println "\nFound versions:"
+        versions.each { version, count ->
+            def status = count > 1 ? "❌ (${count}x)" : "✓"
+            println "  ${status} ${version.replace('_', ' for MC ')}"
+        }
+    }
+}
+
+tasks.register("previewChangelogCleanup") {
+    group = "changelog"
+    description = "Preview what cleanupDuplicateHeaders would do without making changes"
+    doLast {
+        def changelogFile = file("CHANGELOG.md")
+        if (!changelogFile.exists()) {
+            println "CHANGELOG.md not found"
+            return
+        }
+
+        def lines = changelogFile.readLines()
+        def seenVersions = new HashSet()
+        def duplicateLines = []
+        def keptLines = []
+
+        lines.eachWithIndex { line, index ->
+            def versionMatch = line =~ /^# v\.(\d+\.\d+\.\d+) for MC ([\d\.]+)/
+            if (versionMatch) {
+                def versionKey = "${versionMatch[0][1]}_${versionMatch[0][2]}"
+
+                if (seenVersions.contains(versionKey)) {
+                    duplicateLines.add("Line ${index + 1}: ${line}")
+                } else {
+                    seenVersions.add(versionKey)
+                    keptLines.add("Line ${index + 1}: ${line}")
+                }
+            }
+        }
+
+        println "=== CLEANUP PREVIEW ==="
+        println "\n✓ Headers to KEEP:"
+        keptLines.each { println "  ${it}" }
+
+        println "\n❌ Headers to REMOVE:"
+        if (duplicateLines.isEmpty()) {
+            println "  None found"
+        } else {
+            duplicateLines.each { println "  ${it}" }
+        }
+
+        println "\nRun 'gradle cleanupDuplicateHeaders' to apply these changes"
+    }
+}
+
+ext.generateLatestChangelog = {
+    def changelogFile = file("CHANGELOG_LATEST.md")
+
+    if (changelogFile.exists()) {
+        def content = changelogFile.text.trim()
+        def lines = content.split('\n')
+        if (lines.length > 1) {
+            return lines[1..-1].join('\n').trim()
+        }
+        return content
+    }
+
+    // Fallback: Git-based generation
+    println "CHANGELOG_LATEST.md not found, generating from git..."
+    def proc = "git describe --tags --abbrev=0".execute()
+    def lastTag = proc.text.trim()
+    if (!proc.exitValue()) {
+        println "Using tag: $lastTag"
+    }
+
+    def logCmd = ["git", "log", "${lastTag}..HEAD", "--pretty=format:* %s"]
+    def log = new ByteArrayOutputStream()
+    exec {
+        commandLine logCmd
+        standardOutput = log
+    }
+    return log.toString("UTF-8").trim()
+}
