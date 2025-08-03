@@ -32,8 +32,6 @@ jobs:
       - name: Create custom changelog configuration
         run: |
           cat > changelog-config.js << 'EOF'
-          const compareFunc = require('compare-func')
-          
           module.exports = {
             writerOpts: {
               transform: (commit, context) => {
