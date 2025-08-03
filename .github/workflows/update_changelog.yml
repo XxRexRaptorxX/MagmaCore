@@ -37,105 +37,134 @@ jobs:
           echo "mod_version=$MOD_VERSION" >> $GITHUB_ENV
           echo "mc_version=$MC_VERSION" >> $GITHUB_ENV
 
-      - name: Update full changelog (prepend new version)
+      - name: Generate and format changelog
         run: |
           VERSION=${{ env.mod_version }}
           MC_VERSION=${{ env.mc_version }}
           DATE=$(date +'%d.%m.%Y')
-          VERSION_HEADER="# v.${VERSION} for MC ${MC_VERSION} – ${DATE}"
-
-          # checks if version already exists
+          CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} – ${DATE}"
+          
+          # Check if version already exists in CHANGELOG.md
           if [ -f "CHANGELOG.md" ] && grep -q "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
             echo "Version ${VERSION} for MC ${MC_VERSION} already exists in CHANGELOG.md, skipping update"
-            # Trotzdem CHANGELOG_LATEST.md aktualisieren für andere Zwecke
             exit 0
           fi
+          
+          # Generate raw changelog
+          conventional-changelog --preset angular --release-count 1 > CHANGELOG_RAW.md
+          
+          # Process the raw changelog to replace only the version header
+          if [ -s CHANGELOG_RAW.md ]; then
+            # Check if the first line is a version header (starts with ## [version] or # [version])
+            if head -n 1 CHANGELOG_RAW.md | grep -q "^##\? \[.*\]"; then
+              # Replace the version header but keep everything else
+              {
+                echo "${CUSTOM_HEADER}"
+                tail -n +2 CHANGELOG_RAW.md
+              } > CHANGELOG_LATEST.md
+            elif head -n 1 CHANGELOG_RAW.md | grep -q "^#"; then
+              # If it's already a header but not the standard format, replace it
+              sed "1s/.*/${CUSTOM_HEADER//\//\\/}/" CHANGELOG_RAW.md > CHANGELOG_LATEST.md
+            else
+              # If no header exists, prepend our custom header
+              {
+                echo "${CUSTOM_HEADER}"
+                echo ""
+                cat CHANGELOG_RAW.md
+              } > CHANGELOG_LATEST.md
+            fi
+          else
+            # Fallback: create minimal changelog if conventional-changelog produces nothing
+            echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
+            echo "" >> CHANGELOG_LATEST.md
+            echo "### Changes" >> CHANGELOG_LATEST.md
+            echo "" >> CHANGELOG_LATEST.md
+            echo "* Release version ${VERSION}" >> CHANGELOG_LATEST.md
+            echo "" >> CHANGELOG_LATEST.md
+          fi
+          
+          # Clean up
+          rm -f CHANGELOG_RAW.md
 
-          # backup existing changelog
+      - name: Update main changelog
+        run: |
+          VERSION=${{ env.mod_version }}
+          MC_VERSION=${{ env.mc_version }}
+          
+          # Skip if version already exists
+          if [ -f "CHANGELOG.md" ] && grep -q "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
+            echo "Version already exists in main changelog, skipping"
+            exit 0
+          fi
+          
+          # Backup existing changelog
           if [ -f "CHANGELOG.md" ]; then
             cp CHANGELOG.md CHANGELOG_OLD.md
           else
             touch CHANGELOG_OLD.md
           fi
-
-          # create new changelog with latest version at top
-          echo "${VERSION_HEADER}" > CHANGELOG.md
-          echo "" >> CHANGELOG.md
-
-          # add latest changelog content (without the header we already added)
-          tail -n +2 CHANGELOG_LATEST.md >> CHANGELOG.md
-
-          # add separator and old changelog content
+          
+          # Create new changelog with latest version at top
+          cp CHANGELOG_LATEST.md CHANGELOG.md
+          
+          # Add separator and old changelog content if it exists and is not empty
           if [ -s CHANGELOG_OLD.md ]; then
             echo "" >> CHANGELOG.md
             echo "" >> CHANGELOG.md
             cat CHANGELOG_OLD.md >> CHANGELOG.md
           fi
-
+          
           # Cleanup
           rm -f CHANGELOG_OLD.md
-
+          
           echo "Added new version ${VERSION} to CHANGELOG.md"
 
-      - name: Generate latest changelog
+      - name: Clean up excessive empty lines only
         run: |
-          git fetch --tags
-          conventional-changelog --preset angular --release-count 1 > CHANGELOG_LATEST.md
-
-      - name: Add header with version and MC version to CHANGELOG.md
-        run: |
-          VERSION=${{ env.mod_version }}
-          MC_VERSION=${{ env.mc_version }}
-          DATE=$(date +'%d.%m.%Y')
-          sed -i "1s/^/# v.${VERSION} for MC ${MC_VERSION} – ${DATE}\n/" CHANGELOG.md
-
-      - name: Add header with version and MC version to CHANGELOG_LATEST.md
-        run: |
-          VERSION=${{ env.mod_version }}
-          MC_VERSION=${{ env.mc_version }}
-          DATE=$(date +'%d.%m.%Y')
-          sed -i "1s/^/# v.${VERSION} for MC ${MC_VERSION} – ${DATE}\n/" CHANGELOG_LATEST.md
-
-      - name: Remove compare link line from changelogs
-        run: |
-          sed -i '/^# \[\](.*compare.*)/d' CHANGELOG.md
-          sed -i '/^# \[\](.*compare.*)/d' CHANGELOG_LATEST.md
+          # Only clean up multiple consecutive empty lines, keep all content and links
+          for file in CHANGELOG.md CHANGELOG_LATEST.md; do
+            if [ -f "$file" ]; then
+              # Clean up multiple empty lines (keep maximum of 2)
+              awk 'BEGIN{blank=0} /^$/{blank++; if(blank<=2) print} !/^$/{blank=0; print}' "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
+            fi
+          done
 
       - name: Commit & push changelogs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # check if changelogs are changed
+          # Check if changelogs have changes
           CHANGES_MADE=false
-          if git diff --quiet CHANGELOG.md; then
-            echo "No changes to CHANGELOG.md"
-          else
+          if ! git diff --quiet CHANGELOG.md 2>/dev/null; then
             echo "Changes detected in CHANGELOG.md"
             CHANGES_MADE=true
+          else
+            echo "No changes to CHANGELOG.md"
           fi
           
-          if git diff --quiet CHANGELOG_LATEST.md; then
-            echo "No changes to CHANGELOG_LATEST.md"
-          else
+          if ! git diff --quiet CHANGELOG_LATEST.md 2>/dev/null; then
             echo "Changes detected in CHANGELOG_LATEST.md"
             CHANGES_MADE=true
+          else
+            echo "No changes to CHANGELOG_LATEST.md"
           fi
           
           if [ "$CHANGES_MADE" = true ]; then
             git add CHANGELOG.md CHANGELOG_LATEST.md
-            git commit -m "chore: update changelogs"
+            git commit -m "chore: update changelogs for v${{ env.mod_version }}"
             git push origin HEAD:${{ github.ref_name }}
             echo "Changelogs updated and pushed"
           else
             echo "No changelog changes to commit"
           fi
           
-          # create tag if not existing
+          # Create tag if not existing
           if ! git rev-parse v${{ env.mod_version }} >/dev/null 2>&1; then
             git tag v${{ env.mod_version }}
+            echo "Created tag v${{ env.mod_version }}"
             git push origin v${{ env.mod_version }}
-            echo "Created and pushed tag v${{ env.mod_version }}"
+            echo "Pushed tag v${{ env.mod_version }}"
           else
             echo "Tag v${{ env.mod_version }} already exists, skipping tag creation"
           fi
