@@ -29,6 +29,125 @@ jobs:
       - name: Install conventional-changelog
         run: npm install -g conventional-changelog-cli
 
+      - name: Create custom changelog configuration
+        run: |
+          cat > changelog-config.js << 'EOF'
+          const compareFunc = require('compare-func')
+          
+          module.exports = {
+            writerOpts: {
+              transform: (commit, context) => {
+                const issues = []
+          
+                commit.notes.forEach(note => {
+                  note.title = 'BREAKING CHANGES'
+                  issues.push(note)
+                })
+          
+                if (commit.type === 'feat') {
+                  commit.type = 'Features'
+                } else if (commit.type === 'fix') {
+                  commit.type = 'Bug Fixes'
+                } else if (commit.type === 'perf') {
+                  commit.type = 'Performance Improvements'
+                } else if (commit.type === 'revert') {
+                  commit.type = 'Reverts'
+                } else if (commit.type === 'docs') {
+                  commit.type = 'Documentation'
+                } else if (commit.type === 'style') {
+                  commit.type = 'Styles'
+                } else if (commit.type === 'refactor') {
+                  commit.type = 'Code Refactoring'
+                } else if (commit.type === 'test') {
+                  commit.type = 'Tests'
+                } else if (commit.type === 'build') {
+                  commit.type = 'Build System'
+                } else if (commit.type === 'ci') {
+                  commit.type = 'Continuous Integration'
+                } else if (commit.type === 'chore') {
+                  commit.type = 'Chores'
+                } else {
+                  return
+                }
+          
+                if (commit.scope === '*') {
+                  commit.scope = ''
+                }
+          
+                if (typeof commit.hash === 'string') {
+                  commit.shortHash = commit.hash.substring(0, 7)
+                }
+          
+                if (typeof commit.subject === 'string') {
+                  let url = context.repository
+                    ? `${context.host}/${context.owner}/${context.repository}`
+                    : context.repoUrl
+                  if (url) {
+                    url = `${url}/commit/${commit.hash}`
+                    commit.subject = commit.subject.replace(/#([0-9]+)/g, (_, issue) => {
+                      issues.push(issue)
+                      const url = context.repository
+                        ? `${context.host}/${context.owner}/${context.repository}`
+                        : context.repoUrl
+                      if (url) {
+                        return `[#${issue}](${url}/issues/${issue})`
+                      } else {
+                        return `#${issue}`
+                      }
+                    })
+                    commit.subject = `${commit.subject} ([${commit.shortHash}](${url}))`
+                  } else {
+                    commit.subject = `${commit.subject} ${commit.shortHash}`
+                  }
+                }
+          
+                commit.references = commit.references.filter(reference => {
+                  if (issues.indexOf(reference.issue) === -1) {
+                    return true
+                  }
+                  return false
+                })
+          
+                return commit
+              },
+              groupBy: 'type',
+              // Custom sorting
+              commitGroupsSort: (a, b) => {
+                const order = [
+                  'BREAKING CHANGES'
+                  'Features',
+                  'Bug Fixes', 
+                  'Performance Improvements',
+                  'Reverts',
+                  'Documentation',
+                  'Styles',
+                  'Code Refactoring',
+                  'Tests',
+                  'Build System',
+                  'Continuous Integration',
+                  'Chores',
+                ]
+          
+                const aIndex = order.indexOf(a.title)
+                const bIndex = order.indexOf(b.title)
+          
+                // If both are in the order array, sort by their position
+                if (aIndex !== -1 && bIndex !== -1) {
+                  return aIndex - bIndex
+                }
+                // If only one is in the order array, prioritize it
+                if (aIndex !== -1) return -1
+                if (bIndex !== -1) return 1
+                // If neither is in the order array, sort alphabetically
+                return a.title.localeCompare(b.title)
+              },
+              commitsSort: ['scope', 'subject'],
+              noteGroupsSort: 'title',
+              notesSort: 'text'
+            }
+          }
+          EOF
+
       - name: Read versions from gradle.properties
         id: read_versions
         run: |
@@ -71,10 +190,10 @@ jobs:
           # Generate changelog
           if [ -z "$LAST_TAG" ]; then
             echo "No previous tags found, generating changelog for all commits"
-            conventional-changelog --preset angular --release-count 0 > CHANGELOG_NEW_CONTENT.md
+            conventional-changelog --preset angular --release-count 0 --config changelog-config.js > CHANGELOG_NEW_CONTENT.md
           else
             echo "Generating changelog since tag: $LAST_TAG"
-            conventional-changelog --preset angular --release-count 1 > CHANGELOG_NEW_CONTENT.md
+            conventional-changelog --preset angular --release-count 1 --config changelog-config.js > CHANGELOG_NEW_CONTENT.md
           fi
           
           echo "=== Generated changelog content ==="
