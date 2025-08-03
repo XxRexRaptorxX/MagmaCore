@@ -114,7 +114,7 @@ jobs:
               // Custom sorting
               commitGroupsSort: (a, b) => {
                 const order = [
-                  'BREAKING CHANGES'
+                  'BREAKING CHANGES',
                   'Features',
                   'Bug Fixes', 
                   'Performance Improvements',
@@ -125,7 +125,7 @@ jobs:
                   'Tests',
                   'Build System',
                   'Continuous Integration',
-                  'Chores',
+                  'Chores'
                 ]
           
                 const aIndex = order.indexOf(a.title)
