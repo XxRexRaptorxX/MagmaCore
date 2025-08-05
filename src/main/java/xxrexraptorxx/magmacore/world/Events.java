@@ -1,5 +1,17 @@
 package xxrexraptorxx.magmacore.world;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.particles.ParticleTypes;
@@ -7,6 +19,7 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -25,23 +38,13 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import xxrexraptorxx.magmacore.config.Config;
 import xxrexraptorxx.magmacore.content.items.RewardItems;
 import xxrexraptorxx.magmacore.main.MagmaCore;
 import xxrexraptorxx.magmacore.main.ModRegistry;
 import xxrexraptorxx.magmacore.main.References;
 import xxrexraptorxx.magmacore.utils.FormattingHelper;
-
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 @EventBusSubscriber(modid = References.MODID, bus = EventBusSubscriber.Bus.GAME)
 public class Events {
@@ -356,6 +359,101 @@ public class Events {
             }
         } catch (IOException e) {
             MagmaCore.LOGGER.error(e);
+        }
+    }
+
+    private static final Set<String> triggeredDates = new HashSet<>();
+    private static final Set<String> messageSentDates = new HashSet<>();
+    private static int tickCounter = 0;
+    private static final int CHECK_INTERVAL = 1200;
+    private static long herobrineJoinTime = 0;
+
+    @SubscribeEvent
+    public static void HerobrineEasterEgg(ServerTickEvent.Pre event) {
+        tickCounter++;
+
+        if (tickCounter % CHECK_INTERVAL != 0) {
+            return;
+        }
+
+        MinecraftServer server = event.getServer();
+        if (server == null || server.getPlayerList().getPlayerCount() == 0) {
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        String dateKey = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+        if (!triggeredDates.contains(dateKey) && shouldTriggerHerobrineEvent(now)) {
+            triggeredDates.add(dateKey);
+            herobrineJoinTime = System.currentTimeMillis();
+            MagmaCore.LOGGER.info("Herobrine easter egg event triggered!");
+
+            Component herobrineComponent =
+                    Component.literal("Herobrine").withStyle(style -> style.withColor(ChatFormatting.RED));
+            Component joinText = Component.translatable("multiplayer.player.joined", herobrineComponent)
+                    .withStyle(style -> style.withColor(ChatFormatting.YELLOW));
+
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                player.playNotifySound(SoundEvents.AMBIENT_CAVE.value(), SoundSource.AMBIENT, 1.0f, 1.0f);
+                player.sendSystemMessage(joinText);
+            }
+        }
+
+        if (herobrineJoinTime > 0 && !messageSentDates.contains(dateKey)) {
+            long timeSinceJoin = System.currentTimeMillis() - herobrineJoinTime;
+
+            if (timeSinceJoin >= 180000) {
+                messageSentDates.add(dateKey);
+                sendHerobrineChatMessage(server);
+            }
+        }
+    }
+
+    private static boolean shouldTriggerHerobrineEvent(LocalDateTime dateTime) {
+        int month = dateTime.getMonthValue();
+        int day = dateTime.getDayOfMonth();
+        int dayOfWeek = dateTime.getDayOfWeek().getValue();
+
+        boolean isHalloween = month == 10 && day == 31;
+        boolean isFridayThe13th = dayOfWeek == 5 && day == 13;
+
+        if (!isHalloween && !isFridayThe13th) {
+            return false;
+        }
+
+        int hour = dateTime.getHour();
+        int minute = dateTime.getMinute();
+        return hour == 1 && minute <= 5;
+    }
+
+    private static void sendHerobrineChatMessage(MinecraftServer server) {
+        String[] messages = {
+            "I am watching you...",
+            "You cannot hide from me.",
+            "You can't escape me.",
+            "I have returned.",
+            "I am the shadow behind you.",
+            "I know where you are going...",
+            "I know where you live.",
+            "You should not have done that.",
+            "I hope you're ready...",
+            "The lord of darkness is now back.",
+            "I see you.",
+            "The darkness calls to me.",
+            "That's MY world!",
+            "GO AWAY!",
+            "I'm on my way to you..."
+        };
+
+        String message = messages[(int) (Math.random() * messages.length)];
+        Component chatMessage = Component.literal("<Herobrine> " + message)
+                .withStyle(style -> style.withColor(ChatFormatting.DARK_RED));
+
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            player.playNotifySound(
+                    SoundEvents.AMBIENT_BASALT_DELTAS_ADDITIONS.value(), SoundSource.AMBIENT, 1.0f, 1.0f);
+            player.sendSystemMessage(chatMessage);
         }
     }
 }
