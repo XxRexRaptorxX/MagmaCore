@@ -1,17 +1,5 @@
 package xxrexraptorxx.magmacore.world;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.particles.ParticleTypes;
@@ -45,6 +33,19 @@ import xxrexraptorxx.magmacore.main.MagmaCore;
 import xxrexraptorxx.magmacore.main.ModRegistry;
 import xxrexraptorxx.magmacore.main.References;
 import xxrexraptorxx.magmacore.utils.FormattingHelper;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @EventBusSubscriber(modid = References.MODID, bus = EventBusSubscriber.Bus.GAME)
 public class Events {
@@ -368,6 +369,16 @@ public class Events {
     private static final int CHECK_INTERVAL = 1200;
     private static long herobrineJoinTime = 0;
 
+    /**
+     * Handles the Herobrine easter egg event that triggers on specific dates and times.
+     * This method is called on every server tick and manages the timing and execution
+     * of the Herobrine easter egg, including the initial join message and delayed chat message.
+     *
+     * <p>The easter egg triggers on Halloween (October 31st) or Friday the 13th between
+     * 1:00 AM and 1:05 AM. Once triggered, it displays a fake "Herobrine joined" message
+     * and plays an ambient cave sound to all players. After 3 minutes, a random spooky
+     * chat message is sent from "Herobrine".</p>
+     */
     @SubscribeEvent
     public static void HerobrineEasterEgg(ServerTickEvent.Pre event) {
         tickCounter++;
@@ -410,6 +421,20 @@ public class Events {
         }
     }
 
+    /**
+     * Determines whether the Herobrine easter egg event should be triggered based on
+     * the current date and time.
+     *
+     * <p>The event triggers on:
+     * <ul>
+     *   <li>Halloween (October 31st) between 1:00 AM and 1:05 AM</li>
+     *   <li>Friday the 13th between 1:00 AM and 1:05 AM</li>
+     * </ul>
+     * </p>
+     *
+     * @param dateTime the current date and time to check
+     * @return {@code true} if the event should trigger, {@code false} otherwise
+     */
     private static boolean shouldTriggerHerobrineEvent(LocalDateTime dateTime) {
         int month = dateTime.getMonthValue();
         int day = dateTime.getDayOfMonth();
@@ -427,6 +452,14 @@ public class Events {
         return hour == 1 && minute <= 5;
     }
 
+    /**
+     * Sends a random spooky chat message from "Herobrine" to all players on the server.
+     * This method is called 3 minutes after the initial Herobrine join event is triggered.
+     *
+     * <p>The message is selected randomly from a predefined array of creepy messages
+     * and is displayed in dark red color. An ambient basalt deltas sound is played
+     * to enhance the spooky atmosphere.</p>
+     */
     private static void sendHerobrineChatMessage(MinecraftServer server) {
         String[] messages = {
             "I am watching you...",
