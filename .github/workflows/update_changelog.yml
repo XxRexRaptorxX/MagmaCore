@@ -70,7 +70,7 @@ jobs:
           VERSION=${{ env.mod_version }}
           MC_VERSION=${{ env.mc_version }}
           DATE=$(date +'%d.%m.%Y')
-          CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} â€" ${DATE}"
+          CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} — ${DATE}"
           
           # Generate changelog from commits since last tag (if version exists) or all recent commits
           if [ "${{ env.version_exists }}" = "true" ] && [ -n "${{ env.last_tag_commit }}" ]; then
@@ -85,51 +85,28 @@ jobs:
           if [ -s CHANGELOG_RAW.md ]; then
             # Replace or add the header
             if head -n 1 CHANGELOG_RAW.md | grep -q "^##\? \[.*\]"; then
-              {
-                echo "${CUSTOM_HEADER}"
-                tail -n +2 CHANGELOG_RAW.md
-              } > CHANGELOG_TEMP.md
+              echo "${CUSTOM_HEADER}" > CHANGELOG_TEMP.md
+              tail -n +2 CHANGELOG_RAW.md >> CHANGELOG_TEMP.md
             else
-              {
-                echo "${CUSTOM_HEADER}"
-                echo ""
-                cat CHANGELOG_RAW.md
-              } > CHANGELOG_TEMP.md
+              echo "${CUSTOM_HEADER}" > CHANGELOG_TEMP.md
+              echo "" >> CHANGELOG_TEMP.md
+              cat CHANGELOG_RAW.md >> CHANGELOG_TEMP.md
             fi
           
-            # Reorder sections: Features first, then others
-            {
-              echo "${CUSTOM_HEADER}"
-              echo ""
+            # Create final changelog with reordered sections
+            echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
+            echo "" >> CHANGELOG_LATEST.md
           
-              # Extract Features section
-              awk '/^### Features/,/^### [^F]|^## |^# |$/{
-                if(/^### [^F]/ && !/^### Features/) exit
-                if(/^## / || /^# /) exit
-                print
-              }' CHANGELOG_TEMP.md
+            # Extract Features section first
+            grep -A 1000 "^### Features" CHANGELOG_TEMP.md | grep -B 1000 -m 1 "^### \|^## \|^# \|^$" | head -n -1 >> CHANGELOG_LATEST.md 2>/dev/null || true
           
-              # Extract all other sections except Features
-              awk '
-              BEGIN { in_features = 0; print_section = 1 }
-              /^### Features/ { in_features = 1; print_section = 0; next }
-              /^### / && !/^### Features/ { 
-                if(in_features) in_features = 0
-                print_section = 1
-              }
-              /^## / || /^# / { 
-                if(in_features) in_features = 0
-                print_section = 0
-              }
-              print_section && !in_features { print }
-              ' CHANGELOG_TEMP.md
-          
-            } > CHANGELOG_LATEST.md
+            # Extract all other sections
+            grep -v "^### Features" CHANGELOG_TEMP.md | grep "^### \|^#### \|^\* \|^- \|^  " >> CHANGELOG_LATEST.md 2>/dev/null || true
           
             # Clean up temp files
             rm -f CHANGELOG_RAW.md CHANGELOG_TEMP.md
           else
-            # Fallback
+            # Fallback - create basic changelog
             echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
             echo "" >> CHANGELOG_LATEST.md
             echo "### Features" >> CHANGELOG_LATEST.md
