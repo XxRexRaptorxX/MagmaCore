@@ -83,7 +83,7 @@ jobs:
           
           # Process and restructure the changelog using Python
           if [ -s CHANGELOG_RAW.md ]; then
-            python3 << 'EOF'
+            python3 << EOF
           import re
           import sys
           
