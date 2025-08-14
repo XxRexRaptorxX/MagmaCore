@@ -148,65 +148,64 @@ jobs:
             # Replace existing version entry
             echo "Updating existing version ${VERSION} in changelog"
           
-            # Create temporary file with content before the version to update
-            awk "/^# v\.${VERSION//./\\.} for MC ${MC_VERSION//./\\.}/" CHANGELOG.md > /tmp/version_start_line
-            if [ -s /tmp/version_start_line ]; then
-              # Get line number of version header
-              VERSION_LINE=$(grep -n "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md | head -1 | cut -d: -f1)
-              # Get content before this version
-              head -n $((VERSION_LINE - 1)) CHANGELOG.md > CHANGELOG_BEFORE.md 2>/dev/null || touch CHANGELOG_BEFORE.md
+            # Find the line number of the version to replace
+            VERSION_LINE=$(grep -n "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md | head -1 | cut -d: -f1)
           
-              # Get content after this version (next version header or end of file)
+            if [ -n "$VERSION_LINE" ]; then
+              # Get content before this version
+              if [ "$VERSION_LINE" -gt 1 ]; then
+                head -n $((VERSION_LINE - 1)) CHANGELOG.md > CHANGELOG_BEFORE.tmp
+              else
+                touch CHANGELOG_BEFORE.tmp
+              fi
+          
+              # Find the next version header to determine where current version ends
               NEXT_VERSION_LINE=$(tail -n +$((VERSION_LINE + 1)) CHANGELOG.md | grep -n "^# v\." | head -1 | cut -d: -f1)
               if [ -n "$NEXT_VERSION_LINE" ]; then
-                tail -n +$((VERSION_LINE + NEXT_VERSION_LINE)) CHANGELOG.md > CHANGELOG_AFTER.md
+                # There is a next version, get content after current version
+                tail -n +$((VERSION_LINE + NEXT_VERSION_LINE)) CHANGELOG.md > CHANGELOG_AFTER.tmp
               else
-                touch CHANGELOG_AFTER.md
+                # No next version, current version goes to end of file
+                touch CHANGELOG_AFTER.tmp
               fi
           
               # Combine: before + new version + after
-              {
-                if [ -s CHANGELOG_BEFORE.md ]; then
-                  cat CHANGELOG_BEFORE.md
-                  if [ $(tail -c 1 CHANGELOG_BEFORE.md | wc -l) -eq 0 ]; then
-                    echo ""
-                  fi
-                fi
-                cat CHANGELOG_LATEST.md
-                if [ -s CHANGELOG_AFTER.md ]; then
-                  echo ""
-                  echo ""
-                  cat CHANGELOG_AFTER.md
-                fi
-              } > CHANGELOG.md
-          
-              rm -f CHANGELOG_BEFORE.md CHANGELOG_AFTER.md /tmp/version_start_line
-            else
-              # Fallback: add at top
-              cp CHANGELOG_LATEST.md CHANGELOG.md
-              if [ -f CHANGELOG_OLD.md ]; then
+              cat CHANGELOG_BEFORE.tmp > CHANGELOG.md
+              if [ -s CHANGELOG_BEFORE.tmp ]; then
                 echo "" >> CHANGELOG.md
-                echo "" >> CHANGELOG.md
-                cat CHANGELOG_OLD.md >> CHANGELOG.md
               fi
+              cat CHANGELOG_LATEST.md >> CHANGELOG.md
+              if [ -s CHANGELOG_AFTER.tmp ]; then
+                echo "" >> CHANGELOG.md
+                cat CHANGELOG_AFTER.tmp >> CHANGELOG.md
+              fi
+          
+              rm -f CHANGELOG_BEFORE.tmp CHANGELOG_AFTER.tmp
+            else
+              # Version not found, add at top (fallback)
+              cp CHANGELOG.md CHANGELOG_OLD.tmp
+              cp CHANGELOG_LATEST.md CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              cat CHANGELOG_OLD.tmp >> CHANGELOG.md
+              rm -f CHANGELOG_OLD.tmp
             fi
           else
             # Add new version at top
             if [ -f "CHANGELOG.md" ]; then
-              cp CHANGELOG.md CHANGELOG_OLD.md
+              cp CHANGELOG.md CHANGELOG_OLD.tmp
             else
-              touch CHANGELOG_OLD.md
+              touch CHANGELOG_OLD.tmp
             fi
           
             cp CHANGELOG_LATEST.md CHANGELOG.md
           
-            if [ -s CHANGELOG_OLD.md ]; then
+            if [ -s CHANGELOG_OLD.tmp ]; then
               echo "" >> CHANGELOG.md
               echo "" >> CHANGELOG.md
-              cat CHANGELOG_OLD.md >> CHANGELOG.md
+              cat CHANGELOG_OLD.tmp >> CHANGELOG.md
             fi
           
-            rm -f CHANGELOG_OLD.md
+            rm -f CHANGELOG_OLD.tmp
           fi
           
           echo "Updated changelog for version ${VERSION}"
