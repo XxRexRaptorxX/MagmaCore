@@ -37,25 +37,53 @@ jobs:
           echo "mod_version=$MOD_VERSION" >> $GITHUB_ENV
           echo "mc_version=$MC_VERSION" >> $GITHUB_ENV
 
+      - name: Check if version exists and get last commit
+        id: version_check
+        run: |
+          VERSION=${{ env.mod_version }}
+          MC_VERSION=${{ env.mc_version }}
+          
+          if [ -f "CHANGELOG.md" ] && grep -q "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
+            echo "version_exists=true" >> $GITHUB_ENV
+            # Get the commit hash of the last tag for this version
+            LAST_TAG_COMMIT=$(git rev-list -n 1 "v${VERSION}" 2>/dev/null || echo "")
+            CURRENT_COMMIT=$(git rev-parse HEAD)
+            echo "last_tag_commit=$LAST_TAG_COMMIT" >> $GITHUB_ENV
+            echo "current_commit=$CURRENT_COMMIT" >> $GITHUB_ENV
+          
+            if [ "$LAST_TAG_COMMIT" != "$CURRENT_COMMIT" ]; then
+              echo "has_new_commits=true" >> $GITHUB_ENV
+              echo "Version ${VERSION} exists but has new commits since last tag"
+            else
+              echo "has_new_commits=false" >> $GITHUB_ENV
+              echo "Version ${VERSION} exists and no new commits found"
+            fi
+          else
+            echo "version_exists=false" >> $GITHUB_ENV
+            echo "has_new_commits=true" >> $GITHUB_ENV
+            echo "Version ${VERSION} does not exist in changelog"
+          fi
+
       - name: Generate and sort changelog
+        if: env.has_new_commits == 'true'
         run: |
           VERSION=${{ env.mod_version }}
           MC_VERSION=${{ env.mc_version }}
           DATE=$(date +'%d.%m.%Y')
-          CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} – ${DATE}"
+          CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} â€" ${DATE}"
           
-          # Check if version already exists in CHANGELOG.md
-          if [ -f "CHANGELOG.md" ] && grep -q "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
-            echo "Version ${VERSION} for MC ${MC_VERSION} already exists in CHANGELOG.md, skipping update"
-            exit 0
+          # Generate changelog from commits since last tag (if version exists) or all recent commits
+          if [ "${{ env.version_exists }}" = "true" ] && [ -n "${{ env.last_tag_commit }}" ]; then
+            # Generate changelog since last tag
+            conventional-changelog --preset angular --release-count 0 --commit-range "${{ env.last_tag_commit }}..HEAD" > CHANGELOG_RAW.md
+          else
+            # Generate changelog for latest release
+            conventional-changelog --preset angular --release-count 1 > CHANGELOG_RAW.md
           fi
-          
-          # Generate raw changelog
-          conventional-changelog --preset angular --release-count 1 > CHANGELOG_RAW.md
           
           # Process the changelog and reorder sections
           if [ -s CHANGELOG_RAW.md ]; then
-            # Replace the header
+            # Replace or add the header
             if head -n 1 CHANGELOG_RAW.md | grep -q "^##\? \[.*\]"; then
               {
                 echo "${CUSTOM_HEADER}"
@@ -111,39 +139,80 @@ jobs:
           fi
 
       - name: Update main changelog
+        if: env.has_new_commits == 'true'
         run: |
           VERSION=${{ env.mod_version }}
           MC_VERSION=${{ env.mc_version }}
           
-          # Skip if version already exists
-          if [ -f "CHANGELOG.md" ] && grep -q "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
-            echo "Version already exists in main changelog, skipping"
-            exit 0
-          fi
+          if [ "${{ env.version_exists }}" = "true" ]; then
+            # Replace existing version entry
+            echo "Updating existing version ${VERSION} in changelog"
           
-          # Backup existing changelog
-          if [ -f "CHANGELOG.md" ]; then
-            cp CHANGELOG.md CHANGELOG_OLD.md
+            # Create temporary file with content before the version to update
+            awk "/^# v\.${VERSION//./\\.} for MC ${MC_VERSION//./\\.}/" CHANGELOG.md > /tmp/version_start_line
+            if [ -s /tmp/version_start_line ]; then
+              # Get line number of version header
+              VERSION_LINE=$(grep -n "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md | head -1 | cut -d: -f1)
+              # Get content before this version
+              head -n $((VERSION_LINE - 1)) CHANGELOG.md > CHANGELOG_BEFORE.md 2>/dev/null || touch CHANGELOG_BEFORE.md
+          
+              # Get content after this version (next version header or end of file)
+              NEXT_VERSION_LINE=$(tail -n +$((VERSION_LINE + 1)) CHANGELOG.md | grep -n "^# v\." | head -1 | cut -d: -f1)
+              if [ -n "$NEXT_VERSION_LINE" ]; then
+                tail -n +$((VERSION_LINE + NEXT_VERSION_LINE)) CHANGELOG.md > CHANGELOG_AFTER.md
+              else
+                touch CHANGELOG_AFTER.md
+              fi
+          
+              # Combine: before + new version + after
+              {
+                if [ -s CHANGELOG_BEFORE.md ]; then
+                  cat CHANGELOG_BEFORE.md
+                  if [ $(tail -c 1 CHANGELOG_BEFORE.md | wc -l) -eq 0 ]; then
+                    echo ""
+                  fi
+                fi
+                cat CHANGELOG_LATEST.md
+                if [ -s CHANGELOG_AFTER.md ]; then
+                  echo ""
+                  echo ""
+                  cat CHANGELOG_AFTER.md
+                fi
+              } > CHANGELOG.md
+          
+              rm -f CHANGELOG_BEFORE.md CHANGELOG_AFTER.md /tmp/version_start_line
+            else
+              # Fallback: add at top
+              cp CHANGELOG_LATEST.md CHANGELOG.md
+              if [ -f CHANGELOG_OLD.md ]; then
+                echo "" >> CHANGELOG.md
+                echo "" >> CHANGELOG.md
+                cat CHANGELOG_OLD.md >> CHANGELOG.md
+              fi
+            fi
           else
-            touch CHANGELOG_OLD.md
+            # Add new version at top
+            if [ -f "CHANGELOG.md" ]; then
+              cp CHANGELOG.md CHANGELOG_OLD.md
+            else
+              touch CHANGELOG_OLD.md
+            fi
+          
+            cp CHANGELOG_LATEST.md CHANGELOG.md
+          
+            if [ -s CHANGELOG_OLD.md ]; then
+              echo "" >> CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              cat CHANGELOG_OLD.md >> CHANGELOG.md
+            fi
+          
+            rm -f CHANGELOG_OLD.md
           fi
           
-          # Create new changelog with latest version at top
-          cp CHANGELOG_LATEST.md CHANGELOG.md
-          
-          # Add separator and old changelog content if it exists and is not empty
-          if [ -s CHANGELOG_OLD.md ]; then
-            echo "" >> CHANGELOG.md
-            echo "" >> CHANGELOG.md
-            cat CHANGELOG_OLD.md >> CHANGELOG.md
-          fi
-          
-          # Cleanup
-          rm -f CHANGELOG_OLD.md
-          
-          echo "Added new version ${VERSION} to CHANGELOG.md"
+          echo "Updated changelog for version ${VERSION}"
 
       - name: Clean up excessive empty lines only
+        if: env.has_new_commits == 'true'
         run: |
           for file in CHANGELOG.md CHANGELOG_LATEST.md; do
             if [ -f "$file" ]; then
@@ -152,6 +221,7 @@ jobs:
           done
 
       - name: Commit & push changelogs
+        if: env.has_new_commits == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -174,18 +244,28 @@ jobs:
           
           if [ "$CHANGES_MADE" = true ]; then
             git add CHANGELOG.md CHANGELOG_LATEST.md
-            git commit -m "chore: update changelogs for v${{ env.mod_version }}"
+          
+            if [ "${{ env.version_exists }}" = "true" ]; then
+              git commit -m "chore: update changelog for existing v${{ env.mod_version }} with new commits"
+            else
+              git commit -m "chore: update changelogs for v${{ env.mod_version }}"
+            fi
+          
             git push origin HEAD:${{ github.ref_name }}
             echo "Changelogs updated and pushed"
           else
             echo "No changelog changes to commit"
           fi
           
-          # Create tag if not existing
-          if ! git rev-parse v${{ env.mod_version }} >/dev/null 2>&1; then
+          # Update or create tag
+          if git rev-parse v${{ env.mod_version }} >/dev/null 2>&1; then
+            # Tag exists, update it to point to current commit
+            git tag -f v${{ env.mod_version }}
+            git push -f origin v${{ env.mod_version }}
+            echo "Updated tag v${{ env.mod_version }} to current commit"
+          else
+            # Create new tag
             git tag v${{ env.mod_version }}
             git push origin v${{ env.mod_version }}
             echo "Created and pushed tag v${{ env.mod_version }}"
-          else
-            echo "Tag v${{ env.mod_version }} already exists, skipping tag creation"
           fi
