@@ -81,30 +81,20 @@ jobs:
             conventional-changelog --preset angular --release-count 1 > CHANGELOG_RAW.md
           fi
           
-          # Process the changelog and reorder sections
+          # Process the changelog
           if [ -s CHANGELOG_RAW.md ]; then
-            # Replace or add the header
+            # Replace the header if it exists
             if head -n 1 CHANGELOG_RAW.md | grep -q "^##\? \[.*\]"; then
-              echo "${CUSTOM_HEADER}" > CHANGELOG_TEMP.md
-              tail -n +2 CHANGELOG_RAW.md >> CHANGELOG_TEMP.md
+              echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
+              tail -n +2 CHANGELOG_RAW.md >> CHANGELOG_LATEST.md
             else
-              echo "${CUSTOM_HEADER}" > CHANGELOG_TEMP.md
-              echo "" >> CHANGELOG_TEMP.md
-              cat CHANGELOG_RAW.md >> CHANGELOG_TEMP.md
+              echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
+              echo "" >> CHANGELOG_LATEST.md
+              cat CHANGELOG_RAW.md >> CHANGELOG_LATEST.md
             fi
           
-            # Create final changelog with reordered sections
-            echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
-            echo "" >> CHANGELOG_LATEST.md
-          
-            # Extract Features section first
-            grep -A 1000 "^### Features" CHANGELOG_TEMP.md | grep -B 1000 -m 1 "^### \|^## \|^# \|^$" | head -n -1 >> CHANGELOG_LATEST.md 2>/dev/null || true
-          
-            # Extract all other sections
-            grep -v "^### Features" CHANGELOG_TEMP.md | grep "^### \|^#### \|^\* \|^- \|^  " >> CHANGELOG_LATEST.md 2>/dev/null || true
-          
             # Clean up temp files
-            rm -f CHANGELOG_RAW.md CHANGELOG_TEMP.md
+            rm -f CHANGELOG_RAW.md
           else
             # Fallback - create basic changelog
             echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
