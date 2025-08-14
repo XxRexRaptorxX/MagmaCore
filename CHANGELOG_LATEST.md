@@ -10,6 +10,7 @@
 
 ### Bug Fixes
 
+@@ -42,6 +41,7 @@
 * changelog generator ([3bc38a0](https://github.com/XxRexRaptorxX/MagmaCore/commit/3bc38a050cd94848c2b43a4c3f8f86db51e75842))
 * changelog ordering ([7cb1fe7](https://github.com/XxRexRaptorxX/MagmaCore/commit/7cb1fe7b618561f44cdb3d51901bcdde763065d4))
 * changelog test ([e41446e](https://github.com/XxRexRaptorxX/MagmaCore/commit/e41446e1fe43016630ca5154d3eda666a89a2fc0))
