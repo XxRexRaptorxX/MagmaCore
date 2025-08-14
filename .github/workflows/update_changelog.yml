@@ -81,20 +81,74 @@ jobs:
             conventional-changelog --preset angular --release-count 1 > CHANGELOG_RAW.md
           fi
           
-          # Process the changelog
+          # Process and restructure the changelog using Python
           if [ -s CHANGELOG_RAW.md ]; then
-            # Replace the header if it exists
-            if head -n 1 CHANGELOG_RAW.md | grep -q "^##\? \[.*\]"; then
-              echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
-              tail -n +2 CHANGELOG_RAW.md >> CHANGELOG_LATEST.md
-            else
-              echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
-              echo "" >> CHANGELOG_LATEST.md
-              cat CHANGELOG_RAW.md >> CHANGELOG_LATEST.md
-            fi
+            python3 << 'EOF'
+          import re
+          import sys
           
-            # Clean up temp files
-            rm -f CHANGELOG_RAW.md
+          # Read the raw changelog
+          with open('CHANGELOG_RAW.md', 'r', encoding='utf-8') as f:
+              content = f.read()
+          
+          # Custom header
+          custom_header = "# v.${VERSION} for MC ${MC_VERSION} — ${DATE}"
+          
+          # Remove the original header if it exists (starts with ## [version] or # version)
+          lines = content.split('\n')
+          if lines and (lines[0].startswith('## [') or lines[0].startswith('# ')):
+              content = '\n'.join(lines[1:])
+          
+          # Parse sections
+          sections = {}
+          current_section = None
+          current_content = []
+          
+          for line in content.split('\n'):
+              if line.startswith('### '):
+                  # Save previous section
+                  if current_section:
+                      sections[current_section] = '\n'.join(current_content).strip()
+                  # Start new section
+                  current_section = line[4:].strip()  # Remove "### "
+                  current_content = [line]
+              elif current_section:
+                  current_content.append(line)
+          
+          # Save last section
+          if current_section:
+              sections[current_section] = '\n'.join(current_content).strip()
+          
+          # Define section order (Features first, then alphabetical)
+          section_order = []
+          if 'Features' in sections:
+              section_order.append('Features')
+          
+          # Add other sections alphabetically
+          other_sections = sorted([s for s in sections.keys() if s != 'Features'])
+          section_order.extend(other_sections)
+          
+          # Build final changelog
+          result = [custom_header, '']
+          
+          for section_name in section_order:
+              if section_name in sections and sections[section_name].strip():
+                  result.append(sections[section_name])
+                  result.append('')  # Empty line between sections
+          
+          # Remove trailing empty lines
+          while result and result[-1] == '':
+              result.pop()
+          
+          # Write result
+          with open('CHANGELOG_LATEST.md', 'w', encoding='utf-8') as f:
+              f.write('\n'.join(result) + '\n')
+          
+          print(f"Processed changelog with sections: {', '.join(section_order)}")
+          EOF
+          
+          # Clean up temp files
+          rm -f CHANGELOG_RAW.md
           else
             # Fallback - create basic changelog
             echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
