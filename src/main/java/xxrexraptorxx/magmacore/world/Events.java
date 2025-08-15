@@ -1,5 +1,17 @@
 package xxrexraptorxx.magmacore.world;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.particles.ParticleTypes;
@@ -33,19 +45,6 @@ import xxrexraptorxx.magmacore.main.MagmaCore;
 import xxrexraptorxx.magmacore.main.ModRegistry;
 import xxrexraptorxx.magmacore.main.References;
 import xxrexraptorxx.magmacore.utils.FormattingHelper;
-
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 @EventBusSubscriber(modid = References.MODID, bus = EventBusSubscriber.Bus.GAME)
 public class Events {

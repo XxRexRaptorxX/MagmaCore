@@ -1,5 +1,7 @@
 package xxrexraptorxx.magmacore.utils;
 
+import java.util.List;
+import javax.annotation.Nullable;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -11,9 +13,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
-
-import javax.annotation.Nullable;
-import java.util.List;
 
 public class EffectHelper {
 
