@@ -1,6 +1,5 @@
 package xxrexraptorxx.magmacore.datagen;
 
-import java.util.function.Supplier;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.recipes.RecipeCategory;
@@ -11,6 +10,8 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.ItemLike;
 import xxrexraptorxx.magmacore.main.MagmaCore;
+
+import java.util.function.Supplier;
 
 public abstract class RecipeUtils extends RecipeProvider {
 

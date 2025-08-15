@@ -1,6 +1,5 @@
 package xxrexraptorxx.magmacore.config;
 
-import javax.annotation.Nullable;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.fml.ModContainer;
@@ -9,6 +8,8 @@ import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import xxrexraptorxx.magmacore.main.MagmaCore;
+
+import javax.annotation.Nullable;
 
 public class ConfigHelper {
 
