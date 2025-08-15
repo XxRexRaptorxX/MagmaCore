@@ -1,8 +1,9 @@
 package xxrexraptorxx.magmacore.config;
 
+import net.neoforged.neoforge.common.ModConfigSpec;
+
 import java.util.Arrays;
 import java.util.List;
-import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class Config {
 
