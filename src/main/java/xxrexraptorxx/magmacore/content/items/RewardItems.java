@@ -1,6 +1,7 @@
 package xxrexraptorxx.magmacore.content.items;
 
 import com.mojang.authlib.GameProfile;
+import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
@@ -16,8 +17,6 @@ import net.minecraft.world.item.equipment.trim.*;
 import net.minecraft.world.level.Level;
 import xxrexraptorxx.magmacore.main.MagmaCore;
 import xxrexraptorxx.magmacore.utils.FormattingHelper;
-
-import java.util.List;
 
 public class RewardItems {
 

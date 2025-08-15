@@ -1,12 +1,11 @@
 package xxrexraptorxx.magmacore.compat;
 
+import java.util.ArrayList;
+import java.util.List;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.registration.IRecipeRegistration;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class JEIIntegrationHelper {
 

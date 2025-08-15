@@ -1,5 +1,7 @@
 package xxrexraptorxx.magmacore.compat;
 
+import java.util.Collections;
+import java.util.List;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -9,9 +11,6 @@ import xxrexraptorxx.magmacore.content.ItemHelper;
 import xxrexraptorxx.magmacore.main.MagmaCore;
 import xxrexraptorxx.magmacore.utils.FormattingHelper;
 import xxrexraptorxx.magmacore.utils.MiscUtils;
-
-import java.util.Collections;
-import java.util.List;
 
 public class RecipeViewerUtils {
 

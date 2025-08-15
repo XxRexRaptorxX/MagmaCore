@@ -1,5 +1,8 @@
 package xxrexraptorxx.magmacore.compat;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
 import me.shedaniel.rei.api.client.registry.display.DisplayRegistry;
 import me.shedaniel.rei.api.common.entry.EntryIngredient;
 import me.shedaniel.rei.api.common.util.EntryIngredients;
@@ -7,10 +10,6 @@ import me.shedaniel.rei.plugin.client.BuiltinClientPlugin;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import xxrexraptorxx.magmacore.main.MagmaCore;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
 
 public class REIIntegrationHelper {
 
