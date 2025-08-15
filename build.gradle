@@ -196,21 +196,21 @@ def rawGameVersions = project.findProperty("game_versions")?.toString() ?: ""
 def parsedGameVersions = rawGameVersions.split(",").collect { it.trim() }
 
 afterEvaluate {
-modrinth {
-    token = System.getenv("MODRINTH_TOKEN") ?: project.findProperty("modrinthToken")?.toString()
-    projectId = mr_id
-    versionType = release_type
-    uploadFile = jar
-    loaders = ["neoforge"]
-    gameVersions = parsedGameVersions
-    changelog = generateLatestChangelog()
-    failSilently = true
-    syncBodyFrom = rootProject.file("PROJECT_PAGE.md").text
-    dependencies {
-        // Add dependencies here as needed
+    modrinth {
+        token = System.getenv("MODRINTH_TOKEN") ?: project.findProperty("modrinthToken")?.toString()
+        projectId = mr_id
+        versionType = release_type
+        uploadFile = jar
+        loaders = ["neoforge"]
+        gameVersions = parsedGameVersions
+        changelog = generateLatestChangelog()
+        failSilently = true
+        syncBodyFrom = rootProject.file("PROJECT_PAGE.md").text
+        dependencies {
+            // Add dependencies here as needed
+        }
     }
 }
-    }
 
 // CurseForge Configuration
 task publishCurseForge(type: TaskPublishCurseForge) {
