@@ -75,7 +75,7 @@ jobs:
           # Generate changelog from commits since last tag (if version exists) or all recent commits
           if [ "${{ env.version_exists }}" = "true" ] && [ -n "${{ env.last_tag_commit }}" ]; then
             # Generate changelog since last tag
-            conventional-changelog --preset angular --release-count 0 --commit-range "${{ env.last_tag_commit }}.HEAD" > CHANGELOG_RAW.md
+            conventional-changelog --preset angular --release-count 0 --commit-range "${{ env.last_tag_commit }}..HEAD" > CHANGELOG_RAW.md
           else
             # Generate changelog for latest release
             conventional-changelog --preset angular --release-count 1 > CHANGELOG_RAW.md
@@ -87,6 +87,7 @@ jobs:
             export CHANGELOG_VERSION="$VERSION"
             export CHANGELOG_MC_VERSION="$MC_VERSION"
             export CHANGELOG_DATE="$DATE"
+          
           python3 << 'EOF'
           import re, os
           # Read the raw changelog
@@ -137,7 +138,7 @@ jobs:
               f.write('\n'.join(result).rstrip() + '\n')
 
           print("Generated CHANGELOG_LATEST.md with sections: " + ", ".join(order))
-            EOF
+          EOF
           
           rm -f CHANGELOG_RAW.md
           else
