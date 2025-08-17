@@ -1,3 +1,7 @@
+// ========================================
+// VERSION MANAGING TASKS
+// ========================================
+
 tasks.register("updateVersionFile") {
     group = "versioning"
     description = "Updates the versions.json file with current version"

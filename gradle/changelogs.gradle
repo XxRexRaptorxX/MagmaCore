@@ -1,3 +1,7 @@
+// ============================================
+// CHANGELOG GENERATION AND ORGANISATION TASKS
+// ============================================
+
 tasks.register('printVersion') {
     group = "changelog"
     description = "Shows the actual mod version"

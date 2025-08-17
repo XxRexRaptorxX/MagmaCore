@@ -15,6 +15,7 @@ apply from: "$rootDir/gradle/changelogs.gradle"
 apply from: "$rootDir/gradle/versioning.gradle"
 apply from: "$rootDir/gradle/publishing.gradle"
 apply from: "$rootDir/gradle/building.gradle"
+apply from: "$rootDir/gradle/debugging.gradle"
 
 // ========================================
 // PROJECT CONFIGURATION
@@ -212,6 +213,7 @@ afterEvaluate {
     }
 }
 
+
 // CurseForge Configuration
 task publishCurseForge(type: TaskPublishCurseForge) {
     def tokens = validateTokens()
@@ -223,8 +225,10 @@ task publishCurseForge(type: TaskPublishCurseForge) {
     mainFile.changelog = generateLatestChangelog()
     mainFile.changelogType = 'markdown'
     mainFile.addModLoader('NeoForge')
-    mainFile.addGameVersion(parsedGameVersions)
-    mainFile.addJavaVersion(java_version)
+    mainFile.addJavaVersion("Java ${java_version}")
+    parsedGameVersions.each { version ->
+        mainFile.addGameVersion(version)
+    }
     mainFile.addEnvironment()
     environment_type.split(',').each { env ->
         mainFile.addEnvironment(env.trim())

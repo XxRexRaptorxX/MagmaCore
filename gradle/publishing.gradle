@@ -1,3 +1,7 @@
+// ========================================
+// PUBLISHING TASKS
+// ========================================
+
 tasks.register("#publishNewVersion") {
     group = "publishing"
     description = "Publish to both Modrinth and CurseForge"
@@ -19,9 +23,7 @@ tasks.register("#publishModrinthOnly") {
     group = "publishing"
     description = "Publish only to Modrinth"
 
-    dependsOn "build", "modrinth"
-
-    doFirst { updateVersionJson() }
+    dependsOn "build", "publishCurseForge", "updateVersionFile"
 
     doLast {
         println "=== Modrinth Publish Completed ==="
@@ -35,9 +37,7 @@ tasks.register("#publishCurseForgeOnly") {
     group = "publishing"
     description = "Publish only to CurseForge"
 
-    dependsOn "build", "publishCurseForge"
-
-    doFirst { updateVersionJson() }
+    dependsOn "build", "publishCurseForge", "updateVersionFile"
 
     doLast {
         println "=== CurseForge Publish Completed ==="
@@ -51,7 +51,7 @@ tasks.register("#generateAndPublish") {
     group = "publishing"
     description = "Generate changelog and publish to both platforms"
 
-    dependsOn "build", "modrinth", "publishCurseForge"
+    dependsOn "build", "modrinth", "publishCurseForge", "updateVersionFile"
 
     doFirst {
         // Changelog generation
