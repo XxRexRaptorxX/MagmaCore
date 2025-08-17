@@ -83,18 +83,26 @@ jobs:
           
           # Process and restructure the changelog using Python
           if [ -s CHANGELOG_RAW.md ]; then
-            python3 << EOF
+            # Pass variables as environment variables to Python
+            export CHANGELOG_VERSION="$VERSION"
+            export CHANGELOG_MC_VERSION="$MC_VERSION" 
+            export CHANGELOG_DATE="$DATE"
+          
+            python3 << 'EOF'
           import re
           import sys
+          import os
           
           # Read the raw changelog
           with open('CHANGELOG_RAW.md', 'r', encoding='utf-8') as f:
               content = f.read()
           
-          # Custom header - using variables passed from bash
-          version = "${VERSION}"
-          mc_version = "${MC_VERSION}"
-          date = "${DATE}"
+          # Get variables from environment
+          version = os.environ.get('CHANGELOG_VERSION', '1.0.0')
+          mc_version = os.environ.get('CHANGELOG_MC_VERSION', '1.21')
+          date = os.environ.get('CHANGELOG_DATE', '01.01.2025')
+          
+          # Custom header
           custom_header = f"# v.{version} for MC {mc_version} — {date}"
           
           # Remove the original header if it exists (starts with ## [version] or # version)
