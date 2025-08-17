@@ -91,8 +91,11 @@ jobs:
           with open('CHANGELOG_RAW.md', 'r', encoding='utf-8') as f:
               content = f.read()
           
-          # Custom header
-          custom_header = "# v.${VERSION} for MC ${MC_VERSION} — ${DATE}"
+          # Custom header - using variables passed from bash
+          version = "${VERSION}"
+          mc_version = "${MC_VERSION}"
+          date = "${DATE}"
+          custom_header = f"# v.{version} for MC {mc_version} — {date}"
           
           # Remove the original header if it exists (starts with ## [version] or # version)
           lines = content.split('\n')
