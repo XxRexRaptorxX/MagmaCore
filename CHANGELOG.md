@@ -6,7 +6,7 @@
 * update script ([844015a](https://github.com/XxRexRaptorxX/MagmaCore/commit/844015a309c79b9a53b2d235957b5d8f6fb64fb6))
 
 
-# v.1.3.2 for MC 1.21.5 — 15.08.2025
+# v.1.3.2 for MC 1.21.5 — 17.08.2025
 
 ### Features
 
@@ -77,3 +77,6 @@
 * reset changelogs ([6e07d6a](https://github.com/XxRexRaptorxX/MagmaCore/commit/6e07d6a00c964bfdaaa770537c450028e65de1dc))
 * test ([d09f8b9](https://github.com/XxRexRaptorxX/MagmaCore/commit/d09f8b9e054bb86a9bc605f6d2b9791d587b0b2b))
 * update changelog automation ([7a3e2b7](https://github.com/XxRexRaptorxX/MagmaCore/commit/7a3e2b7d298a6ab7b11879ee82bb53833853cce8))
+* update script ([4e202ff](https://github.com/XxRexRaptorxX/MagmaCore/commit/4e202ff096b247601b21a7fdca735d1a40c67fe6))
+* update script ([305035f](https://github.com/XxRexRaptorxX/MagmaCore/commit/305035f1c742c995d15b71f20c91542a42bcb70a))
+* update script ([844015a](https://github.com/XxRexRaptorxX/MagmaCore/commit/844015a309c79b9a53b2d235957b5d8f6fb64fb6))
