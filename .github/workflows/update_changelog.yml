@@ -87,8 +87,7 @@ jobs:
             export CHANGELOG_VERSION="$VERSION"
             export CHANGELOG_MC_VERSION="$MC_VERSION"
             export CHANGELOG_DATE="$DATE"
-          
-            python3 << 'PY'
+          python3 << 'EOF'
           import re, os
           # Read the raw changelog
           with open('CHANGELOG_RAW.md', 'r', encoding='utf-8') as f:
