@@ -256,7 +256,7 @@ jobs:
               f.write(new_full)
 
           print("Merged changelog for version", version)
-            PY
+          PY
           else
             # version not existing: prepend new version at top (same as before)
             if [ -f "CHANGELOG.md" ]; then
