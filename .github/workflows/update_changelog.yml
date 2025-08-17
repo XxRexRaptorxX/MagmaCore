@@ -252,11 +252,15 @@ jobs:
 
           merged_block = '\n'.join(parts).rstrip() + '\n'
 
-            new_full = full[:start] + merged_block + full[end:]
+          # replace existing_block in full changelog (if present), else prepend
+          if existing_block:
+              new_full = full.replace(existing_block, merged_block)
+          else:
+              new_full = merged_block + '\n' + full
 
-            with open('CHANGELOG_LATEST.md','w',encoding='utf-8') as f:
+          with open('CHANGELOG_LATEST.md','w',encoding='utf-8') as f:
               f.write(merged_block)
-            with open('CHANGELOG.md','w',encoding='utf-8') as f:
+          with open('CHANGELOG.md','w',encoding='utf-8') as f:
               f.write(new_full)
 
           print("Merged changelog for version", version)
