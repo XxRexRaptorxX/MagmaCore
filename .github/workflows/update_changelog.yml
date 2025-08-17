@@ -72,6 +72,10 @@ jobs:
           DATE=$(date +'%d.%m.%Y')
           CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} — ${DATE}"
           
+          export VERSION
+          export MC_VERSION
+          export DATE
+          
           # Generate changelog from commits since last tag (if version exists) or all recent commits
           if [ "${{ env.version_exists }}" = "true" ] && [ -n "${{ env.last_tag_commit }}" ]; then
             # Generate changelog since last tag
