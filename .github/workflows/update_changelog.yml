@@ -75,7 +75,7 @@ jobs:
           # Generate changelog from commits since last tag (if version exists) or all recent commits
           if [ "${{ env.version_exists }}" = "true" ] && [ -n "${{ env.last_tag_commit }}" ]; then
             # Generate changelog since last tag
-            conventional-changelog --preset angular --release-count 0 --commit-range "${{ env.last_tag_commit }}..HEAD" > CHANGELOG_RAW.md
+            conventional-changelog --preset angular --release-count 0 --commit-range "${{ env.last_tag_commit }}.HEAD" > CHANGELOG_RAW.md
           else
             # Generate changelog for latest release
             conventional-changelog --preset angular --release-count 1 > CHANGELOG_RAW.md
@@ -85,80 +85,61 @@ jobs:
           if [ -s CHANGELOG_RAW.md ]; then
             # Pass variables as environment variables to Python
             export CHANGELOG_VERSION="$VERSION"
-            export CHANGELOG_MC_VERSION="$MC_VERSION" 
+            export CHANGELOG_MC_VERSION="$MC_VERSION"
             export CHANGELOG_DATE="$DATE"
           
             python3 << 'EOF'
-          import re
-          import sys
-          import os
-          
+          import re, os
           # Read the raw changelog
           with open('CHANGELOG_RAW.md', 'r', encoding='utf-8') as f:
               content = f.read()
-          
-          # Get variables from environment
+
           version = os.environ.get('CHANGELOG_VERSION', '1.0.0')
           mc_version = os.environ.get('CHANGELOG_MC_VERSION', '1.21')
           date = os.environ.get('CHANGELOG_DATE', '01.01.2025')
-          
-          # Custom header
+
           custom_header = f"# v.{version} for MC {mc_version} — {date}"
-          
-          # Remove the original header if it exists (starts with ## [version] or # version)
-          lines = content.split('\n')
+
+          # Remove top-most header lines if present
+          lines = content.splitlines()
           if lines and (lines[0].startswith('## [') or lines[0].startswith('# ')):
-              content = '\n'.join(lines[1:])
-          
-          # Parse sections
+              content = '\n'.join(lines[1:]).lstrip()
+
+          # Parse into sections
           sections = {}
           current_section = None
-          current_content = []
-          
-          for line in content.split('\n'):
+          buffer = []
+
+          for line in content.splitlines():
               if line.startswith('### '):
-                  # Save previous section
                   if current_section:
-                      sections[current_section] = '\n'.join(current_content).strip()
-                  # Start new section
-                  current_section = line[4:].strip()  # Remove "### "
-                  current_content = [line]
+                      sections[current_section] = '\n'.join(buffer).strip()
+                  current_section = line[4:].strip()
+                  buffer = [line]
               elif current_section:
-                  current_content.append(line)
-          
-          # Save last section
+                  buffer.append(line)
           if current_section:
-              sections[current_section] = '\n'.join(current_content).strip()
-          
-          # Define section order (Features first, then alphabetical)
-          section_order = []
+              sections[current_section] = '\n'.join(buffer).strip()
+
+          # Build order: Features first, then alphabetical others
+          order = []
           if 'Features' in sections:
-              section_order.append('Features')
-          
-          # Add other sections alphabetically
-          other_sections = sorted([s for s in sections.keys() if s != 'Features'])
-          section_order.extend(other_sections)
-          
-          # Build final changelog
+              order.append('Features')
+          order.extend(sorted([s for s in sections.keys() if s != 'Features']))
+
           result = [custom_header, '']
-          
-          for section_name in section_order:
-              if section_name in sections and sections[section_name].strip():
-                  result.append(sections[section_name])
-                  result.append('')  # Empty line between sections
-          
-          # Remove trailing empty lines
-          while result and result[-1] == '':
-              result.pop()
-          
-          # Write result
+          for sec in order:
+              if sections.get(sec, '').strip():
+                  result.append(sections[sec])
+                  result.append('')
+
+          # write latest
           with open('CHANGELOG_LATEST.md', 'w', encoding='utf-8') as f:
-              f.write('\n'.join(result) + '\n')
+              f.write('\n'.join(result).rstrip() + '\n')
+
+          print("Generated CHANGELOG_LATEST.md with sections: " + ", ".join(order))
+            EOF
           
-          print(f"Processed changelog with sections: {', '.join(section_order)}")
-          EOF
-          
-          # Clean up temp files
           rm -f CHANGELOG_RAW.md
           else
             # Fallback - create basic changelog
@@ -175,71 +156,126 @@ jobs:
         run: |
           VERSION=${{ env.mod_version }}
           MC_VERSION=${{ env.mc_version }}
-          
-          if [ "${{ env.version_exists }}" = "true" ]; then
-            # Replace existing version entry
-            echo "Updating existing version ${VERSION} in changelog"
-          
-            # Find the line number of the version to replace
-            VERSION_LINE=$(grep -n "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md | head -1 | cut -d: -f1)
-          
-            if [ -n "$VERSION_LINE" ]; then
-              # Get content before this version
-              if [ "$VERSION_LINE" -gt 1 ]; then
-                head -n $((VERSION_LINE - 1)) CHANGELOG.md > CHANGELOG_BEFORE.tmp
-              else
-                touch CHANGELOG_BEFORE.tmp
-              fi
-          
-              # Find the next version header to determine where current version ends
-              NEXT_VERSION_LINE=$(tail -n +$((VERSION_LINE + 1)) CHANGELOG.md | grep -n "^# v\." | head -1 | cut -d: -f1)
-              if [ -n "$NEXT_VERSION_LINE" ]; then
-                # There is a next version, get content after current version
-                tail -n +$((VERSION_LINE + NEXT_VERSION_LINE)) CHANGELOG.md > CHANGELOG_AFTER.tmp
-              else
-                # No next version, current version goes to end of file
-                touch CHANGELOG_AFTER.tmp
-              fi
-          
-              # Combine: before + new version + after
-              cat CHANGELOG_BEFORE.tmp > CHANGELOG.md
-              if [ -s CHANGELOG_BEFORE.tmp ]; then
-                echo "" >> CHANGELOG.md
-              fi
-              cat CHANGELOG_LATEST.md >> CHANGELOG.md
-              if [ -s CHANGELOG_AFTER.tmp ]; then
-                echo "" >> CHANGELOG.md
-                cat CHANGELOG_AFTER.tmp >> CHANGELOG.md
-              fi
-          
-              rm -f CHANGELOG_BEFORE.tmp CHANGELOG_AFTER.tmp
-            else
-              # Version not found, add at top (fallback)
-              cp CHANGELOG.md CHANGELOG_OLD.tmp
-              cp CHANGELOG_LATEST.md CHANGELOG.md
-              echo "" >> CHANGELOG.md
-              cat CHANGELOG_OLD.tmp >> CHANGELOG.md
-              rm -f CHANGELOG_OLD.tmp
-            fi
+          DATE=$(date +'%d.%m.%Y')
+          CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} — ${DATE}"
+
+          # If version exists, merge sections; otherwise prepend as before.
+          if [ -f "CHANGELOG_LATEST.md" ] && [ "${{ env.version_exists }}" = "true" ] && grep -q "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
+            echo "Merging changelog entries for existing version ${VERSION}"
+            python3 <<'PY'
+          import re, os
+          version = os.environ.get('VERSION')
+          mc_version = os.environ.get('MC_VERSION')
+          date = os.environ.get('DATE')
+
+          header_re = re.compile(rf"^# v\.{re.escape(version)} for MC {re.escape(mc_version)}.*$", re.M)
+
+          def parse_sections(text):
+              # returns dict: section_name -> list of lines (items + header line as first)
+              sections = {}
+              for m in re.finditer(r"(?:^### .*(?:\n(?:.*\n)*?))(?=(?:^### |\Z))", text, re.M):
+                  block = m.group(0).rstrip()
+                  lines = block.splitlines()
+                  sec_name = lines[0][4:].strip()
+                  # item lines are those starting with * or -
+                  items = [ln for ln in lines[1:] if ln.strip().startswith(('*','-'))]
+                  sections[sec_name] = items
+              return sections
+
+          # read latest (newly generated) and existing
+          with open('CHANGELOG_LATEST.md','r',encoding='utf-8') as f:
+              latest = f.read()
+
+          with open('CHANGELOG.md','r',encoding='utf-8') as f:
+              full = f.read()
+
+          # find existing version block
+          m = header_re.search(full)
+          if m:
+              start = m.start()
+              # find next header after start
+              rest = full[m.end():]
+              next_header = re.search(r"^# v\.", rest, re.M)
+              if next_header:
+                  end = m.end() + next_header.start()
+              else:
+                  end = len(full)
+              existing_block = full[start:end].strip()
+          else:
+              existing_block = ''
+
+          # parse sections
+          latest_body = '\n'.join(latest.splitlines()[1:]).lstrip()
+          latest_sections = parse_sections(latest_body)
+          existing_sections = parse_sections(existing_block)
+
+          # merge sections: keep order Features first then alphabetical other sections
+          merged_sections = {}
+          all_section_names = set(existing_sections.keys()) | set(latest_sections.keys())
+          ordered = []
+          if 'Features' in all_section_names:
+              ordered.append('Features')
+          other_names = sorted([n for n in all_section_names if n != 'Features'])
+          ordered.extend(other_names)
+
+          for name in ordered:
+              # start with existing items to preserve original ordering, then append new unique items from latest
+              existing_items = existing_sections.get(name, [])
+              latest_items = latest_sections.get(name, [])
+              merged = []
+              seen = set()
+              for it in existing_items + latest_items:
+                  it_stripped = it.strip()
+                  if it_stripped and it_stripped not in seen:
+                      merged.append(it.rstrip())
+                      seen.add(it_stripped)
+              merged_sections[name] = merged
+
+          # build merged block with updated header date
+          header = f"# v.{version} for MC {mc_version} — {date}"
+          parts = [header, '']
+          for name in ordered:
+              items = merged_sections.get(name, [])
+              if items:
+                  parts.append(f"### {name}")
+                  parts.append('')
+                  parts.extend(items)
+                  parts.append('')
+
+          merged_block = '\n'.join(parts).rstrip() + '\n'
+
+          # replace existing_block in full changelog (if present), else prepend
+          if existing_block:
+              new_full = full.replace(existing_block, merged_block)
+          else:
+              new_full = merged_block + '\n' + full
+
+          with open('CHANGELOG_LATEST.md','w',encoding='utf-8') as f:
+              f.write(merged_block)
+          with open('CHANGELOG.md','w',encoding='utf-8') as f:
+              f.write(new_full)
+
+          print("Merged changelog for version", version)
+            PY
           else
-            # Add new version at top
+            # version not existing: prepend new version at top (same as before)
             if [ -f "CHANGELOG.md" ]; then
               cp CHANGELOG.md CHANGELOG_OLD.tmp
             else
               touch CHANGELOG_OLD.tmp
             fi
-          
+
             cp CHANGELOG_LATEST.md CHANGELOG.md
-          
+
             if [ -s CHANGELOG_OLD.tmp ]; then
               echo "" >> CHANGELOG.md
               echo "" >> CHANGELOG.md
               cat CHANGELOG_OLD.tmp >> CHANGELOG.md
             fi
-          
+
             rm -f CHANGELOG_OLD.tmp
           fi
-          
+
           echo "Updated changelog for version ${VERSION}"
 
       - name: Clean up excessive empty lines only
