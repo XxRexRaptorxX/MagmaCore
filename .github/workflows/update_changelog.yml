@@ -64,7 +64,7 @@ jobs:
             echo "Version ${VERSION} does not exist in changelog"
           fi
 
-      - name: Generate and sort changelog
+      - name: Generate and sort changelogs
         if: env.has_new_commits == 'true'
         run: |
           VERSION=${{ env.mod_version }}
@@ -151,7 +151,7 @@ jobs:
             echo "" >> CHANGELOG_LATEST.md
           fi
 
-      - name: Update main changelog
+      - name: Update changelogs
         if: env.has_new_commits == 'true'
         run: |
           VERSION=${{ env.mod_version }}
@@ -159,6 +159,10 @@ jobs:
           DATE=$(date +'%d.%m.%Y')
           CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} — ${DATE}"
 
+          export VERSION
+          export MC_VERSION
+          export DATE
+  
           # If version exists, merge sections; otherwise prepend as before.
           if [ -f "CHANGELOG_LATEST.md" ] && [ "${{ env.version_exists }}" = "true" ] && grep -q "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
             echo "Merging changelog entries for existing version ${VERSION}"
