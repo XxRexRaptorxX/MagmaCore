@@ -20,7 +20,6 @@
 * automation tests ([9e805ba](https://github.com/XxRexRaptorxX/MagmaCore/commit/9e805bafdd1fc04519a2c76137708f4b08887d17))
 * automation tests ([ae56956](https://github.com/XxRexRaptorxX/MagmaCore/commit/ae569565cf6a4d4d2a8a28cd75dd43d974c2d953))
 * changelog automation test ([a7d8d01](https://github.com/XxRexRaptorxX/MagmaCore/commit/a7d8d017cdb20c822ddc05b7da269546aa832a24))
-* changelog automation test ([429af29](https://github.com/XxRexRaptorxX/MagmaCore/commit/429af29893fc6a1fda69067e649241b2c5dd26a8))
 * changelog automation test ([cb9860b](https://github.com/XxRexRaptorxX/MagmaCore/commit/cb9860b779337100f65230a7fc18df236924bfa5))
 * changelog automation test ([c7d874c](https://github.com/XxRexRaptorxX/MagmaCore/commit/c7d874c36df280ce02591907f2a26cfab8e84e41))
 * changelog automation test ([5f3cfc9](https://github.com/XxRexRaptorxX/MagmaCore/commit/5f3cfc91d8672cb854117e2a11d0306d7a550a9f))

@@ -162,131 +162,130 @@ jobs:
           MC_VERSION=${{ env.mc_version }}
           DATE=$(date +'%d.%m.%Y')
           CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} — ${DATE}"
-
-          export VERSION
-          export MC_VERSION
-          export DATE
-  
-          # If version exists, merge sections; otherwise prepend as before.
-          if [ -f "CHANGELOG_LATEST.md" ] && [ "${{ env.version_exists }}" = "true" ] && grep -q "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
+          
+          # wichtig: ins Environment exportieren
+          export VERSION MC_VERSION DATE
+          
+          # Wenn Version existiert: mergen; sonst prepend wie gehabt.
+          if [ -f "CHANGELOG_LATEST.md" ] && [ "${{ env.version_exists }}" = "true" ] && grep -Fq "# v.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
             echo "Merging changelog entries for existing version ${VERSION}"
             python3 <<'PY'
-          import re, os
-          version = os.environ.get('VERSION')
-          mc_version = os.environ.get('MC_VERSION')
-          date = os.environ.get('DATE')
-
-          header_re = re.compile(rf"^# v\.{re.escape(version)} for MC {re.escape(mc_version)}.*$", re.M)
-
-          def parse_sections(text):
-              # returns dict: section_name -> list of lines (items + header line as first)
-              sections = {}
-              for m in re.finditer(r"(?:^### .*(?:\n(?:.*\n)*?))(?=(?:^### |\Z))", text, re.M):
-                  block = m.group(0).rstrip()
-                  lines = block.splitlines()
-                  sec_name = lines[0][4:].strip()
-                  # item lines are those starting with * or -
-                  items = [ln for ln in lines[1:] if ln.strip().startswith(('*','-'))]
-                  sections[sec_name] = items
-              return sections
-
-          # read latest (newly generated) and existing
-          with open('CHANGELOG_LATEST.md','r',encoding='utf-8') as f:
-              latest = f.read()
-
-          with open('CHANGELOG.md','r',encoding='utf-8') as f:
-              full = f.read()
-
-          # find existing version block
+          
+          import os, re
+          
+          version    = os.environ['VERSION']
+          mc_version = os.environ['MC_VERSION']
+          date       = os.environ['DATE']
+          
+          # Robuste Header-Erkennung (beliebiger Text nach MC-Version, inkl. Datum/Strich)
+          header_re = re.compile(rf"^# v\.{re.escape(version)} for MC {re.escape(mc_version)}(?:.*)$", re.M)
+          next_header_re = re.compile(r"^# v\.", re.M)
+          
+          def parse_sections_lines(text:
+            str):
+                """Zeilenbasierter Parser: findet '### <Name>' und sammelt Bullet-Items ('*' oder '-')."""
+                  sections = {}
+                  current = None
+                  items = []
+                  for line in text.splitlines():
+                    if line.startswith("### "):
+                      if current is not None:
+                        sections[current] = items
+                      current = line[4:].strip()
+                      items = []
+                    elif current is not None:
+                      s = line.strip()
+                      if s.startswith(("*","-")):
+                        items.append(line.rstrip())
+                  if current is not None:
+                    sections[current] = items
+                  return sections
+          
+          with open("CHANGELOG_LATEST.md","r",encoding="utf-8") as f:
+            latest = f.read()
+          with open("CHANGELOG.md","r",encoding="utf-8") as f:
+            full = f.read()
+          
           m = header_re.search(full)
-          if m:
-              start = m.start()
-              # find next header after start
-              rest = full[m.end():]
-              next_header = re.search(r"^# v\.", rest, re.M)
-              if next_header:
-                  end = m.end() + next_header.start()
-              else:
-                  end = len(full)
-              existing_block = full[start:end].strip()
+          if not m:
+            # Falls der Header unerwartet formatiert ist, prependen wir lieber (kein Datenverlust).
+            merged_block = latest
+            new_full = merged_block + ("\n\n" + full if full.strip() else "")
           else:
-              existing_block = ''
-
-          # parse sections
-          latest_body = '\n'.join(latest.splitlines()[1:]).lstrip()
-          latest_sections = parse_sections(latest_body)
-          existing_sections = parse_sections(existing_block)
-
-          # merge sections: keep order Features first then alphabetical other sections
-          merged_sections = {}
-          all_section_names = set(existing_sections.keys()) | set(latest_sections.keys())
-          ordered = []
-          if 'Features' in all_section_names:
-              ordered.append('Features')
-          other_names = sorted([n for n in all_section_names if n != 'Features'])
-          ordered.extend(other_names)
-
-          for name in ordered:
-              # start with existing items to preserve original ordering, then append new unique items from latest
-              existing_items = existing_sections.get(name, [])
-              latest_items = latest_sections.get(name, [])
-              merged = []
+            # Exakten Blockbereich [start:end) bestimmen, NICHT strippen, und mit Slices ersetzen
+            start = m.start()
+            rest  = full[m.end():]
+            m2 = next_header_re.search(rest)
+            end = m.end() + (m2.start() if m2 else len(rest))
+            existing_block = full[start:end]
+            
+            # Bodies für Parsing vorbereiten
+            latest_body = "\n".join(latest.splitlines()[1:]).lstrip()
+            existing_body = existing_block
+            
+            latest_sections   = parse_sections_lines(latest_body)
+            existing_sections = parse_sections_lines(existing_body)
+            
+            # Vereinigen: 'Features' zuerst, dann alphabetisch
+            all_names = set(existing_sections) | set(latest_sections)
+            ordered = (["Features"] if "Features" in all_names else []) + sorted(n for n in all_names if n != "Features")
+            
+            merged_sections = {}
+            for name in ordered:
               seen = set()
-              for it in existing_items + latest_items:
-                  it_stripped = it.strip()
-                  if it_stripped and it_stripped not in seen:
-                      merged.append(it.rstrip())
-                      seen.add(it_stripped)
+              merged = []
+              for it in existing_sections.get(name, []) + latest_sections.get(name, []):
+                s = it.strip()
+                if s and s not in seen:
+                  merged.append(it.rstrip())
+                  seen.add(s)
               merged_sections[name] = merged
-
-          # build merged block with updated header date
-          header = f"# v.{version} for MC {mc_version} — {date}"
-          parts = [header, '']
-          for name in ordered:
+            
+            header_line = f"# v.{version} for MC {mc_version} — {date}"
+            parts = [header_line, ""]
+            for name in ordered:
               items = merged_sections.get(name, [])
               if items:
-                  parts.append(f"### {name}")
-                  parts.append('')
-                  parts.extend(items)
-                  parts.append('')
-
-          merged_block = '\n'.join(parts).rstrip() + '\n'
-
-          # replace existing_block in full changelog (if present), else prepend
-          if existing_block:
-              new_full = full.replace(existing_block, merged_block)
-          else:
-              new_full = merged_block + '\n' + full
-
-          with open('CHANGELOG_LATEST.md','w',encoding='utf-8') as f:
-              f.write(merged_block)
-          with open('CHANGELOG.md','w',encoding='utf-8') as f:
-              f.write(new_full)
-
+                parts.append(f"### {name}")
+                parts.append("")
+                parts.extend(items)
+                parts.append("")
+            merged_block = ("\n".join(parts)).rstrip() + "\n"
+            
+            # Sichere Ersetzung per Slices
+            new_full = full[:start] + merged_block + full[end:]
+          
+          # Dateien schreiben
+          with open("CHANGELOG_LATEST.md","w",encoding="utf-8") as f:
+            f.write(merged_block)
+          with open("CHANGELOG.md","w",encoding="utf-8") as f:
+            f.write(new_full)
+          
           print("Merged changelog for version", version)
           PY
           else
-            # version not existing: prepend new version at top (same as before)
-            if [ -f "CHANGELOG.md" ]; then
-              cp CHANGELOG.md CHANGELOG_OLD.tmp
-            else
-              touch CHANGELOG_OLD.tmp
-            fi
-
-            cp CHANGELOG_LATEST.md CHANGELOG.md
-
-            if [ -s CHANGELOG_OLD.tmp ]; then
-              echo "" >> CHANGELOG.md
-              echo "" >> CHANGELOG.md
-              cat CHANGELOG_OLD.tmp >> CHANGELOG.md
-            fi
-
-            rm -f CHANGELOG_OLD.tmp
+          # version nicht vorhanden: prepend (vorherige Logik)
+          if [ -f "CHANGELOG.md" ]; then
+          cp CHANGELOG.md CHANGELOG_OLD.tmp
+          else
+          touch CHANGELOG_OLD.tmp
           fi
-
+          
+          cp CHANGELOG_LATEST.md CHANGELOG.md
+          
+          if [ -s CHANGELOG_OLD.tmp ]; then
+          echo "" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          cat CHANGELOG_OLD.tmp >> CHANGELOG.md
+          fi
+          
+          rm -f CHANGELOG_OLD.tmp
+          fi
+          
           echo "Updated changelog for version ${VERSION}"
+  
 
-      - name: Clean up excessive empty lines only
+  - name: Clean up excessive empty lines only
         if: env.has_new_commits == 'true'
         run: |
           for file in CHANGELOG.md CHANGELOG_LATEST.md; do
