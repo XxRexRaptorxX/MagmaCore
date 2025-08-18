@@ -227,7 +227,6 @@ jobs:
           echo "version_header=$version" >> $GITHUB_OUTPUT
           echo "mc_header=$mc_header_upper" >> $GITHUB_OUTPUT
 
-
       - name: Update CHANGELOG.MD
         run: |
           set -eux
