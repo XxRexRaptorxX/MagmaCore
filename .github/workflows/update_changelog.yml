@@ -1,11 +1,10 @@
-name: Update Changelog
+# English comments inside file as requested
+name: Update changelogs
 
 on:
   push:
-    branches:
-      - '**'
-    tags:
-      - 'v*.*.*'
+    # run on pushes to any branch; you can restrict to main if you want
+    branches: ['**']
 
 permissions:
   contents: write
@@ -13,333 +12,27 @@ permissions:
 jobs:
   update-changelog:
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/heads/')
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
+          # we need full history for git log ranges
           fetch-depth: 0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      - name: Install conventional-changelog
-        run: npm install -g conventional-changelog-cli
-
-      - name: Read versions from gradle.properties
-        id: read_versions
+      - name: Run changelog updater
+        # this step runs the script that computes and updates the changelogs
+        env:
+          # range boundaries from GitHub event context
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
         run: |
-          MOD_VERSION=$(grep "^mod_version=" gradle.properties | cut -d'=' -f2 | tr -d '\r\n' | xargs)
-          MC_VERSION=$(grep "^minecraft_version=" gradle.properties | cut -d'=' -f2 | tr -d '\r\n' | xargs)
-          echo "mod_version=$MOD_VERSION" >> $GITHUB_ENV
-          echo "mc_version=$MC_VERSION" >> $GITHUB_ENV
-
-      - name: Check if version exists and get last commit
-        id: version_check
-        run: |
-          VERSION=${{ env.mod_version }}
-          MC_VERSION=${{ env.mc_version }}
-          
-          if [ -f "CHANGELOG.md" ] && grep -q "^# v\.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
-            echo "version_exists=true" >> $GITHUB_ENV
-            # Get the commit hash of the last tag for this version
-            LAST_TAG_COMMIT=$(git rev-list -n 1 "v${VERSION}" 2>/dev/null || echo "")
-            CURRENT_COMMIT=$(git rev-parse HEAD)
-            echo "last_tag_commit=$LAST_TAG_COMMIT" >> $GITHUB_ENV
-            echo "current_commit=$CURRENT_COMMIT" >> $GITHUB_ENV
-          
-            if [ "$LAST_TAG_COMMIT" != "$CURRENT_COMMIT" ]; then
-              echo "has_new_commits=true" >> $GITHUB_ENV
-              echo "Version ${VERSION} exists but has new commits since last tag"
-            else
-              echo "has_new_commits=false" >> $GITHUB_ENV
-              echo "Version ${VERSION} exists and no new commits found"
-            fi
-          else
-            echo "version_exists=false" >> $GITHUB_ENV
-            echo "has_new_commits=true" >> $GITHUB_ENV
-            echo "Version ${VERSION} does not exist in changelog"
-          fi
-
-      - name: Generate and sort changelogs
-        if: env.has_new_commits == 'true'
-        run: |
-          VERSION=${{ env.mod_version }}
-          MC_VERSION=${{ env.mc_version }}
-          DATE=$(date +'%d.%m.%Y')
-          CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} — ${DATE}"
-          
-          export VERSION
-          export MC_VERSION
-          export DATE
-          
-          # Generate changelog from commits since last tag (if version exists) or all recent commits
-          if [ "${{ env.version_exists }}" = "true" ] && [ -n "${{ env.last_tag_commit }}" ]; then
-            # Generate changelog since last tag
-            conventional-changelog --preset angular --release-count 0 --commit-range "${{ env.last_tag_commit }}..HEAD" > CHANGELOG_RAW.md
-          else
-            # Generate changelog for latest release
-            conventional-changelog --preset angular --release-count 1 > CHANGELOG_RAW.md
-          fi
-          
-          # Process and restructure the changelog using Python
-          if [ -s CHANGELOG_RAW.md ]; then
-            # Pass variables as environment variables to Python
-            export CHANGELOG_VERSION="$VERSION"
-            export CHANGELOG_MC_VERSION="$MC_VERSION"
-            export CHANGELOG_DATE="$DATE"
-          
-          python3 << 'EOF'
-          import re, os
-          # Read the raw changelog
-          with open('CHANGELOG_RAW.md', 'r', encoding='utf-8') as f:
-              content = f.read()
-
-          version = os.environ.get('CHANGELOG_VERSION', '1.0.0')
-          mc_version = os.environ.get('CHANGELOG_MC_VERSION', '1.21')
-          date = os.environ.get('CHANGELOG_DATE', '01.01.2025')
-
-          custom_header = f"# v.{version} for MC {mc_version} — {date}"
-
-          # Remove top-most header lines if present
-          lines = content.splitlines()
-          if lines and (lines[0].startswith('## [') or lines[0].startswith('# ')):
-              content = '\n'.join(lines[1:]).lstrip()
-
-          # Parse into sections
-          sections = {}
-          current_section = None
-          buffer = []
-
-          for line in content.splitlines():
-              if line.startswith('### '):
-                  if current_section:
-                      sections[current_section] = '\n'.join(buffer).strip()
-                  current_section = line[4:].strip()
-                  buffer = [line]
-              elif current_section:
-                  buffer.append(line)
-          if current_section:
-              sections[current_section] = '\n'.join(buffer).strip()
-
-          # Build order: Features first, then alphabetical others
-          order = []
-          if 'Features' in sections:
-              order.append('Features')
-          order.extend(sorted([s for s in sections.keys() if s != 'Features']))
-
-          result = [custom_header, '']
-          for sec in order:
-              if sections.get(sec, '').strip():
-                  result.append(sections[sec])
-                  result.append('')
-
-          # write latest
-          with open('CHANGELOG_LATEST.md', 'w', encoding='utf-8') as f:
-              f.write('\n'.join(result).rstrip() + '\n')
-
-          print("Generated CHANGELOG_LATEST.md with sections: " + ", ".join(order))
-          EOF
-          
-          rm -f CHANGELOG_RAW.md
-          else
-            # Fallback - create basic changelog
-            echo "${CUSTOM_HEADER}" > CHANGELOG_LATEST.md
-            echo "" >> CHANGELOG_LATEST.md
-            echo "### Features" >> CHANGELOG_LATEST.md
-            echo "" >> CHANGELOG_LATEST.md
-            echo "* Release version ${VERSION}" >> CHANGELOG_LATEST.md
-            echo "" >> CHANGELOG_LATEST.md
-          fi
-
-      - name: Update changelogs
-        if: env.has_new_commits == 'true'
-        run: |
-          VERSION=${{ env.mod_version }}
-          MC_VERSION=${{ env.mc_version }}
-          DATE=$(date +'%d.%m.%Y')
-          CUSTOM_HEADER="# v.${VERSION} for MC ${MC_VERSION} — ${DATE}"
-          
-          # wichtig: ins Environment exportieren
-          export VERSION MC_VERSION DATE
-          
-          # Wenn Version existiert: mergen; sonst prepend wie gehabt.
-          if [ -f "CHANGELOG_LATEST.md" ] && [ "${{ env.version_exists }}" = "true" ] && grep -Fq "# v.${VERSION} for MC ${MC_VERSION}" CHANGELOG.md; then
-            echo "Merging changelog entries for existing version ${VERSION}"
-            python3 <<'PY'
-          
-          import os, re
-          
-          version    = os.environ['VERSION']
-          mc_version = os.environ['MC_VERSION']
-          date       = os.environ['DATE']
-          
-          # Robuste Header-Erkennung (beliebiger Text nach MC-Version, inkl. Datum/Strich)
-          header_re = re.compile(rf"^# v\.{re.escape(version)} for MC {re.escape(mc_version)}(?:.*)$", re.M)
-          next_header_re = re.compile(r"^# v\.", re.M)
-          
-          def parse_sections_lines(text:
-            str):
-                """Zeilenbasierter Parser: findet '### <Name>' und sammelt Bullet-Items ('*' oder '-')."""
-                  sections = {}
-                  current = None
-                  items = []
-                  for line in text.splitlines():
-                    if line.startswith("### "):
-                      if current is not None:
-                        sections[current] = items
-                      current = line[4:].strip()
-                      items = []
-                    elif current is not None:
-                      s = line.strip()
-                      if s.startswith(("*","-")):
-                        items.append(line.rstrip())
-                  if current is not None:
-                    sections[current] = items
-                  return sections
-          
-          with open("CHANGELOG_LATEST.md","r",encoding="utf-8") as f:
-            latest = f.read()
-          with open("CHANGELOG.md","r",encoding="utf-8") as f:
-            full = f.read()
-          
-          m = header_re.search(full)
-          if not m:
-            # Falls der Header unerwartet formatiert ist, prependen wir lieber (kein Datenverlust).
-            merged_block = latest
-            new_full = merged_block + ("\n\n" + full if full.strip() else "")
-          else:
-            # Exakten Blockbereich [start:end) bestimmen, NICHT strippen, und mit Slices ersetzen
-            start = m.start()
-            rest  = full[m.end():]
-            m2 = next_header_re.search(rest)
-            end = m.end() + (m2.start() if m2 else len(rest))
-            existing_block = full[start:end]
-            
-            # Bodies für Parsing vorbereiten
-            latest_body = "\n".join(latest.splitlines()[1:]).lstrip()
-            existing_body = existing_block
-            
-            latest_sections   = parse_sections_lines(latest_body)
-            existing_sections = parse_sections_lines(existing_body)
-            
-            # Vereinigen: 'Features' zuerst, dann alphabetisch
-            all_names = set(existing_sections) | set(latest_sections)
-            ordered = (["Features"] if "Features" in all_names else []) + sorted(n for n in all_names if n != "Features")
-            
-            merged_sections = {}
-            for name in ordered:
-              seen = set()
-              merged = []
-              for it in existing_sections.get(name, []) + latest_sections.get(name, []):
-                s = it.strip()
-                if s and s not in seen:
-                  merged.append(it.rstrip())
-                  seen.add(s)
-              merged_sections[name] = merged
-            
-            header_line = f"# v.{version} for MC {mc_version} — {date}"
-            parts = [header_line, ""]
-            for name in ordered:
-              items = merged_sections.get(name, [])
-              if items:
-                parts.append(f"### {name}")
-                parts.append("")
-                parts.extend(items)
-                parts.append("")
-            merged_block = ("\n".join(parts)).rstrip() + "\n"
-            
-            # Sichere Ersetzung per Slices
-            new_full = full[:start] + merged_block + full[end:]
-          
-          # Dateien schreiben
-          with open("CHANGELOG_LATEST.md","w",encoding="utf-8") as f:
-            f.write(merged_block)
-          with open("CHANGELOG.md","w",encoding="utf-8") as f:
-            f.write(new_full)
-          
-          print("Merged changelog for version", version)
-          PY
-          else
-          # version nicht vorhanden: prepend (vorherige Logik)
-          if [ -f "CHANGELOG.md" ]; then
-          cp CHANGELOG.md CHANGELOG_OLD.tmp
-          else
-          touch CHANGELOG_OLD.tmp
-          fi
-          
-          cp CHANGELOG_LATEST.md CHANGELOG.md
-          
-          if [ -s CHANGELOG_OLD.tmp ]; then
-          echo "" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          cat CHANGELOG_OLD.tmp >> CHANGELOG.md
-          fi
-          
-          rm -f CHANGELOG_OLD.tmp
-          fi
-          
-          echo "Updated changelog for version ${VERSION}"
-  
-
-  - name: Clean up excessive empty lines only
-        if: env.has_new_commits == 'true'
-        run: |
-          for file in CHANGELOG.md CHANGELOG_LATEST.md; do
-            if [ -f "$file" ]; then
-              awk 'BEGIN{blank=0} /^$/{blank++; if(blank<=2) print} !/^$/{blank=0; print}' "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
-            fi
-          done
-
-      - name: Commit & push changelogs
-        if: env.has_new_commits == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Check if changelogs have changes
-          CHANGES_MADE=false
-          if ! git diff --quiet CHANGELOG.md 2>/dev/null; then
-            echo "Changes detected in CHANGELOG.md"
-            CHANGES_MADE=true
-          else
-            echo "No changes to CHANGELOG.md"
-          fi
-          
-          if ! git diff --quiet CHANGELOG_LATEST.md 2>/dev/null; then
-            echo "Changes detected in CHANGELOG_LATEST.md"
-            CHANGES_MADE=true
-          else
-            echo "No changes to CHANGELOG_LATEST.md"
-          fi
-          
-          if [ "$CHANGES_MADE" = true ]; then
-            git add CHANGELOG.md CHANGELOG_LATEST.md
-          
-            if [ "${{ env.version_exists }}" = "true" ]; then
-              git commit -m "chore: update changelog for existing v${{ env.mod_version }} with new commits"
-            else
-              git commit -m "chore: update changelogs for v${{ env.mod_version }}"
-            fi
-          
-            git push origin HEAD:${{ github.ref_name }}
-            echo "Changelogs updated and pushed"
-          else
-            echo "No changelog changes to commit"
-          fi
-          
-          # Update or create tag
-          if git rev-parse v${{ env.mod_version }} >/dev/null 2>&1; then
-            # Tag exists, update it to point to current commit
-            git tag -f v${{ env.mod_version }}
-            git push -f origin v${{ env.mod_version }}
-            echo "Updated tag v${{ env.mod_version }} to current commit"
-          else
-            # Create new tag
-            git tag v${{ env.mod_version }}
-            git push origin v${{ env.mod_version }}
-            echo "Created and pushed tag v${{ env.mod_version }}"
-          fi
+          node .github/scripts/update-changelog.js
