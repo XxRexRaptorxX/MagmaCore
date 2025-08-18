@@ -26,3 +26,7 @@
 * test ([8182f56](https://github.com/XxRexRaptorxX/MagmaCore/commit/8182f56b48e26bd5e66a74263371453b956f35f0))
 * test ([271e779](https://github.com/XxRexRaptorxX/MagmaCore/commit/271e7790b9752fdac1a648fc590dbf51e2b14f08))
 * test ([2d8dccf](https://github.com/XxRexRaptorxX/MagmaCore/commit/2d8dccf675a17e2c891a3720b1700c8ffacb26e2))
+
+### Features
+
+* Herobrine easter egg ([2c98f0e](https://github.com/XxRexRaptorxX/MagmaCore/commit/2c98f0ed8123e7d7718dbfb4c2aa9d5417a99c23))
