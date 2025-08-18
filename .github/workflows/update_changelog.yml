@@ -126,13 +126,25 @@ jobs:
       - name: Check if version exists in CHANGELOG.MD
         id: version_check
         run: |
-          version_header="v.${{ steps.gradle_props.outputs.mod_version }} for MC ${{ steps.gradle_props.outputs.game_versions }}"
-          if [ -f "CHANGELOG.MD" ] && grep -q "## $version_header" CHANGELOG.MD; then
-            echo "version_exists=true" >> $GITHUB_OUTPUT
+          # set -e optional zum fail-fast
+          set -eux
+
+          version="v.${{ steps.gradle_props.outputs.mod_version }}"
+          mc_versions="${{ steps.gradle_props.outputs.game_versions }}"
+
+          # Prüfen ob Version bereits existiert (achte auf genaues ^## match)
+          if [ -f "CHANGELOG.MD" ] && grep -q "^## $version" CHANGELOG.MD; then
+            version_exists="true"
           else
-            echo "version_exists=false" >> $GITHUB_OUTPUT
+            version_exists="false"
           fi
-          echo "version_header=$version_header" >> $GITHUB_OUTPUT
+
+          # Erzeuge MC-Header in UPPERCASE mit ###
+          mc_header_upper=$(printf "### FOR MC %s" "$mc_versions" | tr '[:lower:]' '[:upper:]')
+
+          echo "version_exists=$version_exists" >> $GITHUB_OUTPUT
+          echo "version_header=$version" >> $GITHUB_OUTPUT
+          echo "mc_header=$mc_header_upper" >> $GITHUB_OUTPUT
 
       - name: Generate temporary changelog
         run: |
@@ -192,33 +204,74 @@ jobs:
             echo "processed_content.md does not exist"
           fi
 
-      - name: Update LATEST_CHANGELOG.MD
+      - name: Check if version exists in CHANGELOG.MD
+        id: version_check
         run: |
+          # set -e optional zum fail-fast
           set -eux
-          version_header="## ${{ steps.version_check.outputs.version_header }}"
-          echo "$version_header" > LATEST_CHANGELOG.MD
-          echo "" >> LATEST_CHANGELOG.MD
-          if [ -s processed_content.md ]; then
-            cat processed_content.md >> LATEST_CHANGELOG.MD
+
+          version="v.${{ steps.gradle_props.outputs.mod_version }}"
+          mc_versions="${{ steps.gradle_props.outputs.game_versions }}"
+
+          # Prüfen ob Version bereits existiert (achte auf genaues ^## match)
+          if [ -f "CHANGELOG.MD" ] && grep -q "^## $version" CHANGELOG.MD; then
+            version_exists="true"
           else
-            echo "No notable changes." >> LATEST_CHANGELOG.MD
+            version_exists="false"
           fi
-          ls -la LATEST_CHANGELOG.MD
-          sed -n '1,200p' LATEST_CHANGELOG.MD || true
+
+          # Erzeuge MC-Header in UPPERCASE mit ###
+          mc_header_upper=$(printf "### FOR MC %s" "$mc_versions" | tr '[:lower:]' '[:upper:]')
+
+          echo "version_exists=$version_exists" >> $GITHUB_OUTPUT
+          echo "version_header=$version" >> $GITHUB_OUTPUT
+          echo "mc_header=$mc_header_upper" >> $GITHUB_OUTPUT
+
 
       - name: Update CHANGELOG.MD
         run: |
           set -eux
           version_header="## ${{ steps.version_check.outputs.version_header }}"
+          mc_header="${{ steps.version_check.outputs.mc_header }}"
+
           if [ "${{ steps.version_check.outputs.version_exists }}" = "true" ]; then
+            # Version exists - replace the block for this version: insert MC header + new content
             if [ -s processed_content.md ]; then
-              # replace version block (keep your awk logic)...
-              awk -v header="$version_header" -v new_content="$(cat processed_content.md)" '...same as before...' CHANGELOG.MD > temp_changelog_full.md && mv temp_changelog_full.md CHANGELOG.MD
+              awk -v header="$version_header" -v mc="$mc_header" -v newc="$(sed ':a;N;$!ba;s/\\/\\n/\\n/g' processed_content.md)" '
+              BEGIN { in_version = 0; content_added = 0 }
+              $0 == header {
+                print $0
+                print mc
+                in_version = 1
+                next
+              }
+              /^## / && in_version && !content_added {
+                # Found next version header, insert new content before it
+                print newc
+                print ""
+                content_added = 1
+                in_version = 0
+                print $0
+                next
+              }
+              !in_version || content_added {
+                print $0
+                next
+              }
+              # If we are inside version and reach EOF without inserting, append new content
+              END {
+                if (in_version && !content_added) {
+                  print newc
+                }
+              }
+              ' CHANGELOG.MD > temp_changelog_full.md && mv temp_changelog_full.md CHANGELOG.MD
             fi
           else
+            # Version doesn't exist - prepend version header + MC header + content
             if [ -f "CHANGELOG.MD" ]; then
               {
                 echo "$version_header"
+                echo "$mc_header"
                 echo ""
                 if [ -s processed_content.md ]; then
                   cat processed_content.md
@@ -229,9 +282,11 @@ jobs:
                 cat CHANGELOG.MD
               } > temp_changelog_full.md && mv temp_changelog_full.md CHANGELOG.MD
             else
+              # Create new CHANGELOG.MD with MC header
               echo "# Changelog" > CHANGELOG.MD
               echo "" >> CHANGELOG.MD
               echo "$version_header" >> CHANGELOG.MD
+              echo "$mc_header" >> CHANGELOG.MD
               echo "" >> CHANGELOG.MD
               if [ -s processed_content.md ]; then
                 cat processed_content.md >> CHANGELOG.MD
@@ -240,6 +295,7 @@ jobs:
               fi
             fi
           fi
+
           ls -la CHANGELOG.MD
           sed -n '1,200p' CHANGELOG.MD || true
 
