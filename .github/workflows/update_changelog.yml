@@ -158,7 +158,6 @@ jobs:
           printf 'version_exists=%s\n' "$version_exists" >> $GITHUB_OUTPUT
           printf 'version_header=%s\n' "$version_header" >> $GITHUB_OUTPUT
 
-
       - name: Generate temporary changelog
         run: |
           # Get the latest commit hash to generate changelog from all commits since last tag
