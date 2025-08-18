@@ -155,10 +155,9 @@ jobs:
         run: |
           version_header="## ${{ steps.version_check.outputs.version_header }}"
           
-          echo "# Changelog" > LATEST_CHANGELOG.md
-          echo "" >> LATEST_CHANGELOG.md
-          echo "$version_header" >> LATEST_CHANGELOG.md
-          echo "" >> LATEST_CHANGELOG.md
+          # Write header as a single line
+          printf '# Changelog' > LATEST_CHANGELOG.md
+          printf '%s\n' "$version_header" > LATEST_CHANGELOG.md
           
           # Add processed content if it exists and is not empty
           if [ -s processed_content.md ]; then
