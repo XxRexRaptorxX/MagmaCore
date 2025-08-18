@@ -257,48 +257,38 @@ jobs:
           mod_ver="v.${{ steps.gradle_props.outputs.mod_version }}"
 
           if [ "${{ steps.version_check.outputs.version_exists }}" = "true" ]; then
-            # Version exists - replace the existing version block with our new header + processed content
             if [ -s processed_content.md ]; then
               awk -v modver="$mod_ver" -v header="$version_header" '
-              BEGIN {
-                # Read new content from processed_content.md into variable "new"
-                new = ""
-                while ((getline line < "processed_content.md") > 0) {
-                  new = new line "\n"
+                BEGIN {
+                  new = ""
+                  while ((getline line < "processed_content.md") > 0) {
+                    new = new line "\n"
+                  }
+                  close("processed_content.md")
+                  replaced = 0
+                  skip = 0
                 }
-                close("processed_content.md")
-                replaced = 0
-                skip = 0
-              }
-              {
-                # If we haven't replaced yet and this is a version header containing our mod version -> replace
-                if (!replaced && /^## / && index($0, modver)) {
-                  print header            # print canonical single-line header
-                  print ""                # blank line
-                  printf "%s", new       # print new content (preserves newlines)
-                  replaced = 1
-                  skip = 1               # skip old block lines until next '## ' header
-                  next
-                }
-                # While skipping old block lines, look for the next header to stop skipping
-                if (skip) {
-                  if (/^## /) {
-                    skip = 0
-                    print $0
-                  } else {
+                {
+                  if (!replaced && /^## / && index($0, modver)) {
+                    print header
+                    print ""
+                    printf "%s", new
+                    replaced = 1
+                    skip = 1
                     next
                   }
-                } else {
+                  if (skip) {
+                    if (/^## /) {
+                      skip = 0
+                      print $0
+                    }
+                    next
+                  }
                   print $0
                 }
-              }
-              END {
-                # If we reached EOF while still in the old block, we already printed the replacement
-              }
               ' CHANGELOG.MD > temp_changelog_full.md && mv temp_changelog_full.md CHANGELOG.MD
             fi
           else
-            # Version doesn't exist - add new version at the top (unchanged logic)
             if [ -f "CHANGELOG.MD" ]; then
               {
                 echo "$version_header"
