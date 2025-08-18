@@ -237,13 +237,10 @@ jobs:
       - name: Update LATEST_CHANGELOG.md
         run: |
           version_header="## ${{ steps.version_check.outputs.version_header }}"
-
-          # Create LATEST_CHANGELOG.md with the same top-level header and spacing as CHANGELOG.md
-          echo "# Changelog" > LATEST_CHANGELOG.md
-          echo "" >> LATEST_CHANGELOG.md
-          echo "$version_header" >> LATEST_CHANGELOG.md
-          echo "" >> LATEST_CHANGELOG.md
-
+          
+          # Write header as a single line
+          printf '%s\n' "$version_header" > LATEST_CHANGELOG.md
+          
           # Add processed content if it exists and is not empty
           if [ -s processed_content.md ]; then
             cat processed_content.md >> LATEST_CHANGELOG.md
@@ -251,45 +248,50 @@ jobs:
             echo "No notable changes." >> LATEST_CHANGELOG.md
           fi
 
-      - name: Update CHANGELOG.MD
+      - name: Update CHANGELOG.md
         run: |
           version_header="## ${{ steps.version_check.outputs.version_header }}"
-          mod_ver="v.${{ steps.gradle_props.outputs.mod_version }}"
-
+          
           if [ "${{ steps.version_check.outputs.version_exists }}" = "true" ]; then
+            # Version exists - merge new commits into existing version
             if [ -s processed_content.md ]; then
-              awk -v modver="$mod_ver" -v header="$version_header" '
-                BEGIN {
-                  new = ""
-                  while ((getline line < "processed_content.md") > 0) {
-                    new = new line "\n"
+              # Replace the existing version block (if present) by inserting new content right after the version header
+              # Simple approach: prepend our new block, then remove the old version block (first occurrence) to avoid duplicates.
+              # Prepend new block to beginning (we'll then remove the older block)
+              {
+                echo "$version_header"
+                echo ""
+                cat processed_content.md
+                echo ""
+                # then append the whole current changelog (we'll remove the old block below)
+                cat CHANGELOG.md
+              } > temp_changelog_full.md
+
+              # Remove the old (first) occurrence of that version block from temp_changelog_full.md
+              # This searches for a header line that contains the module version and deletes from that header until the next '## ' header.
+              MOD_VER="v.${{ steps.gradle_props.outputs.mod_version }}"
+              awk -v mv="$MOD_VER" '
+                BEGIN { in_block=0; block_removed=0 }
+                /^## / {
+                  if (!block_removed && index($0, mv)) {
+                    # start skipping this old block
+                    in_block=1
+                    next
                   }
-                  close("processed_content.md")
-                  replaced = 0
-                  skip = 0
+                }
+                /^## / && in_block {
+                  # reached next header -> stop skipping and print this header
+                  in_block=0
                 }
                 {
-                  if (!replaced && /^## / && index($0, modver)) {
-                    print header
-                    print ""
-                    printf "%s", new
-                    replaced = 1
-                    skip = 1
-                    next
-                  }
-                  if (skip) {
-                    if (/^## /) {
-                      skip = 0
-                      print $0
-                    }
-                    next
-                  }
-                  print $0
+                  if (!in_block) print
                 }
-              ' CHANGELOG.MD > temp_changelog_full.md && mv temp_changelog_full.md CHANGELOG.MD
+                ' temp_changelog_full.md > temp_changelog_final.md && mv temp_changelog_final.md CHANGELOG.md || mv temp_changelog_full.md CHANGELOG.md
             fi
           else
-            if [ -f "CHANGELOG.MD" ]; then
+            # Version doesn't exist - add new version at the top
+            if [ -f "CHANGELOG.md" ]; then
+              # Prepend new version to existing changelog
               {
                 echo "$version_header"
                 echo ""
@@ -299,17 +301,18 @@ jobs:
                   echo "No notable changes."
                 fi
                 echo ""
-                cat CHANGELOG.MD
-              } > temp_changelog_full.md && mv temp_changelog_full.md CHANGELOG.MD
+                cat CHANGELOG.md
+              } > temp_changelog_full.md && mv temp_changelog_full.md CHANGELOG.md
             else
-              echo "# Changelog" > CHANGELOG.MD
-              echo "" >> CHANGELOG.MD
-              echo "$version_header" >> CHANGELOG.MD
-              echo "" >> CHANGELOG.MD
+              # Create new CHANGELOG.md
+              echo "# Changelog" > CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              echo "$version_header" >> CHANGELOG.md
+              echo "" >> CHANGELOG.md
               if [ -s processed_content.md ]; then
-                cat processed_content.md >> CHANGELOG.MD
+                cat processed_content.md >> CHANGELOG.md
               else
-                echo "No notable changes." >> CHANGELOG.MD
+                echo "No notable changes." >> CHANGELOG.md
               fi
             fi
           fi
