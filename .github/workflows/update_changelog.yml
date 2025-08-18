@@ -17,43 +17,6 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          # explizit ref setzen ist optional, github will checkout the pushed ref by default
-          ref: ${{ github.ref }}
-
-      - name: Determine and prepare branch (make local branch track origin if possible)
-        id: determine_branch
-        run: |
-          set -euo pipefail
-          # Determine branch name
-          if [[ "${GITHUB_REF}" == refs/heads/* ]]; then
-            BRANCH="${GITHUB_REF#refs/heads/}"
-          elif [[ -n "${GITHUB_REF_NAME:-}" ]]; then
-            BRANCH="${GITHUB_REF_NAME}"
-          else
-            BRANCH="$(git rev-parse --abbrev-ref HEAD || echo "")"
-          fi
-
-          # Fallback if branch still empty (rare)
-          if [ -z "$BRANCH" ]; then
-            BRANCH="main"
-          fi
-
-          echo "Detected branch: $BRANCH"
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-
-          # Ensure we have all refs and pruned
-          git fetch --all --prune
-
-          # If origin has the branch, create/reset local branch to track origin/<branch>
-          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
-            git checkout -B "$BRANCH" "origin/$BRANCH"
-            git branch --set-upstream-to="origin/$BRANCH" "$BRANCH" || true
-          else
-            # Create a local branch from current HEAD (push event might be on a detached HEAD)
-            git checkout -B "$BRANCH"
-          fi
-
-          git status
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -76,18 +39,6 @@ jobs:
           else
             echo "gradle.properties not found"
             exit 1
-          fi
-
-      - name: Ensure local branch is up-to-date before generating changelog
-        run: |
-          set -euo pipefail
-          BRANCH="${{ steps.determine_branch.outputs.branch }}"
-          # Fetch and fast-forward if possible (should normally be up-to-date on push)
-          git fetch origin "$BRANCH" || true
-          if git rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then
-            git pull --ff-only origin "$BRANCH" || echo "fast-forward not possible or no remote updates"
-          else
-            echo "No origin/$BRANCH found to pull from; continuing with local HEAD"
           fi
 
       - name: Create changelog configuration
@@ -367,13 +318,10 @@ jobs:
 
       - name: Clean up temporary files
         run: |
-          rm -f temp_changelog.md temp_content.md processed_content.md .changelogrc.js temp_changelog_full.md temp_changelog_final.md || true
+          rm -f temp_changelog.md temp_content.md processed_content.md .changelogrc.js temp_changelog_full.md temp_changelog_final.md
 
-      - name: Commit changes (on the prepared branch)
+      - name: Commit changes
         run: |
-          set -euo pipefail
-          BRANCH="${{ steps.determine_branch.outputs.branch }}"
-
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
@@ -385,37 +333,5 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore: update changelog for v.${{ steps.gradle_props.outputs.mod_version }}"
-
-            # push and set upstream if needed
-            if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
-              git push
-            else
-              git push --set-upstream origin "$BRANCH"
-            fi
+            git push
           fi
-
-      - name: Ensure local workspace matches the remote branch (update CHANGELOG files locally)
-        run: |
-          set -euo pipefail
-          BRANCH="${{ steps.determine_branch.outputs.branch }}"
-
-          echo "Fetching origin/$BRANCH and resetting local workspace to remote HEAD"
-          git fetch origin "$BRANCH" --depth=1 || true
-
-          # If origin/<branch> exists, force local workspace to match it. This guarantees CHANGELOG.md and LATEST_CHANGELOG.md
-          if git rev-parse --verify --quiet "origin/$BRANCH"; then
-            git checkout "$BRANCH" || git checkout -B "$BRANCH"
-            # Try a safe fast-forward first
-            if git pull --ff-only origin "$BRANCH"; then
-              echo "Fast-forwarded to origin/$BRANCH"
-            else
-              echo "Fast-forward failed or remote differs — resetting hard to origin/$BRANCH to ensure workspace matches remote"
-              git reset --hard "origin/$BRANCH"
-            fi
-          else
-            echo "origin/$BRANCH not found — leaving local workspace as-is"
-          fi
-
-          echo "Resulting files:"
-          ls -la CHANGELOG.md LATEST_CHANGELOG.md || true
-
