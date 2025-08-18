@@ -1,38 +1,229 @@
-# English comments inside file as requested
-name: Update changelogs
+name: Generate Changelog
 
 on:
   push:
-    # run on pushes to any branch; you can restrict to main if you want
     branches: ['**']
 
-permissions:
-  contents: write
-
 jobs:
-  update-changelog:
+  changelog:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # we need full history for git log ranges
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '18'
 
-      - name: Run changelog updater
-        # this step runs the script that computes and updates the changelogs
-        env:
-          # range boundaries from GitHub event context
-          BEFORE: ${{ github.event.before }}
-          AFTER: ${{ github.sha }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_REF: ${{ github.ref }}
+      - name: Install dependencies
         run: |
-          node .github/scripts/update-changelog.js
+          npm install -g conventional-changelog-cli
+          npm install -g conventional-changelog-conventionalcommits
+
+      - name: Read gradle.properties
+        id: gradle_props
+        run: |
+          if [ -f "gradle.properties" ]; then
+            mod_version=$(grep '^mod_version=' gradle.properties | cut -d'=' -f2 | tr -d ' ')
+            game_versions=$(grep '^game_versions=' gradle.properties | cut -d'=' -f2 | tr -d ' ')
+            echo "mod_version=$mod_version" >> $GITHUB_OUTPUT
+            echo "game_versions=$game_versions" >> $GITHUB_OUTPUT
+          else
+            echo "gradle.properties not found"
+            exit 1
+          fi
+
+      - name: Create changelog configuration
+        run: |
+          cat > .changelogrc.json << 'EOF'
+          {
+            "preset": {
+              "name": "conventionalcommits",
+              "types": [
+                {
+                  "type": "feat",
+                  "section": "Features"
+                },
+                {
+                  "type": "feature",
+                  "section": "Features"
+                },
+                {
+                  "type": "fix",
+                  "section": "Bug Fixes"
+                },
+                {
+                  "type": "perf",
+                  "section": "Performance Improvements"
+                },
+                {
+                  "type": "revert",
+                  "section": "Reverts"
+                },
+                {
+                  "type": "docs",
+                  "section": "Documentation"
+                },
+                {
+                  "type": "style",
+                  "section": "Styles"
+                },
+                {
+                  "type": "chore",
+                  "section": "Miscellaneous Chores"
+                },
+                {
+                  "type": "refactor",
+                  "section": "Code Refactoring"
+                },
+                {
+                  "type": "test",
+                  "section": "Tests"
+                },
+                {
+                  "type": "build",
+                  "section": "Build System"
+                },
+                {
+                  "type": "ci",
+                  "section": "Continuous Integration"
+                }
+              ]
+            }
+          }
+          EOF
+
+      - name: Check if version exists in CHANGELOG.MD
+        id: version_check
+        run: |
+          version_header="v.${{ steps.gradle_props.outputs.mod_version }} for MC ${{ steps.gradle_props.outputs.game_versions }}"
+          if [ -f "CHANGELOG.MD" ] && grep -q "## $version_header" CHANGELOG.MD; then
+            echo "version_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "version_exists=false" >> $GITHUB_OUTPUT
+          fi
+          echo "version_header=$version_header" >> $GITHUB_OUTPUT
+
+      - name: Generate temporary changelog
+        run: |
+          # Generate changelog for current version only
+          conventional-changelog -p conventionalcommits -r 1 --config .changelogrc.json > temp_changelog.md
+
+      - name: Process changelog content
+        run: |
+          # Remove the first line (version header) from temp changelog
+          tail -n +2 temp_changelog.md > temp_content.md
+          
+          # Remove empty lines at the beginning
+          sed '/./,$!d' temp_content.md > processed_content.md
+
+      - name: Update LATEST_CHANGELOG.MD
+        run: |
+          version_header="## ${{ steps.version_check.outputs.version_header }}"
+          
+          # Always recreate LATEST_CHANGELOG.MD with new version
+          echo "$version_header" > LATEST_CHANGELOG.MD
+          echo "" >> LATEST_CHANGELOG.MD
+          
+          # Add processed content if it exists and is not empty
+          if [ -s processed_content.md ]; then
+            cat processed_content.md >> LATEST_CHANGELOG.MD
+          else
+            echo "No notable changes." >> LATEST_CHANGELOG.MD
+          fi
+
+      - name: Update CHANGELOG.MD
+        run: |
+          version_header="## ${{ steps.version_check.outputs.version_header }}"
+          
+          if [ "${{ steps.version_check.outputs.version_exists }}" = "true" ]; then
+            # Version exists - merge new commits into existing version
+            if [ -s processed_content.md ]; then
+              # Create temporary file with updated content
+              awk -v header="$version_header" -v new_content="$(cat processed_content.md)" '
+              BEGIN { in_version = 0; content_added = 0 }
+              $0 == header {
+                print $0
+                in_version = 1
+                next
+              }
+              /^## / && in_version && !content_added {
+                # Found next version header, insert new content before it
+                print new_content
+                print ""
+                content_added = 1
+                in_version = 0
+                print $0
+                next
+              }
+              !in_version || content_added {
+                print $0
+                next
+              }
+              # Skip existing content for this version - it will be replaced
+              in_version && /^## / {
+                print new_content
+                print ""
+                content_added = 1
+                in_version = 0
+                print $0
+                next
+              }
+              END {
+                if (in_version && !content_added) {
+                  print new_content
+                }
+              }
+              ' CHANGELOG.MD > temp_changelog_full.md && mv temp_changelog_full.md CHANGELOG.MD
+            fi
+          else
+            # Version doesn't exist - add new version at the top
+            if [ -f "CHANGELOG.MD" ]; then
+              # Prepend new version to existing changelog
+              {
+                echo "$version_header"
+                echo ""
+                if [ -s processed_content.md ]; then
+                  cat processed_content.md
+                else
+                  echo "No notable changes."
+                fi
+                echo ""
+                cat CHANGELOG.MD
+              } > temp_changelog_full.md && mv temp_changelog_full.md CHANGELOG.MD
+            else
+              # Create new CHANGELOG.MD
+              echo "# Changelog" > CHANGELOG.MD
+              echo "" >> CHANGELOG.MD
+              echo "$version_header" >> CHANGELOG.MD
+              echo "" >> CHANGELOG.MD
+              if [ -s processed_content.md ]; then
+                cat processed_content.md >> CHANGELOG.MD
+              else
+                echo "No notable changes." >> CHANGELOG.MD
+              fi
+            fi
+          fi
+
+      - name: Clean up temporary files
+        run: |
+          rm -f temp_changelog.md temp_content.md processed_content.md .changelogrc.json
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Check if there are changes to commit
+          if git diff --quiet HEAD -- CHANGELOG.MD LATEST_CHANGELOG.MD; then
+            echo "No changes to commit"
+          else
+            git add CHANGELOG.MD LATEST_CHANGELOG.MD
+            git commit -m "chore: update changelog for v.${{ steps.gradle_props.outputs.mod_version }}"
+            git push
+          fi
