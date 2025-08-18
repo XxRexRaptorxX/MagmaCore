@@ -43,8 +43,28 @@ jobs:
 
       - name: Create changelog configuration
         run: |
-          cat > .changelogrc.json << 'EOF'
-          {
+          cat > .changelogrc.js << 'EOF'
+          const config = {
+            "writerOpts": {
+              "groupBy": "type",
+              "commitGroupsSort": function(a, b) {
+                // Custom sort to put Features first
+                const order = {
+                  'Features': 0,
+                  'Bug Fixes': 1,
+                  'Performance Improvements': 2,
+                  'Reverts': 3,
+                  'Documentation': 4,
+                  'Styles': 5,
+                  'Code Refactoring': 6,
+                  'Tests': 7,
+                  'Build System': 8,
+                  'Continuous Integration': 9,
+                  'Miscellaneous Chores': 10
+                };
+                return (order[a.title] || 999) - (order[b.title] || 999);
+              }
+            },
             "preset": {
               "name": "conventionalcommits",
               "types": [
@@ -98,7 +118,9 @@ jobs:
                 }
               ]
             }
-          }
+          };
+          
+          module.exports = config;
           EOF
 
       - name: Check if version exists in CHANGELOG.MD
@@ -118,14 +140,14 @@ jobs:
           # If no tags exist, generate from all commits
           if git describe --tags --exact-match HEAD 2>/dev/null; then
             # Current commit is tagged, generate changelog for this tag
-            conventional-changelog -p conventionalcommits -r 1 --config .changelogrc.json > temp_changelog.md
+            conventional-changelog -p conventionalcommits -r 1 --config .changelogrc.js > temp_changelog.md
           elif git describe --tags --abbrev=0 2>/dev/null; then
             # Tags exist but current commit is not tagged, generate since last tag
             LAST_TAG=$(git describe --tags --abbrev=0)
-            conventional-changelog -p conventionalcommits --config .changelogrc.json --commit-path . --pkg '{"version":"${{ steps.gradle_props.outputs.mod_version }}"}' --from $LAST_TAG > temp_changelog.md
+            conventional-changelog -p conventionalcommits --config .changelogrc.js --commit-path . --pkg '{"version":"${{ steps.gradle_props.outputs.mod_version }}"}' --from $LAST_TAG > temp_changelog.md
           else
             # No tags exist, generate from all commits
-            conventional-changelog -p conventionalcommits --config .changelogrc.json --commit-path . --pkg '{"version":"${{ steps.gradle_props.outputs.mod_version }}"}' --from '' > temp_changelog.md
+            conventional-changelog -p conventionalcommits --config .changelogrc.js --commit-path . --pkg '{"version":"${{ steps.gradle_props.outputs.mod_version }}"}' --from '' > temp_changelog.md
           fi
 
       - name: Process changelog content
@@ -264,7 +286,7 @@ jobs:
 
       - name: Clean up temporary files
         run: |
-          rm -f temp_changelog.md temp_content.md processed_content.md .changelogrc.json
+          rm -f temp_changelog.md temp_content.md processed_content.md .changelogrc.js
 
       - name: Commit changes
         run: |
