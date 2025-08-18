@@ -41,6 +41,72 @@ jobs:
             exit 1
           fi
 
+      - name: Create changelog configuration
+        run: |
+          cat > .changelogrc.js << 'EOF'
+          const config = {
+            writerOpts: {
+              // Gruppen bleiben nach Commit-Type erhalten, aber es gibt keine benutzerdefinierte Sortierung mehr.
+              groupBy: "type"
+            },
+            preset: {
+              name: "conventionalcommits",
+              types: [
+                {
+                  type: "feat",
+                  section: "Features"
+                },
+                {
+                  type: "feature",
+                  section: "Features"
+                },
+                {
+                  type: "fix",
+                  section: "Bug Fixes"
+                },
+                {
+                  type: "perf",
+                  section: "Performance Improvements"
+                },
+                {
+                  type: "revert",
+                  section: "Reverts"
+                },
+                {
+                  type: "docs",
+                  section: "Documentation"
+                },
+                {
+                  type: "style",
+                  section: "Styles"
+                },
+                {
+                  type: "chore",
+                  section: "Miscellaneous Chores"
+                },
+                {
+                  type: "refactor",
+                  section: "Code Refactoring"
+                },
+                {
+                  type: "test",
+                  section: "Tests"
+                },
+                {
+                  type: "build",
+                  section: "Build System"
+                },
+                {
+                  type: "ci",
+                  section: "Continuous Integration"
+                }
+              ]
+            }
+          };
+          
+          module.exports = config;
+          EOF
+
       - name: Check if version exists in CHANGELOG.md
         id: version_check
         run: |
@@ -156,7 +222,6 @@ jobs:
           version_header="## ${{ steps.version_check.outputs.version_header }}"
           
           # Write header as a single line
-          printf '# Changelog' > LATEST_CHANGELOG.md
           printf '%s\n' "$version_header" > LATEST_CHANGELOG.md
           
           # Add processed content if it exists and is not empty
@@ -188,6 +253,7 @@ jobs:
               # Remove the old (first) occurrence of that version block from temp_changelog_full.md
               # This searches for a header line that contains the module version and deletes from that header until the next '## ' header.
               MOD_VER="v.${{ steps.gradle_props.outputs.mod_version }}"
+
               awk -v mv="$MOD_VER" '
                 BEGIN { in_block=0; block_removed=0 }
                 /^## / {
