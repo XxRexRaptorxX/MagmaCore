@@ -2,6 +2,7 @@
 ### Bug Fixes
 
 * changelog ([620bfcc](https://github.com/XxRexRaptorxX/MagmaCore/commit/620bfcc38506620372e209ccbe43cbd1faeeb1cf))
+* test ([72ea84f](https://github.com/XxRexRaptorxX/MagmaCore/commit/72ea84f8ea8468f924388419c83b6c8a0e938dbe))
 * test ([3ede454](https://github.com/XxRexRaptorxX/MagmaCore/commit/3ede4547c32919a32cd9dcb4eab1c447ac75df33))
 * test ([f1336cb](https://github.com/XxRexRaptorxX/MagmaCore/commit/f1336cbbba7933d3974ad1e258656dbee153ef49))
 * test ([de026b2](https://github.com/XxRexRaptorxX/MagmaCore/commit/de026b294705de5e3c6c1ddfce7fa4be6fa18472))
