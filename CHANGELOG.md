@@ -2,6 +2,12 @@
 
 ## v.1.3.2  for MC 1.21.5
 
+### Features
+
+* generic config list validator added ([462dc5c](https://github.com/XxRexRaptorxX/MagmaCore/commit/462dc5c54fa51155a94fc3e24a695fea1f5e4647))
+* generic config validator added ([bc0f89d](https://github.com/XxRexRaptorxX/MagmaCore/commit/bc0f89d0f7fd12c2892c1c6608ca25163768f2e4))
+* herobrine easter egg event added ([f6ac8fb](https://github.com/XxRexRaptorxX/MagmaCore/commit/f6ac8fbd9c396b6bd5ee5781c8ffb938d517edf9))
+
 ### Bug Fixes
 
 * changelog ([620bfcc](https://github.com/XxRexRaptorxX/MagmaCore/commit/620bfcc38506620372e209ccbe43cbd1faeeb1cf))
