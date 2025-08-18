@@ -2,10 +2,7 @@ name: Generate Changelog
 
 on:
   push:
-    branches:
-      - '**'
-    tags:
-      - 'v*.*.*'
+    branches: [ '**' ]
 
 permissions:
   contents: write
@@ -13,7 +10,7 @@ permissions:
 jobs:
   changelog:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -117,16 +114,65 @@ jobs:
 
       - name: Generate temporary changelog
         run: |
-          # Generate changelog for current version only
-          conventional-changelog -p conventionalcommits -r 1 --config .changelogrc.json > temp_changelog.md
+          # Get the latest commit hash to generate changelog from all commits since last tag
+          # If no tags exist, generate from all commits
+          if git describe --tags --exact-match HEAD 2>/dev/null; then
+            # Current commit is tagged, generate changelog for this tag
+            conventional-changelog -p conventionalcommits -r 1 --config .changelogrc.json > temp_changelog.md
+          elif git describe --tags --abbrev=0 2>/dev/null; then
+            # Tags exist but current commit is not tagged, generate since last tag
+            LAST_TAG=$(git describe --tags --abbrev=0)
+            conventional-changelog -p conventionalcommits --config .changelogrc.json --commit-path . --pkg '{"version":"${{ steps.gradle_props.outputs.mod_version }}"}' --from $LAST_TAG > temp_changelog.md
+          else
+            # No tags exist, generate from all commits
+            conventional-changelog -p conventionalcommits --config .changelogrc.json --commit-path . --pkg '{"version":"${{ steps.gradle_props.outputs.mod_version }}"}' --from '' > temp_changelog.md
+          fi
 
       - name: Process changelog content
         run: |
-          # Remove the first line (version header) from temp changelog
-          tail -n +2 temp_changelog.md > temp_content.md
+          # Check if changelog was generated and has content
+          if [ -s temp_changelog.md ]; then
+            # Remove version header if it exists (starts with ##)
+            if head -1 temp_changelog.md | grep -q "^## "; then
+              tail -n +2 temp_changelog.md > temp_content.md
+            else
+              cp temp_changelog.md temp_content.md
+            fi
           
-          # Remove empty lines at the beginning
-          sed '/./,$!d' temp_content.md > processed_content.md
+            # Remove empty lines at the beginning
+            sed '/./,$!d' temp_content.md > processed_content.md
+          else
+            # No commits found, create empty content
+            echo "" > processed_content.md
+          fi
+
+      - name: Debug output
+        run: |
+          echo "=== Debug Information ==="
+          echo "Repository status:"
+          git status
+          echo ""
+          echo "Recent commits:"
+          git log --oneline -5
+          echo ""
+          echo "Tags:"
+          git tag -l
+          echo ""
+          echo "Temp changelog content:"
+          if [ -f temp_changelog.md ]; then
+            echo "--- temp_changelog.md ---"
+            cat temp_changelog.md
+          else
+            echo "temp_changelog.md does not exist"
+          fi
+          echo ""
+          echo "Processed content:"
+          if [ -f processed_content.md ]; then
+            echo "--- processed_content.md ---"
+            cat processed_content.md
+          else
+            echo "processed_content.md does not exist"
+          fi
 
       - name: Update LATEST_CHANGELOG.MD
         run: |
