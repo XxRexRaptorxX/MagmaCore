@@ -2,7 +2,7 @@ name: Generate Changelog
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ '**' ]
 
 permissions:
   contents: write
