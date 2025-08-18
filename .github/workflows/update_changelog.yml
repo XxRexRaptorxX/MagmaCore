@@ -155,8 +155,9 @@ jobs:
             fi
           fi
 
-          echo "version_exists=${version_exists}" >> $GITHUB_OUTPUT
-          echo "version_header=$version_header" >> $GITHUB_OUTPUT
+          printf 'version_exists=%s\n' "$version_exists" >> $GITHUB_OUTPUT
+          printf 'version_header=%s\n' "$version_header" >> $GITHUB_OUTPUT
+
 
       - name: Generate temporary changelog
         run: |
@@ -236,10 +237,13 @@ jobs:
       - name: Update LATEST_CHANGELOG.md
         run: |
           version_header="## ${{ steps.version_check.outputs.version_header }}"
-          
-          # Write header as a single line
-          printf '%s\n' "$version_header" > LATEST_CHANGELOG.md
-          
+
+          # Create LATEST_CHANGELOG.md with the same top-level header and spacing as CHANGELOG.md
+          echo "# Changelog" > LATEST_CHANGELOG.md
+          echo "" >> LATEST_CHANGELOG.md
+          echo "$version_header" >> LATEST_CHANGELOG.md
+          echo "" >> LATEST_CHANGELOG.md
+
           # Add processed content if it exists and is not empty
           if [ -s processed_content.md ]; then
             cat processed_content.md >> LATEST_CHANGELOG.md
