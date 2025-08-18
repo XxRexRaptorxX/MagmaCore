@@ -123,7 +123,7 @@ jobs:
           module.exports = config;
           EOF
 
-      - name: Check if version exists in CHANGELOG.MD
+      - name: Check if version exists in CHANGELOG.md
         id: version_check
         run: |
           # Build a sanitized single-line version header. Note the TWO spaces before "for" as requested.
@@ -132,13 +132,13 @@ jobs:
           # Default to not existing
           version_exists=false
 
-          # If CHANGELOG.MD exists, check for a single-line match first
-          if [ -f "CHANGELOG.MD" ] && grep -q "## $version_header" CHANGELOG.MD; then
+          # If CHANGELOG.md exists, check for a single-line match first
+          if [ -f "CHANGELOG.md" ] && grep -q "## $version_header" CHANGELOG.md; then
             version_exists=true
           else
             # Also accept the case where the existing changelog has a multi-line header:
             # a line starting with "## " that contains the version and the next line contains the "for MC ..." part.
-            if [ -f "CHANGELOG.MD" ]; then
+            if [ -f "CHANGELOG.md" ]; then
               if awk -v mv="v.${{ steps.gradle_props.outputs.mod_version }}" -v gv="for MC ${{ steps.gradle_props.outputs.game_versions }}" '
                    BEGIN { found=0 }
                    /^## / {
@@ -149,7 +149,7 @@ jobs:
                      }
                    }
                    END { exit(!found) }
-                   ' CHANGELOG.MD; then
+                   ' CHANGELOG.md; then
                 version_exists=true
               fi
             fi
@@ -167,7 +167,7 @@ jobs:
             conventional-changelog -p conventionalcommits -r 1 --config .changelogrc.js > temp_changelog.md
           elif git describe --tags --abbrev=0 2>/dev/null; then
             # Tags exist but current commit is not tagged, generate since last tag
-            LAST_TAG=$(git.describe --tags --abbrev=0)
+            LAST_TAG=$(git describe --tags --abbrev=0)
             conventional-changelog -p conventionalcommits --config .changelogrc.js --commit-path . --pkg '{"version":"${{ steps.gradle_props.outputs.mod_version }}"}' --from $LAST_TAG > temp_changelog.md
           else
             # No tags exist, generate from all commits
@@ -233,21 +233,21 @@ jobs:
             echo "processed_content.md does not exist"
           fi
 
-      - name: Update LATEST_CHANGELOG.MD
+      - name: Update LATEST_CHANGELOG.md
         run: |
           version_header="## ${{ steps.version_check.outputs.version_header }}"
           
           # Write header as a single line (preserve the two spaces before 'for')
-          printf '%s\n\n' "$version_header" > LATEST_CHANGELOG.MD
+          printf '%s\n\n' "$version_header" > LATEST_CHANGELOG.md
           
           # Add processed content if it exists and is not empty
           if [ -s processed_content.md ]; then
-            cat processed_content.md >> LATEST_CHANGELOG.MD
+            cat processed_content.md >> LATEST_CHANGELOG.md
           else
-            echo "No notable changes." >> LATEST_CHANGELOG.MD
+            echo "No notable changes." >> LATEST_CHANGELOG.md
           fi
 
-      - name: Update CHANGELOG.MD
+      - name: Update CHANGELOG.md
         run: |
           version_header="## ${{ steps.version_check.outputs.version_header }}"
           
@@ -263,7 +263,7 @@ jobs:
                 cat processed_content.md
                 echo ""
                 # then append the whole current changelog (we'll remove the old block below)
-                cat CHANGELOG.MD
+                cat CHANGELOG.md
               } > temp_changelog_full.md
 
               # Remove the old (first) occurrence of that version block from temp_changelog_full.md
@@ -285,11 +285,11 @@ jobs:
                 {
                   if (!in_block) print
                 }
-                ' temp_changelog_full.md > temp_changelog_final.md && mv temp_changelog_final.md CHANGELOG.MD || mv temp_changelog_full.md CHANGELOG.MD
+                ' temp_changelog_full.md > temp_changelog_final.md && mv temp_changelog_final.md CHANGELOG.md || mv temp_changelog_full.md CHANGELOG.md
             fi
           else
             # Version doesn't exist - add new version at the top
-            if [ -f "CHANGELOG.MD" ]; then
+            if [ -f "CHANGELOG.md" ]; then
               # Prepend new version to existing changelog
               {
                 echo "$version_header"
@@ -300,18 +300,18 @@ jobs:
                   echo "No notable changes."
                 fi
                 echo ""
-                cat CHANGELOG.MD
-              } > temp_changelog_full.md && mv temp_changelog_full.md CHANGELOG.MD
+                cat CHANGELOG.md
+              } > temp_changelog_full.md && mv temp_changelog_full.md CHANGELOG.md
             else
-              # Create new CHANGELOG.MD
-              echo "# Changelog" > CHANGELOG.MD
-              echo "" >> CHANGELOG.MD
-              echo "$version_header" >> CHANGELOG.MD
-              echo "" >> CHANGELOG.MD
+              # Create new CHANGELOG.md
+              echo "# Changelog" > CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              echo "$version_header" >> CHANGELOG.md
+              echo "" >> CHANGELOG.md
               if [ -s processed_content.md ]; then
-                cat processed_content.md >> CHANGELOG.MD
+                cat processed_content.md >> CHANGELOG.md
               else
-                echo "No notable changes." >> CHANGELOG.MD
+                echo "No notable changes." >> CHANGELOG.md
               fi
             fi
           fi
@@ -326,7 +326,7 @@ jobs:
           git config --local user.name "GitHub Action"
           
           # Stage the files (if they exist)
-          git add CHANGELOG.MD LATEST_CHANGELOG.MD || true
+          git add CHANGELOG.md LATEST_CHANGELOG.md || true
 
           # If there are staged changes, commit
           if git diff --cached --quiet; then
