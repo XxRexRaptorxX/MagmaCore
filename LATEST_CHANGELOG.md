@@ -1,8 +1,8 @@
 ## v.1.3.2  for MC 1.21.5
-
 ### Bug Fixes
 
 * changelog ([620bfcc](https://github.com/XxRexRaptorxX/MagmaCore/commit/620bfcc38506620372e209ccbe43cbd1faeeb1cf))
+* test ([62de8cb](https://github.com/XxRexRaptorxX/MagmaCore/commit/62de8cbe57aea3c22802102ea4802f9b7e417a9a))
 * test ([e3044a7](https://github.com/XxRexRaptorxX/MagmaCore/commit/e3044a797c913a20453133c047e2d6016b391062))
 * test ([927ba03](https://github.com/XxRexRaptorxX/MagmaCore/commit/927ba03c496e0e1884a8d07c4852533a7afcfc41))
 * test ([3e15adb](https://github.com/XxRexRaptorxX/MagmaCore/commit/3e15adb6d93e316810ac35b9cc4bdfb15b59658b))
