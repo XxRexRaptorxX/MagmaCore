@@ -2,7 +2,13 @@ name: Generate Changelog
 
 on:
   push:
-    branches: ['**']
+    branches:
+      - '**'
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
 
 jobs:
   changelog:
