@@ -126,12 +126,36 @@ jobs:
       - name: Check if version exists in CHANGELOG.MD
         id: version_check
         run: |
-          version_header="v.${{ steps.gradle_props.outputs.mod_version }} for MC ${{ steps.gradle_props.outputs.game_versions }}"
+          # Build a sanitized single-line version header. Note the TWO spaces before "for" as requested.
+          version_header=$(printf "v.${{ steps.gradle_props.outputs.mod_version }}  for MC ${{ steps.gradle_props.outputs.game_versions }}" | tr -d '\r\n')
+          
+          # Default to not existing
+          version_exists=false
+
+          # If CHANGELOG.MD exists, check for a single-line match first
           if [ -f "CHANGELOG.MD" ] && grep -q "## $version_header" CHANGELOG.MD; then
-            echo "version_exists=true" >> $GITHUB_OUTPUT
+            version_exists=true
           else
-            echo "version_exists=false" >> $GITHUB_OUTPUT
+            # Also accept the case where the existing changelog has a multi-line header:
+            # a line starting with "## " that contains the version and the next line contains the "for MC ..." part.
+            if [ -f "CHANGELOG.MD" ]; then
+              if awk -v mv="v.${{ steps.gradle_props.outputs.mod_version }}" -v gv="for MC ${{ steps.gradle_props.outputs.game_versions }}" '
+                   BEGIN { found=0 }
+                   /^## / {
+                     if (index($0, mv)) {
+                       if (getline > 0) {
+                         if (index($0, gv)) { found=1; exit }
+                       }
+                     }
+                   }
+                   END { exit(!found) }
+                   ' CHANGELOG.MD; then
+                version_exists=true
+              fi
+            fi
           fi
+
+          echo "version_exists=${version_exists}" >> $GITHUB_OUTPUT
           echo "version_header=$version_header" >> $GITHUB_OUTPUT
 
       - name: Generate temporary changelog
@@ -143,7 +167,7 @@ jobs:
             conventional-changelog -p conventionalcommits -r 1 --config .changelogrc.js > temp_changelog.md
           elif git describe --tags --abbrev=0 2>/dev/null; then
             # Tags exist but current commit is not tagged, generate since last tag
-            LAST_TAG=$(git describe --tags --abbrev=0)
+            LAST_TAG=$(git.describe --tags --abbrev=0)
             conventional-changelog -p conventionalcommits --config .changelogrc.js --commit-path . --pkg '{"version":"${{ steps.gradle_props.outputs.mod_version }}"}' --from $LAST_TAG > temp_changelog.md
           else
             # No tags exist, generate from all commits
@@ -155,14 +179,27 @@ jobs:
           # Check if changelog was generated and has content
           if [ -s temp_changelog.md ]; then
             # Remove version header if it exists (starts with ##)
+            # Some changelogs emit a multi-line header:
+            # ## vX.Y.Z
+            #  for MC ...
+            # We remove the first header line and any immediately following continuation lines
             if head -1 temp_changelog.md | grep -q "^## "; then
+              # remove the first header line
               tail -n +2 temp_changelog.md > temp_content.md
+              # drop any immediately following lines that are blank or start with whitespace (these are header continuations)
+              awk 'BEGIN{skip=1} {
+                if (skip) {
+                  if ($0 ~ /^[[:space:]]*$/) next;
+                  else if ($0 ~ /^[[:space:]]/) next;
+                  else { skip=0; print; }
+                } else { print }
+              }' temp_content.md > processed_content.md
             else
-              cp temp_changelog.md temp_content.md
+              cp temp_changelog.md processed_content.md
             fi
           
-            # Remove empty lines at the beginning
-            sed '/./,$!d' temp_content.md > processed_content.md
+            # Remove empty lines at the beginning (just in case)
+            sed -i '1{/^[[:space:]]*$/d;}' processed_content.md || true
           else
             # No commits found, create empty content
             echo "" > processed_content.md
@@ -200,9 +237,8 @@ jobs:
         run: |
           version_header="## ${{ steps.version_check.outputs.version_header }}"
           
-          # Always recreate LATEST_CHANGELOG.MD with new version
-          echo "$version_header" > LATEST_CHANGELOG.MD
-          echo "" >> LATEST_CHANGELOG.MD
+          # Write header as a single line (preserve the two spaces before 'for')
+          printf '%s\n\n' "$version_header" > LATEST_CHANGELOG.MD
           
           # Add processed content if it exists and is not empty
           if [ -s processed_content.md ]; then
@@ -218,42 +254,38 @@ jobs:
           if [ "${{ steps.version_check.outputs.version_exists }}" = "true" ]; then
             # Version exists - merge new commits into existing version
             if [ -s processed_content.md ]; then
-              # Create temporary file with updated content
-              awk -v header="$version_header" -v new_content="$(cat processed_content.md)" '
-              BEGIN { in_version = 0; content_added = 0 }
-              $0 == header {
-                print $0
-                in_version = 1
-                next
-              }
-              /^## / && in_version && !content_added {
-                # Found next version header, insert new content before it
-                print new_content
-                print ""
-                content_added = 1
-                in_version = 0
-                print $0
-                next
-              }
-              !in_version || content_added {
-                print $0
-                next
-              }
-              # Skip existing content for this version - it will be replaced
-              in_version && /^## / {
-                print new_content
-                print ""
-                content_added = 1
-                in_version = 0
-                print $0
-                next
-              }
-              END {
-                if (in_version && !content_added) {
-                  print new_content
+              # Replace the existing version block (if present) by inserting new content right after the version header
+              # Simple approach: prepend our new block, then remove the old version block (first occurrence) to avoid duplicates.
+              # Prepend new block to beginning (we'll then remove the older block)
+              {
+                echo "$version_header"
+                echo ""
+                cat processed_content.md
+                echo ""
+                # then append the whole current changelog (we'll remove the old block below)
+                cat CHANGELOG.MD
+              } > temp_changelog_full.md
+
+              # Remove the old (first) occurrence of that version block from temp_changelog_full.md
+              # This searches for a header line that contains the module version and deletes from that header until the next '## ' header.
+              MOD_VER="v.${{ steps.gradle_props.outputs.mod_version }}"
+              awk -v mv="$MOD_VER" '
+                BEGIN { in_block=0; block_removed=0 }
+                /^## / {
+                  if (!block_removed && index($0, mv)) {
+                    # start skipping this old block
+                    in_block=1
+                    next
+                  }
                 }
-              }
-              ' CHANGELOG.MD > temp_changelog_full.md && mv temp_changelog_full.md CHANGELOG.MD
+                /^## / && in_block {
+                  # reached next header -> stop skipping and print this header
+                  in_block=0
+                }
+                {
+                  if (!in_block) print
+                }
+                ' temp_changelog_full.md > temp_changelog_final.md && mv temp_changelog_final.md CHANGELOG.MD || mv temp_changelog_full.md CHANGELOG.MD
             fi
           else
             # Version doesn't exist - add new version at the top
@@ -286,7 +318,7 @@ jobs:
 
       - name: Clean up temporary files
         run: |
-          rm -f temp_changelog.md temp_content.md processed_content.md .changelogrc.js
+          rm -f temp_changelog.md temp_content.md processed_content.md .changelogrc.js temp_changelog_full.md temp_changelog_final.md
 
       - name: Commit changes
         run: |
