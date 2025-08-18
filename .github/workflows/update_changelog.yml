@@ -41,88 +41,6 @@ jobs:
             exit 1
           fi
 
-      - name: Create changelog configuration
-        run: |
-          cat > .changelogrc.js << 'EOF'
-          const config = {
-            "writerOpts": {
-              "groupBy": "type",
-              "commitGroupsSort": function(a, b) {
-                // Custom sort to put Features first
-                const order = {
-                  'Features': 0,
-                  'Bug Fixes': 1,
-                  'Performance Improvements': 2,
-                  'Reverts': 3,
-                  'Documentation': 4,
-                  'Styles': 5,
-                  'Code Refactoring': 6,
-                  'Tests': 7,
-                  'Build System': 8,
-                  'Continuous Integration': 9,
-                  'Miscellaneous Chores': 10
-                };
-                return (order[a.title] || 999) - (order[b.title] || 999);
-              }
-            },
-            "preset": {
-              "name": "conventionalcommits",
-              "types": [
-                {
-                  "type": "feat",
-                  "section": "Features"
-                },
-                {
-                  "type": "feature",
-                  "section": "Features"
-                },
-                {
-                  "type": "fix",
-                  "section": "Bug Fixes"
-                },
-                {
-                  "type": "perf",
-                  "section": "Performance Improvements"
-                },
-                {
-                  "type": "revert",
-                  "section": "Reverts"
-                },
-                {
-                  "type": "docs",
-                  "section": "Documentation"
-                },
-                {
-                  "type": "style",
-                  "section": "Styles"
-                },
-                {
-                  "type": "chore",
-                  "section": "Miscellaneous Chores"
-                },
-                {
-                  "type": "refactor",
-                  "section": "Code Refactoring"
-                },
-                {
-                  "type": "test",
-                  "section": "Tests"
-                },
-                {
-                  "type": "build",
-                  "section": "Build System"
-                },
-                {
-                  "type": "ci",
-                  "section": "Continuous Integration"
-                }
-              ]
-            }
-          };
-          
-          module.exports = config;
-          EOF
-
       - name: Check if version exists in CHANGELOG.md
         id: version_check
         run: |
@@ -237,8 +155,10 @@ jobs:
         run: |
           version_header="## ${{ steps.version_check.outputs.version_header }}"
           
-          # Write header as a single line
-          printf '%s\n' "$version_header" > LATEST_CHANGELOG.md
+          echo "# Changelog" > LATEST_CHANGELOG.md
+          echo "" >> LATEST_CHANGELOG.md
+          echo "$version_header" >> LATEST_CHANGELOG.md
+          echo "" >> LATEST_CHANGELOG.md
           
           # Add processed content if it exists and is not empty
           if [ -s processed_content.md ]; then
