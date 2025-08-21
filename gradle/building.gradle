@@ -2,7 +2,6 @@
 // MOD BUILDING TASKS
 // ========================================
 
-
 tasks.named('jar').configure {
     archiveBaseName.set(mod_name.replace(" ", ""))
     archiveVersion.set("${minecraft_version}-(v.${mod_version}-${mod_loader})")

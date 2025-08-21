@@ -47,44 +47,6 @@ tasks.register("#publishCurseForgeOnly") {
     }
 }
 
-tasks.register("#generateAndPublish") {
-    group = "publishing"
-    description = "Generate changelog and publish to both platforms"
-
-    dependsOn "build", "modrinth", "publishCurseForge", "updateVersionFile"
-
-    doFirst {
-        // Changelog generation
-        try {
-            def proc = "conventional-changelog --preset angular --release-count 1".execute()
-            proc.waitFor()
-            if (proc.exitValue() == 0) {
-                def changelogContent = proc.text.trim()
-                def changelogFile = file("CHANGELOG_LATEST.md")
-
-                def version = mod_version
-                def mcVersion = minecraft_version
-                def date = new Date().format('dd.MM.yyyy')
-                def header = "# v.${version} for MC ${mcVersion} – ${date}"
-
-                changelogFile.text = "${header}\n${changelogContent}"
-                println "Generated CHANGELOG_LATEST.md"
-            }
-        } catch (Exception e) {
-            println "Warning: Could not generate changelog automatically - ${e.message}"
-            println "Please ensure conventional-changelog is installed: npm install -g conventional-changelog-cli"
-        }
-
-        updateVersionJson()
-    }
-
-    doLast {
-        println "=== Generate and Publish Completed ==="
-        println "Generated changelog and published to both platforms"
-        println "Updated versions.json with current version"
-    }
-}
-
 tasks.register("#dryRunPublish") {
     group = "publishing"
     description = "Dry run - shows what would be published without actually publishing"
