@@ -233,73 +233,127 @@ jobs:
 
       - name: Update CHANGELOG.md
         run: |
+          set -euo pipefail
+          
           version_header="## ${{ steps.version_check.outputs.version_header }}"
+          MOD_VER="v.${{ steps.gradle_props.outputs.mod_version }}"
+          GV="for MC ${{ steps.gradle_props.outputs.game_versions }}"
+          
+          # If there is no processed content, nothing to merge/insert
+          if [ ! -s processed_content.md ]; then
+            echo "No new processed changelog content - nothing to update."
+            exit 0
+          fi
+          
+          # Normalize processed content (ensure no leading blank lines)
+          sed -i '1{/^[[:space:]]*$/d;}' processed_content.md || true
           
           if [ "${{ steps.version_check.outputs.version_exists }}" = "true" ]; then
-            # Version exists - merge new commits into existing version
-            if [ -s processed_content.md ]; then
-              # Replace the existing version block (if present) by inserting new content right after the version header
-              # Simple approach: prepend our new block, then remove the old version block (first occurrence) to avoid duplicates.
-              # Prepend new block to beginning (we'll then remove the older block)
+            echo "Version exists: merging changes into existing version block."
+          
+            # Extract the existing version block (header + body until next '## ' or EOF)
+            awk -v mv="$MOD_VER" '
+              BEGIN { in_block=0 }
+              /^## / {
+                if (!in_block && index($0, mv)) { in_block=1; print; next }
+                if (in_block && /^## /) { exit }
+              }
+              { if (in_block) print }
+            ' CHANGELOG.md > existing_block.md || true
+          
+            # Remove the version header line and any following continuation lines (e.g. indented "for MC ..." lines)
+            if [ -s existing_block.md ]; then
+              tail -n +2 existing_block.md | awk 'BEGIN{skip=1} {
+                if (skip) {
+                  if ($0 ~ /^[[:space:]]*$/) next;
+                  else if ($0 ~ /^[[:space:]]/) next;
+                  else { skip=0; print }
+                } else { print }
+              }' > existing_body.md
+            else
+              existing_body.md=""
+            fi
+          
+            # Combine new processed content with existing body (new entries first), then deduplicate bullet lines while keeping section headers
+            cat processed_content.md existing_body.md > merged_temp.md || true
+          
+            awk '{
+              if(/^### /){ print; next }
+              if(/^$/){ print; next }
+              if(!seen[$0]++){ print }
+            }' merged_temp.md > merged_content.md
+          
+            # Build the new version block
+            printf '%s\n\n' "$version_header" > new_block.md
+            cat merged_content.md >> new_block.md
+            printf '\n' >> new_block.md
+          
+            # Replace the old version block in CHANGELOG.md with the new one
+            awk -v mv="$MOD_VER" -v nb="new_block.md" '
+              BEGIN { printed=0; in_block=0 }
+              /^## / {
+                if (!printed && index($0, mv)) {
+                  # print new block once, then skip old block until next ## header
+                  system("cat " nb)
+                  printed=1
+                  in_block=1
+                  next
+                }
+              }
+              /^## / && in_block {
+                # reached the next header after skipped block
+                in_block=0
+              }
               {
-                echo "$version_header"
+                if (!in_block) print
+              }
+            ' CHANGELOG.md > temp_changelog.md && mv temp_changelog.md CHANGELOG.md
+          
+          else
+            echo "Version does not exist: inserting new version block."
+          
+            # Insert new version block right after the top '# Changelog' header if present,
+            # otherwise ensure a top header and then insert.
+            if [ -f CHANGELOG.md ] && head -n1 CHANGELOG.md | grep -q "^# Changelog"; then
+              {
+                head -n1 CHANGELOG.md
                 echo ""
+                printf '%s\n\n' "$version_header"
                 cat processed_content.md
                 echo ""
-                # then append the whole current changelog (we'll remove the old block below)
-                cat CHANGELOG.md
-              } > temp_changelog_full.md
-
-              # Remove the old (first) occurrence of that version block from temp_changelog_full.md
-              # This searches for a header line that contains the module version and deletes from that header until the next '## ' header.
-              MOD_VER="v.${{ steps.gradle_props.outputs.mod_version }}"
-
-              awk -v mv="$MOD_VER" '
-                BEGIN { in_block=0; block_removed=0 }
-                /^## / {
-                  if (!block_removed && index($0, mv)) {
-                    # start skipping this old block
-                    in_block=1
-                    next
-                  }
-                }
-                /^## / && in_block {
-                  # reached next header -> stop skipping and print this header
-                  in_block=0
-                }
-                {
-                  if (!in_block) print
-                }
-                ' temp_changelog_full.md > temp_changelog_final.md && mv temp_changelog_final.md CHANGELOG.md || mv temp_changelog_full.md CHANGELOG.md
-            fi
-          else
-            # Version doesn't exist - add new version at the top
-            if [ -f "CHANGELOG.md" ]; then
-              # Prepend new version to existing changelog
-              {
-                echo "$version_header"
-                echo ""
-                if [ -s processed_content.md ]; then
-                  cat processed_content.md
-                else
-                  echo "No notable changes."
-                fi
-                echo ""
-                cat CHANGELOG.md
-              } > temp_changelog_full.md && mv temp_changelog_full.md CHANGELOG.md
+                tail -n +2 CHANGELOG.md
+              } > temp_changelog.md && mv temp_changelog.md CHANGELOG.md
             else
-              # Create new CHANGELOG.md
-              echo "# Changelog" > CHANGELOG.md
-              echo "" >> CHANGELOG.md
-              echo "$version_header" >> CHANGELOG.md
-              echo "" >> CHANGELOG.md
-              if [ -s processed_content.md ]; then
-                cat processed_content.md >> CHANGELOG.md
-              else
-                echo "No notable changes." >> CHANGELOG.md
-              fi
+              {
+                echo "# Changelog"
+                echo ""
+                printf '%s\n\n' "$version_header"
+                cat processed_content.md
+                echo ""
+                if [ -f CHANGELOG.md ]; then
+                  cat CHANGELOG.md
+                fi
+              } > temp_changelog.md && mv temp_changelog.md CHANGELOG.md
             fi
           fi
+          
+          # Ensure exactly one '# Changelog' at the top (remove duplicates elsewhere)
+          awk 'BEGIN{first=1}
+            {
+              if($0=="# Changelog"){
+                if(first){ print; first=0 } else next
+              } else print
+            }' CHANGELOG.md > tmp_changelog.md && mv tmp_changelog.md CHANGELOG.md
+          
+          # Ensure file starts with '# Changelog'
+          if ! head -n1 CHANGELOG.md | grep -q "^# Changelog"; then
+            sed -i '1i# Changelog\n' CHANGELOG.md
+          fi
+          
+          # Cleanup
+          rm -f existing_block.md existing_body.md merged_temp.md merged_content.md new_block.md temp_changelog.md new_block.md || true
+          
+          echo "CHANGELOG.md updated."
 
       - name: Clean up temporary files
         run: |
