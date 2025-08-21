@@ -11,6 +11,7 @@
 ### Bug Fixes
 
 * changelog ([620bfcc](https://github.com/XxRexRaptorxX/MagmaCore/commit/620bfcc38506620372e209ccbe43cbd1faeeb1cf))
+* changelog generation ([40ddf42](https://github.com/XxRexRaptorxX/MagmaCore/commit/40ddf42464bbdf93526fe89c213f16f5816a0fb8))
 * changelog generation ([c922c24](https://github.com/XxRexRaptorxX/MagmaCore/commit/c922c24ce64ba2ac128bff47ab3e75ac561e582a))
 * invalid formatted lang tags ([ec6dc06](https://github.com/XxRexRaptorxX/MagmaCore/commit/ec6dc06d7cd8a63205f60ba123b475553eca75fa))
 * test ([9306058](https://github.com/XxRexRaptorxX/MagmaCore/commit/9306058e31feff2d3f995c4482b7a20466f7ee56))
@@ -45,10 +46,4 @@
 * test ([8182f56](https://github.com/XxRexRaptorxX/MagmaCore/commit/8182f56b48e26bd5e66a74263371453b956f35f0))
 * test ([271e779](https://github.com/XxRexRaptorxX/MagmaCore/commit/271e7790b9752fdac1a648fc590dbf51e2b14f08))
 * test ([2d8dccf](https://github.com/XxRexRaptorxX/MagmaCore/commit/2d8dccf675a17e2c891a3720b1700c8ffacb26e2))
-### Features
-
-
-### Bug Fixes
-
-
 
