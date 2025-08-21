@@ -133,7 +133,7 @@ jobs:
       - name: Check if version exists in CHANGELOG.md
         id: version_check
         run: |
-          # Build a sanitized single-line version header. Note the TWO spaces before "for" as requested.
+          # Build a sanitized single-line version header.
           version_header=$(printf "v.${{ steps.gradle_props.outputs.mod_version }}  for MC ${{ steps.gradle_props.outputs.game_versions }}" | tr -d '\r\n')
           
           # Default to not existing
@@ -254,12 +254,12 @@ jobs:
             echo "No notable changes." >> LATEST_CHANGELOG.md
           fi
 
-      - name: Update CHANGELOG.md (merge only)
+      - name: Update CHANGELOG.md
         id: update_changelog
         run: |
           set -euo pipefail
 
-          # Inputs / expected values (keep your existing version header source)
+          # --- Inputs / expected values ---
           version_header="## ${{ steps.version_check.outputs.version_header }}"
           MOD_VER="v.${{ steps.gradle_props.outputs.mod_version }}"
           PROCESSED="processed_content.md"
@@ -286,7 +286,6 @@ jobs:
           sed -i '1{/^[[:space:]]*$/d;}' "$PROCESSED" || true
 
           # If version already exists, merge; otherwise insert a new block
-          # We match either the normalized tag or the alternate form (with dot after v) to be robust.
           if [ "${{ steps.version_check.outputs.version_exists }}" = "true" ]; then
             echo "Version exists: merging into existing version block."
 
@@ -299,7 +298,7 @@ jobs:
                 }
                 if (in_block) print
               }
-            ' "$CHANGELOG" > existing_block.md || : 
+            ' "$CHANGELOG" > existing_block.md || :
 
             if [ -s existing_block.md ]; then
               tail -n +2 existing_block.md | awk '
@@ -316,6 +315,7 @@ jobs:
               : > existing_body.md
             fi
 
+            # Combine new + existing, then deduplicate exact lines while keeping section headers
             cat "$PROCESSED" existing_body.md > merged_temp.md || :
             awk '
               {
@@ -325,8 +325,46 @@ jobs:
               }
             ' merged_temp.md > merged_content.md
 
+            # --- CLEANUP: Remove section headers that end up with no bullet lines under them ---
+            # This removes headers (either "### Header" or common plain headers like "Features")
+            # when their next non-empty line is NOT a bullet (starting with *, -, +).
+            awk '
+              {
+                a[NR] = $0
+              }
+              END {
+                for (i = 1; i <= NR; i++) {
+                  line = a[i]
+                  # Match Markdown section headers ("### ...") or common plain section titles
+                  if (line ~ /^###[[:space:]]+/ || line ~ /^(Features|Bug Fixes|Bugfixes|Fixes|Docs|Documentation|Performance|Security|Other Changes|Deprecated|Removed|Added|Changed)$/) {
+                    # find next non-empty line
+                    j = i + 1
+                    while (j <= NR && a[j] ~ /^[[:space:]]*$/) j++
+                    if (j > NR) {
+                      # header is at EOF with no content -> skip printing the header
+                      continue
+                    }
+                    # If the next non-empty line is a bullet, keep the header; otherwise skip it
+                    if (a[j] ~ /^[\*\-\+][[:space:]]+/) {
+                      print line
+                    } else {
+                      # skip header because there are no bullet items under it
+                      continue
+                    }
+                  } else {
+                    print line
+                  }
+                }
+              }
+            ' merged_content.md > merged_content_clean.md
+
+            # Remove leading/trailing blank lines in the cleaned content
+            sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' merged_content_clean.md || true
+            # (fallback simpler trim if sed above fails)
+            sed -i '1{/^[[:space:]]*$/d;}' merged_content_clean.md || true
+            # build new version block
             printf "%s\n\n" "$version_header" > new_block.md
-            cat merged_content.md >> new_block.md
+            cat merged_content_clean.md >> new_block.md
             printf "\n" >> new_block.md
 
             # Replace the old version block by matching either MATCH1 or MATCH2
@@ -372,7 +410,7 @@ jobs:
             fi
           fi
 
-          # Keep exactly one top-level '# Changelog'
+          # Ensure exactly one top '# Changelog'
           awk 'BEGIN{first=1}
             {
               if($0=="# Changelog"){
@@ -386,8 +424,8 @@ jobs:
 
           echo "Changelog merged on disk (no git operations performed in this step)."
 
-          # cleanup intermediate files (kept local only)
-          rm -f existing_block.md existing_body.md merged_temp.md merged_content.md new_block.md temp_changelog.md tmp_changelog.md || true
+          # Cleanup intermediate files
+          rm -f existing_block.md existing_body.md merged_temp.md merged_content.md merged_content_clean.md new_block.md temp_changelog.md tmp_changelog.md || true
 
       - name: Commit and push CHANGELOG.md
         if: always()
