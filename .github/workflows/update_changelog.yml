@@ -3,483 +3,57 @@ name: Generate Changelog
 on:
   push:
     branches: [ '**' ]
-
-permissions:
-  contents: write
+  pull_request:
+    branches: [ '**' ]
 
 jobs:
   changelog:
     runs-on: ubuntu-latest
 
+    # Skip if commit message contains changelog-related keywords to prevent loops
+    if: ${{ !contains(github.event.head_commit.message, 'changelog') && !contains(github.event.head_commit.message, 'LATEST_CHANGELOG') }}
+
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Fetch full history for proper tag detection
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          npm install -g conventional-changelog-cli
-          npm install -g conventional-changelog-conventionalcommits
+        run: npm ci
 
-      - name: Read gradle.properties
-        id: gradle_props
+      - name: Generate changelog
+        run: npm run changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for changes
+        id: git-check
         run: |
-          if [ -f "gradle.properties" ]; then
-            mod_version=$(grep '^mod_version=' gradle.properties | cut -d'=' -f2 | tr -d ' ')
-            game_versions=$(grep '^game_versions=' gradle.properties | cut -d'=' -f2 | tr -d ' ')
-            echo "mod_version=$mod_version" >> $GITHUB_OUTPUT
-            echo "game_versions=$game_versions" >> $GITHUB_OUTPUT
+          if git diff --quiet HEAD -- LATEST_CHANGELOG.md; then
+            echo "changed=false" >> $GITHUB_OUTPUT
           else
-            echo "gradle.properties not found"
-            exit 1
+            echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create changelog configuration
+      - name: Commit and push if changed
+        if: steps.git-check.outputs.changed == 'true'
         run: |
-          cat > .changelogrc.js << 'EOF'
-          const config = {
-            writerOpts: {
-              // Gruppen bleiben nach Commit-Type erhalten, aber es gibt keine benutzerdefinierte Sortierung mehr.
-              groupBy: "type"
-            },
-            preset: {
-              name: "conventionalcommits",
-              types: [
-                {
-                  type: "feat",
-                  section: "Features"
-                },
-                {
-                  type: "feature",
-                  section: "Features"
-                },
-                {
-                  type: "fix",
-                  section: "Bug Fixes"
-                },
-                {
-                  type: "perf",
-                  section: "Performance Improvements"
-                },
-                {
-                  type: "revert",
-                  section: "Reverts"
-                },
-                {
-                  type: "docs",
-                  section: "Documentation"
-                },
-                {
-                  type: "style",
-                  section: "Styles"
-                },
-                {
-                  type: "chore",
-                  section: "Miscellaneous Chores"
-                },
-                {
-                  type: "refactor",
-                  section: "Code Refactoring"
-                },
-                {
-                  type: "test",
-                  section: "Tests"
-                },
-                {
-                  type: "build",
-                  section: "Build System"
-                },
-                {
-                  type: "ci",
-                  section: "Continuous Integration"
-                }
-              ]
-            }
-          };
-          
-          module.exports = config;
-          EOF
-
-      - name: Normalize latest tag
-        id: normalize_tag
-        run: |
-          set -euo pipefail
-
-          # Find the latest tag by creation date (fallback safe)
-          LATEST_TAG=$(git for-each-ref --sort=-creatordate --format '%(refname:short)' refs/tags | head -n1 || true)
-
-          if [ -z "$LATEST_TAG" ]; then
-            echo "original_tag=" >> "$GITHUB_OUTPUT"
-            echo "normalized_tag=" >> "$GITHUB_OUTPUT"
-            echo "No tags found in repo."
-            exit 0
-          fi
-
-          # Normalize: convert "v.1.2.3" -> "v1.2.3", leave other tags unchanged
-          NORMALIZED_TAG=$(printf '%s' "$LATEST_TAG" | sed 's/^v\./v/')
-
-          echo "original_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
-          echo "normalized_tag=$NORMALIZED_TAG" >> "$GITHUB_OUTPUT"
-
-          echo "Normalized tag: '$LATEST_TAG' -> '$NORMALIZED_TAG'"
-
-      - name: Check if version exists in CHANGELOG.md
-        id: version_check
-        run: |
-          # Build a sanitized single-line version header.
-          version_header=$(printf "v.${{ steps.gradle_props.outputs.mod_version }}  for MC ${{ steps.gradle_props.outputs.game_versions }}" | tr -d '\r\n')
-          
-          # Default to not existing
-          version_exists=false
-
-          # If CHANGELOG.md exists, check for a single-line match first
-          if [ -f "CHANGELOG.md" ] && grep -q "## $version_header" CHANGELOG.md; then
-            version_exists=true
-          else
-            # Also accept the case where the existing changelog has a multi-line header:
-            # a line starting with "## " that contains the version and the next line contains the "for MC ..." part.
-            if [ -f "CHANGELOG.md" ]; then
-              if awk -v mv="v.${{ steps.gradle_props.outputs.mod_version }}" -v gv="for MC ${{ steps.gradle_props.outputs.game_versions }}" '
-                   BEGIN { found=0 }
-                   /^## / {
-                     if (index($0, mv)) {
-                       if (getline > 0) {
-                         if (index($0, gv)) { found=1; exit }
-                       }
-                     }
-                   }
-                   END { exit(!found) }
-                   ' CHANGELOG.md; then
-                version_exists=true
-              fi
-            fi
-          fi
-
-          printf 'version_exists=%s\n' "$version_exists" >> $GITHUB_OUTPUT
-          printf 'version_header=%s\n' "$version_header" >> $GITHUB_OUTPUT
-
-      - name: Generate temporary changelog
-        run: |
-          # Get the latest commit hash to generate changelog from all commits since last tag
-          # If no tags exist, generate from all commits
-          if git describe --tags --exact-match HEAD 2>/dev/null; then
-            # Current commit is tagged, generate changelog for this tag
-            conventional-changelog -p conventionalcommits -r 1 --config .changelogrc.js > temp_changelog.md
-          elif git describe --tags --abbrev=0 2>/dev/null; then
-            # Tags exist but current commit is not tagged, generate since last tag
-            LAST_TAG=$(git describe --tags --abbrev=0)
-            conventional-changelog -p conventionalcommits --config .changelogrc.js --commit-path . --pkg '{"version":"${{ steps.gradle_props.outputs.mod_version }}"}' --from $LAST_TAG > temp_changelog.md
-          else
-            # No tags exist, generate from all commits
-            conventional-changelog -p conventionalcommits --config .changelogrc.js --commit-path . --pkg '{"version":"${{ steps.gradle_props.outputs.mod_version }}"}' --from '' > temp_changelog.md
-          fi
-
-      - name: Process changelog content
-        run: |
-          # Check if changelog was generated and has content
-          if [ -s temp_changelog.md ]; then
-            # Remove version header if it exists (starts with ##)
-            # Some changelogs emit a multi-line header:
-            # ## vX.Y.Z
-            #  for MC ...
-            # We remove the first header line and any immediately following continuation lines
-            if head -1 temp_changelog.md | grep -q "^## "; then
-              # remove the first header line
-              tail -n +2 temp_changelog.md > temp_content.md
-              # drop any immediately following lines that are blank or start with whitespace (these are header continuations)
-              awk 'BEGIN{skip=1} {
-                if (skip) {
-                  if ($0 ~ /^[[:space:]]*$/) next;
-                  else if ($0 ~ /^[[:space:]]/) next;
-                  else { skip=0; print; }
-                } else { print }
-              }' temp_content.md > processed_content.md
-            else
-              cp temp_changelog.md processed_content.md
-            fi
-          
-            # Remove empty lines at the beginning (just in case)
-            sed -i '1{/^[[:space:]]*$/d;}' processed_content.md || true
-          else
-            # No commits found, create empty content
-            echo "" > processed_content.md
-          fi
-
-      - name: Debug output
-        run: |
-          echo "=== Debug Information ==="
-          echo "Repository status:"
-          git status
-          echo ""
-          echo "Recent commits:"
-          git log --oneline -5
-          echo ""
-          echo "Tags:"
-          git tag -l
-          echo ""
-          echo "Temp changelog content:"
-          if [ -f temp_changelog.md ]; then
-            echo "--- temp_changelog.md ---"
-            cat temp_changelog.md
-          else
-            echo "temp_changelog.md does not exist"
-          fi
-          echo ""
-          echo "Processed content:"
-          if [ -f processed_content.md ]; then
-            echo "--- processed_content.md ---"
-            cat processed_content.md
-          else
-            echo "processed_content.md does not exist"
-          fi
-
-      - name: Update LATEST_CHANGELOG.md
-        run: |
-          version_header="## ${{ steps.version_check.outputs.version_header }}"
-          
-          # Write header as a single line
-          printf '%s\n' "$version_header" > LATEST_CHANGELOG.md
-          
-          # Add processed content if it exists and is not empty
-          if [ -s processed_content.md ]; then
-            cat processed_content.md >> LATEST_CHANGELOG.md
-          else
-            echo "No notable changes." >> LATEST_CHANGELOG.md
-          fi
-
-      - name: Update CHANGELOG.md
-        id: update_changelog
-        run: |
-          set -euo pipefail
-
-          # --- Inputs / expected values ---
-          version_header="## ${{ steps.version_check.outputs.version_header }}"
-          MOD_VER="v.${{ steps.gradle_props.outputs.mod_version }}"
-          PROCESSED="processed_content.md"
-          CHANGELOG="CHANGELOG.md"
-
-          # Use normalized tag if provided; otherwise fall back
-          NORMALIZED_TAG="${{ steps.normalize_tag.outputs.normalized_tag }}"
-          if [ -n "$NORMALIZED_TAG" ]; then
-            MATCH1="$NORMALIZED_TAG"
-            MATCH2="$(printf '%s' "$NORMALIZED_TAG" | sed 's/^v/v./')"
-          else
-            MATCH1="$MOD_VER"
-            MATCH2="$(printf '%s' "$MOD_VER" | sed 's/^v/v./')"
-          fi
-
-          echo "DEBUG: MATCH1='$MATCH1' MATCH2='$MATCH2'"
-
-          if [ ! -s "$PROCESSED" ]; then
-            echo "No new processed changelog content - nothing to update."
-            exit 0
-          fi
-
-          # Remove leading blank lines from processed content
-          sed -i '1{/^[[:space:]]*$/d;}' "$PROCESSED" || true
-
-          # If version already exists, merge; otherwise insert a new block
-          if [ "${{ steps.version_check.outputs.version_exists }}" = "true" ]; then
-            echo "Version exists: merging into existing version block."
-
-            awk -v m1="$MATCH1" -v m2="$MATCH2" '
-              BEGIN { in_block=0 }
-              {
-                if (/^## /) {
-                  if (!in_block && (index($0, m1) || index($0, m2))) { in_block=1; print; next }
-                  if (in_block && /^## /) { exit }
-                }
-                if (in_block) print
-              }
-            ' "$CHANGELOG" > existing_block.md || :
-
-            if [ -s existing_block.md ]; then
-              tail -n +2 existing_block.md | awk '
-                BEGIN{skip=1}
-                {
-                  if (skip) {
-                    if ($0 ~ /^[[:space:]]*$/) next;
-                    else if ($0 ~ /^[[:space:]]/) next;
-                    else { skip=0; print }
-                  } else { print }
-                }
-              ' > existing_body.md
-            else
-              : > existing_body.md
-            fi
-
-            # Combine new + existing, then deduplicate exact lines while keeping section headers
-            cat "$PROCESSED" existing_body.md > merged_temp.md || :
-            awk '
-              {
-                if (/^### /) { print; next }
-                if (/^$/) { print; next }
-                if (!seen[$0]++) print
-              }
-            ' merged_temp.md > merged_content.md
-
-            # --- CLEANUP: Remove section headers that end up with no bullet lines under them ---
-            # This removes headers (either "### Header" or common plain headers like "Features")
-            # when their next non-empty line is NOT a bullet (starting with *, -, +).
-            awk '
-              {
-                a[NR] = $0
-              }
-              END {
-                for (i = 1; i <= NR; i++) {
-                  line = a[i]
-                  # Match Markdown section headers ("### ...") or common plain section titles
-                  if (line ~ /^###[[:space:]]+/ || line ~ /^(Features|Bug Fixes|Bugfixes|Fixes|Docs|Documentation|Performance|Security|Other Changes|Deprecated|Removed|Added|Changed)$/) {
-                    # find next non-empty line
-                    j = i + 1
-                    while (j <= NR && a[j] ~ /^[[:space:]]*$/) j++
-                    if (j > NR) {
-                      # header is at EOF with no content -> skip printing the header
-                      continue
-                    }
-                    # If the next non-empty line is a bullet, keep the header; otherwise skip it
-                    if (a[j] ~ /^[\*\-\+][[:space:]]+/) {
-                      print line
-                    } else {
-                      # skip header because there are no bullet items under it
-                      continue
-                    }
-                  } else {
-                    print line
-                  }
-                }
-              }
-            ' merged_content.md > merged_content_clean.md
-
-            # Remove leading/trailing blank lines in the cleaned content
-            sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' merged_content_clean.md || true
-            # (fallback simpler trim if sed above fails)
-            sed -i '1{/^[[:space:]]*$/d;}' merged_content_clean.md || true
-            # build new version block
-            printf "%s\n\n" "$version_header" > new_block.md
-            cat merged_content_clean.md >> new_block.md
-            printf "\n" >> new_block.md
-
-            # Replace the old version block by matching either MATCH1 or MATCH2
-            awk -v m1="$MATCH1" -v m2="$MATCH2" -v nb="new_block.md" '
-              BEGIN { printed=0; in_block=0 }
-              {
-                if (/^## /) {
-                  if (!printed && (index($0, m1) || index($0, m2))) {
-                    system("cat " nb)
-                    printed=1
-                    in_block=1
-                    next
-                  }
-                }
-                if (in_block && /^## /) { in_block=0 }
-                if (!in_block) print
-              }
-            ' "$CHANGELOG" > temp_changelog.md && mv temp_changelog.md "$CHANGELOG"
-
-          else
-            echo "Version does not exist: inserting new version block."
-
-            if [ -f "$CHANGELOG" ] && head -n1 "$CHANGELOG" | grep -q "^# Changelog"; then
-              {
-                head -n1 "$CHANGELOG"
-                echo ""
-                printf '%s\n\n' "$version_header"
-                cat "$PROCESSED"
-                echo ""
-                tail -n +2 "$CHANGELOG"
-              } > temp_changelog.md && mv temp_changelog.md "$CHANGELOG"
-            else
-              {
-                echo "# Changelog"
-                echo ""
-                printf '%s\n\n' "$version_header"
-                cat "$PROCESSED"
-                echo ""
-                if [ -f "$CHANGELOG" ]; then
-                  cat "$CHANGELOG"
-                fi
-              } > temp_changelog.md && mv temp_changelog.md "$CHANGELOG"
-            fi
-          fi
-
-          # Ensure exactly one top '# Changelog'
-          awk 'BEGIN{first=1}
-            {
-              if($0=="# Changelog"){
-                if(first){ print; first=0 } else next
-              } else print
-            }' "$CHANGELOG" > tmp_changelog.md && mv tmp_changelog.md "$CHANGELOG"
-
-          if ! head -n1 "$CHANGELOG" | grep -q "^# Changelog"; then
-            sed -i '1i# Changelog' "$CHANGELOG"
-          fi
-
-          echo "Changelog merged on disk (no git operations performed in this step)."
-
-          # Cleanup intermediate files
-          rm -f existing_block.md existing_body.md merged_temp.md merged_content.md merged_content_clean.md new_block.md temp_changelog.md tmp_changelog.md || true
-
-      - name: Commit and push CHANGELOG.md
-        if: always()
-        run: |
-          set -euo pipefail
-
-          git config --local user.email "action@github.com"
-          git config --local user.name "github-actions[bot]"
-
-          echo "Git status (before add):"
-          git status --porcelain --untracked-files=all || :
-
-          # Stage only CHANGELOG.md to avoid accidentally committing other temp files
-          git add -- "CHANGELOG.md" || true
-
-          echo "Git status (after add):"
-          git status --porcelain --untracked-files=all || :
-
-          # If nothing staged, skip commit
-          if git diff --staged --quiet; then
-            echo "No staged changes to commit. Skipping commit."
-            exit 0
-          fi
-
-          COMMIT_MSG="chore: update changelog for ${{ steps.version_check.outputs.version_header }}"
-          git commit -m "$COMMIT_MSG" --no-verify
-
-          echo "Committed changes: $(git rev-parse --short HEAD)"
-          echo "Pushing to remote..."
-          if git push --follow-tags; then
-            echo "Push succeeded."
-          else
-            echo "Push failed; showing diagnostics:"
-            git remote -v
-            git log -n 5 --oneline
-            exit 1
-          fi
-
-      - name: Clean up temporary files
-        run: |
-          rm -f temp_changelog.md temp_content.md processed_content.md .changelogrc.js temp_changelog_full.md temp_changelog_final.md
-
-      - name: Commit changes
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          
-          # Stage the files (if they exist)
-          git add CHANGELOG.md LATEST_CHANGELOG.md || true
-
-          # If there are staged changes, commit
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "chore: update changelog for v.${{ steps.gradle_props.outputs.mod_version }}"
-            git push
-          fi
+          git add LATEST_CHANGELOG.md
+          git commit -m "docs: update changelog [skip ci]"
+          git push

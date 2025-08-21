@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Generate changelog before commit
+npm run changelog
+
+# Add changelog if it was modified
+git add LATEST_CHANGELOG.md 2>/dev/null || true

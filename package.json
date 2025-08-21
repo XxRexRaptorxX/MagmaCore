@@ -1,0 +1,20 @@
+{
+  "name": "changelog-generator",
+  "version": "1.0.0",
+  "description": "Automatic changelog generator using conventional commits",
+  "main": "generate-changelog.js",
+  "scripts": {
+    "changelog": "node generate-changelog.js",
+    "prepare": "husky install || true"
+  },
+  "dependencies": {
+    "simple-git": "^3.19.1",
+    "conventional-commits-parser": "^5.0.0",
+    "semver": "^7.5.4"
+  },
+  "devDependencies": {
+    "husky": "^8.0.3"
+  },
+  "keywords": ["minecraft", "mod", "changelog", "conventional-commits"],
+  "author": "XxRexRaptorxX"
+}
