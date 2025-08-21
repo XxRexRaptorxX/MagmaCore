@@ -1,9 +1,8 @@
 package xxrexraptorxx.magmacore.config;
 
-import net.neoforged.neoforge.common.ModConfigSpec;
-
 import java.util.Arrays;
 import java.util.List;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class Config {
 
@@ -105,7 +104,9 @@ public class Config {
         return SHOW_ALL_LOGS.get();
     }
 
-    public static boolean getEasterEggs() { return EASTER_EGGS.get(); }
+    public static boolean getEasterEggs() {
+        return EASTER_EGGS.get();
+    }
 
     public static boolean getDebugMode() {
         return DEBUG_MODE != null || DEBUG_MODE.get();

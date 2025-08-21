@@ -1,5 +1,20 @@
 package xxrexraptorxx.magmacore.world;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.particles.ParticleTypes;
@@ -33,22 +48,6 @@ import xxrexraptorxx.magmacore.main.MagmaCore;
 import xxrexraptorxx.magmacore.main.ModRegistry;
 import xxrexraptorxx.magmacore.main.References;
 import xxrexraptorxx.magmacore.utils.FormattingHelper;
-
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 @EventBusSubscriber(modid = References.MODID, bus = EventBusSubscriber.Bus.GAME)
 public class Events {
@@ -171,28 +170,30 @@ public class Events {
         lastUpdate = System.currentTimeMillis();
 
         if (Config.getDebugMode()) {
-            MagmaCore.LOGGER.info("Supporter-Listen aktualisiert: supporter={}, premium={}, elite={} ",
-                    supporterCache.size(), premiumCache.size(), eliteCache.size());
+            MagmaCore.LOGGER.info(
+                    "Supporter-Listen aktualisiert: supporter={}, premium={}, elite={} ",
+                    supporterCache.size(),
+                    premiumCache.size(),
+                    eliteCache.size());
         }
     }
-
 
     /**
      * Schedules a daily refresh of the supporter lists.
      */
     private static void scheduleDailyRefresh() {
-        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
-                () -> {
-                    try {
-                        refreshSupporterLists();
-                    } catch (Exception ex) {
-                        MagmaCore.LOGGER.error("Fehler beim täglichen Refresh: {}", ex.getMessage());
-                    }
-                },
-                25,
-                24,
-                TimeUnit.HOURS
-        );
+        Executors.newSingleThreadScheduledExecutor()
+                .scheduleAtFixedRate(
+                        () -> {
+                            try {
+                                refreshSupporterLists();
+                            } catch (Exception ex) {
+                                MagmaCore.LOGGER.error("Fehler beim täglichen Refresh: {}", ex.getMessage());
+                            }
+                        },
+                        25,
+                        24,
+                        TimeUnit.HOURS);
     }
 
     /**
@@ -246,7 +247,6 @@ public class Events {
         player.getInventory().add(RewardItems.getChestplate(level, player));
     }
 
-
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         if (Config.getSupporterHighlights()) {
@@ -255,7 +255,8 @@ public class Events {
             boolean isDev = player.getName().getString().equals("Dev");
 
             if (!level.isClientSide()
-                            && supporterCache.contains(event.getEntity().getUUID().toString())
+                            && supporterCache.contains(
+                                    event.getEntity().getUUID().toString())
                     || Config.getDebugMode() && isDev) {
                 Vec3 pos = player.position();
                 double d0 = pos.x + (level.random.nextFloat() - 0.5F);
