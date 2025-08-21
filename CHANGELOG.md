@@ -1,4 +1,7 @@
+# Changelog
+
 ## v.1.3.2  for MC 1.21.5
+
 ### Features
 
 * Herobrine easter egg ([26582a0](https://github.com/XxRexRaptorxX/MagmaCore/commit/26582a0342e17c1e5e42e63d8868d1b973dd0294))
@@ -41,3 +44,4 @@
 * test ([8182f56](https://github.com/XxRexRaptorxX/MagmaCore/commit/8182f56b48e26bd5e66a74263371453b956f35f0))
 * test ([271e779](https://github.com/XxRexRaptorxX/MagmaCore/commit/271e7790b9752fdac1a648fc590dbf51e2b14f08))
 * test ([2d8dccf](https://github.com/XxRexRaptorxX/MagmaCore/commit/2d8dccf675a17e2c891a3720b1700c8ffacb26e2))
+
