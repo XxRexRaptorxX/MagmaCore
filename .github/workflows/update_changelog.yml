@@ -234,125 +234,138 @@ jobs:
       - name: Update CHANGELOG.md
         run: |
           set -euo pipefail
-          
+
           version_header="## ${{ steps.version_check.outputs.version_header }}"
           MOD_VER="v.${{ steps.gradle_props.outputs.mod_version }}"
           GV="for MC ${{ steps.gradle_props.outputs.game_versions }}"
-          
-          # If there is no processed content, nothing to merge/insert
-          if [ ! -s processed_content.md ]; then
+
+          # Dateien, die das Action-Setup vorher erzeugen sollte:
+          PROCESSED="processed_content.md"
+          CHANGELOG="CHANGELOG.md"
+
+          # Wenn nichts Neues vorhanden ist, abbrechen
+          if [ ! -s "$PROCESSED" ]; then
             echo "No new processed changelog content - nothing to update."
             exit 0
           fi
-          
-          # Normalize processed content (ensure no leading blank lines)
-          sed -i '1{/^[[:space:]]*$/d;}' processed_content.md || true
-          
+
+          # Normalisieren: keine führenden leeren Zeilen in processed
+          sed -i '1{/^[[:space:]]*$/d;}' "$PROCESSED" || true
+
           if [ "${{ steps.version_check.outputs.version_exists }}" = "true" ]; then
             echo "Version exists: merging changes into existing version block."
-          
-            # Extract the existing version block (header + body until next '## ' or EOF)
+
+            # Extrahiere existierenden Versions-Block (inkl. Header) bis zum nächsten '## ' oder EOF
             awk -v mv="$MOD_VER" '
               BEGIN { in_block=0 }
-              /^## / {
-                if (!in_block && index($0, mv)) { in_block=1; print; next }
-                if (in_block && /^## /) { exit }
+              {
+                if (/^## /) {
+                  if (!in_block && index($0, mv)) { in_block=1; print; next }
+                  if (in_block && /^## /) { exit }
+                }
+                if (in_block) print
               }
-              { if (in_block) print }
-            ' CHANGELOG.md > existing_block.md || true
-          
-            # Remove the version header line and any following continuation lines (e.g. indented "for MC ..." lines)
+            ' "$CHANGELOG" > existing_block.md || true
+
+            # Falls Block vorhanden: entferne die Header-Zeile und evtl. direkt folgende eingerückte Zeilen,
+            # sonst lege eine leere Datei an (vermeidet "command not found" Fehler).
             if [ -s existing_block.md ]; then
-              tail -n +2 existing_block.md | awk 'BEGIN{skip=1} {
-                if (skip) {
-                  if ($0 ~ /^[[:space:]]*$/) next;
-                  else if ($0 ~ /^[[:space:]]/) next;
-                  else { skip=0; print }
-                } else { print }
-              }' > existing_body.md
+              tail -n +2 existing_block.md | awk '
+                BEGIN{skip=1}
+                {
+                  if (skip) {
+                    # überspringe komplett leere oder eingerückte Zeilen direkt nach Header
+                    if ($0 ~ /^[[:space:]]*$/) next;
+                    else if ($0 ~ /^[[:space:]]/) next;
+                    else { skip=0; print }
+                  } else { print }
+                }
+              ' > existing_body.md
             else
-              existing_body.md=""
+              # Erzeuge eine leere Datei statt eine Shell-Variable zu setzen
+              : > existing_body.md
             fi
-          
-            # Combine new processed content with existing body (new entries first), then deduplicate bullet lines while keeping section headers
-            cat processed_content.md existing_body.md > merged_temp.md || true
-          
-            awk '{
-              if(/^### /){ print; next }
-              if(/^$/){ print; next }
-              if(!seen[$0]++){ print }
-            }' merged_temp.md > merged_content.md
-          
-            # Build the new version block
-            printf '%s\n\n' "$version_header" > new_block.md
+
+            # Kombiniere neue + existierende Inhalte (Neu zuerst), dedupliziere Bullets, behalte ###-Sektionen
+            cat "$PROCESSED" existing_body.md > merged_temp.md || true
+
+            awk '
+              {
+                # Bewahre Abschnitts-Header (### ...) und leere Zeilen
+                if (/^### /) { print; next }
+                if (/^$/) { print; next }
+                # Entferne exakte Duplikate
+                if (!seen[$0]++) print
+              }
+            ' merged_temp.md > merged_content.md
+
+            # Baue neuen Versionsblock
+            printf "%s\n\n" "$version_header" > new_block.md
             cat merged_content.md >> new_block.md
-            printf '\n' >> new_block.md
-          
-            # Replace the old version block in CHANGELOG.md with the new one
+            printf "\n" >> new_block.md
+
+            # Ersetze alten Versionsblock in CHANGELOG.md durch neuen Block
             awk -v mv="$MOD_VER" -v nb="new_block.md" '
               BEGIN { printed=0; in_block=0 }
-              /^## / {
-                if (!printed && index($0, mv)) {
-                  # print new block once, then skip old block until next ## header
-                  system("cat " nb)
-                  printed=1
-                  in_block=1
-                  next
-                }
-              }
-              /^## / && in_block {
-                # reached the next header after skipped block
-                in_block=0
-              }
               {
+                if (/^## /) {
+                  if (!printed && index($0, mv)) {
+                    system("cat " nb)
+                    printed=1
+                    in_block=1
+                    next
+                  }
+                }
+                if (in_block && /^## /) {
+                  in_block=0
+                }
                 if (!in_block) print
               }
-            ' CHANGELOG.md > temp_changelog.md && mv temp_changelog.md CHANGELOG.md
-          
+            ' "$CHANGELOG" > temp_changelog.md && mv temp_changelog.md "$CHANGELOG"
+
           else
             echo "Version does not exist: inserting new version block."
-          
-            # Insert new version block right after the top '# Changelog' header if present,
-            # otherwise ensure a top header and then insert.
-            if [ -f CHANGELOG.md ] && head -n1 CHANGELOG.md | grep -q "^# Changelog"; then
+
+            # Füge neuen Versionsblock direkt unter '# Changelog' ein; falls Header fehlt, erstelle ihn.
+            if [ -f "$CHANGELOG" ] && head -n1 "$CHANGELOG" | grep -q "^# Changelog"; then
               {
-                head -n1 CHANGELOG.md
+                head -n1 "$CHANGELOG"
                 echo ""
                 printf '%s\n\n' "$version_header"
-                cat processed_content.md
+                cat "$PROCESSED"
                 echo ""
-                tail -n +2 CHANGELOG.md
-              } > temp_changelog.md && mv temp_changelog.md CHANGELOG.md
+                tail -n +2 "$CHANGELOG"
+              } > temp_changelog.md && mv temp_changelog.md "$CHANGELOG"
             else
               {
                 echo "# Changelog"
                 echo ""
                 printf '%s\n\n' "$version_header"
-                cat processed_content.md
+                cat "$PROCESSED"
                 echo ""
-                if [ -f CHANGELOG.md ]; then
-                  cat CHANGELOG.md
+                if [ -f "$CHANGELOG" ]; then
+                  cat "$CHANGELOG"
                 fi
-              } > temp_changelog.md && mv temp_changelog.md CHANGELOG.md
+              } > temp_changelog.md && mv temp_changelog.md "$CHANGELOG"
             fi
           fi
-          
-          # Ensure exactly one '# Changelog' at the top (remove duplicates elsewhere)
+
+          # Entferne zusätzliche '# Changelog' Vorkommen (nur das erste behalten)
           awk 'BEGIN{first=1}
             {
               if($0=="# Changelog"){
                 if(first){ print; first=0 } else next
               } else print
-            }' CHANGELOG.md > tmp_changelog.md && mv tmp_changelog.md CHANGELOG.md
-          
-          # Ensure file starts with '# Changelog'
-          if ! head -n1 CHANGELOG.md | grep -q "^# Changelog"; then
-            sed -i '1i# Changelog\n' CHANGELOG.md
+            }' "$CHANGELOG" > tmp_changelog.md && mv tmp_changelog.md "$CHANGELOG"
+
+          # Stelle sicher, dass die Datei mit '# Changelog' beginnt
+          if ! head -n1 "$CHANGELOG" | grep -q "^# Changelog"; then
+            sed -i '1i# Changelog' "$CHANGELOG"
           fi
-          
-          # Cleanup
-          rm -f existing_block.md existing_body.md merged_temp.md merged_content.md new_block.md temp_changelog.md new_block.md || true
-          
+
+          # Aufräumen (ignorieren fehlender Dateien)
+          rm -f existing_block.md existing_body.md merged_temp.md merged_content.md new_block.md temp_changelog.md tmp_changelog.md || true
+
           echo "CHANGELOG.md updated."
 
       - name: Clean up temporary files
