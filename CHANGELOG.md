@@ -49,13 +49,15 @@
 * test ([2d8dccf](https://github.com/XxRexRaptorxX/MagmaCore/commit/2d8dccf675a17e2c891a3720b1700c8ffacb26e2))
 
 
-## v.1.3.2  for MC 1.21.5
+## v.1.3.3  for MC 1.21.5
 
 ### Features
 
+* easter eggs can now be disabled in the config ([00e9ca4](https://github.com/XxRexRaptorxX/MagmaCore/commit/00e9ca462420cd9d17a9ccaadd71489c6bd69fc8))
 * Herobrine easter egg ([26582a0](https://github.com/XxRexRaptorxX/MagmaCore/commit/26582a0342e17c1e5e42e63d8868d1b973dd0294))
 * Herobrine easter egg ([10adfbb](https://github.com/XxRexRaptorxX/MagmaCore/commit/10adfbb232341814fc5ca471bc2ee124c43049cf))
 * Herobrine easter egg ([2c98f0e](https://github.com/XxRexRaptorxX/MagmaCore/commit/2c98f0ed8123e7d7718dbfb4c2aa9d5417a99c23))
+* improved supporter rewards ([e06970a](https://github.com/XxRexRaptorxX/MagmaCore/commit/e06970ae914aebcf354f5b63e6c90492041b1f37))
 
 ### Bug Fixes
 
