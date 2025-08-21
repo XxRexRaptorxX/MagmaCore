@@ -107,6 +107,29 @@ jobs:
           module.exports = config;
           EOF
 
+      - name: Normalize latest tag
+        id: normalize_tag
+        run: |
+          set -euo pipefail
+
+          # Find the latest tag by creation date (fallback safe)
+          LATEST_TAG=$(git for-each-ref --sort=-creatordate --format '%(refname:short)' refs/tags | head -n1 || true)
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "original_tag=" >> "$GITHUB_OUTPUT"
+            echo "normalized_tag=" >> "$GITHUB_OUTPUT"
+            echo "No tags found in repo."
+            exit 0
+          fi
+
+          # Normalize: convert "v.1.2.3" -> "v1.2.3", leave other tags unchanged
+          NORMALIZED_TAG=$(printf '%s' "$LATEST_TAG" | sed 's/^v\./v/')
+
+          echo "original_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+          echo "normalized_tag=$NORMALIZED_TAG" >> "$GITHUB_OUTPUT"
+
+          echo "Normalized tag: '$LATEST_TAG' -> '$NORMALIZED_TAG'"
+
       - name: Check if version exists in CHANGELOG.md
         id: version_check
         run: |
@@ -231,36 +254,47 @@ jobs:
             echo "No notable changes." >> LATEST_CHANGELOG.md
           fi
 
-      - name: Update CHANGELOG.md (merge + commit + push)
+      - name: Update CHANGELOG.md (merge only)
+        id: update_changelog
         run: |
           set -euo pipefail
 
-          # --- Config / inputs ---
+          # Inputs / expected values (keep your existing version header source)
           version_header="## ${{ steps.version_check.outputs.version_header }}"
           MOD_VER="v.${{ steps.gradle_props.outputs.mod_version }}"
-          # normalize tags that might use an extra dot (e.g. "v.1.3.1") to "v1.3.1"
-          MOD_VER_NORM="$(printf '%s' "$MOD_VER" | sed 's/^v\\./v/')"
           PROCESSED="processed_content.md"
           CHANGELOG="CHANGELOG.md"
 
-          echo "DEBUG: MOD_VER='$MOD_VER' MOD_VER_NORM='$MOD_VER_NORM'"
-          echo "DEBUG: processed file: $PROCESSED"
+          # Use normalized tag if provided; otherwise fall back
+          NORMALIZED_TAG="${{ steps.normalize_tag.outputs.normalized_tag }}"
+          if [ -n "$NORMALIZED_TAG" ]; then
+            MATCH1="$NORMALIZED_TAG"
+            MATCH2="$(printf '%s' "$NORMALIZED_TAG" | sed 's/^v/v./')"
+          else
+            MATCH1="$MOD_VER"
+            MATCH2="$(printf '%s' "$MOD_VER" | sed 's/^v/v./')"
+          fi
+
+          echo "DEBUG: MATCH1='$MATCH1' MATCH2='$MATCH2'"
 
           if [ ! -s "$PROCESSED" ]; then
             echo "No new processed changelog content - nothing to update."
             exit 0
           fi
 
+          # Remove leading blank lines from processed content
           sed -i '1{/^[[:space:]]*$/d;}' "$PROCESSED" || true
 
+          # If version already exists, merge; otherwise insert a new block
+          # We match either the normalized tag or the alternate form (with dot after v) to be robust.
           if [ "${{ steps.version_check.outputs.version_exists }}" = "true" ]; then
-            echo "Version exists: merging changes into existing version block."
+            echo "Version exists: merging into existing version block."
 
-            awk -v mv="$MOD_VER_NORM" '
+            awk -v m1="$MATCH1" -v m2="$MATCH2" '
               BEGIN { in_block=0 }
               {
                 if (/^## /) {
-                  if (!in_block && index($0, mv)) { in_block=1; print; next }
+                  if (!in_block && (index($0, m1) || index($0, m2))) { in_block=1; print; next }
                   if (in_block && /^## /) { exit }
                 }
                 if (in_block) print
@@ -295,12 +329,12 @@ jobs:
             cat merged_content.md >> new_block.md
             printf "\n" >> new_block.md
 
-            # Replace old block (match normalized mod version for safety)
-            awk -v mv="$MOD_VER_NORM" -v nb="new_block.md" '
+            # Replace the old version block by matching either MATCH1 or MATCH2
+            awk -v m1="$MATCH1" -v m2="$MATCH2" -v nb="new_block.md" '
               BEGIN { printed=0; in_block=0 }
               {
                 if (/^## /) {
-                  if (!printed && index($0, mv)) {
+                  if (!printed && (index($0, m1) || index($0, m2))) {
                     system("cat " nb)
                     printed=1
                     in_block=1
@@ -338,7 +372,7 @@ jobs:
             fi
           fi
 
-          # Ensure single top header
+          # Keep exactly one top-level '# Changelog'
           awk 'BEGIN{first=1}
             {
               if($0=="# Changelog"){
@@ -350,17 +384,23 @@ jobs:
             sed -i '1i# Changelog' "$CHANGELOG"
           fi
 
-          echo "CHANGELOG.md updated on disk. Preparing to commit."
+          echo "Changelog merged on disk (no git operations performed in this step)."
 
-          # --- Git commit & push (robust) ---
+          # cleanup intermediate files (kept local only)
+          rm -f existing_block.md existing_body.md merged_temp.md merged_content.md new_block.md temp_changelog.md tmp_changelog.md || true
+
+      - name: Commit and push CHANGELOG.md
+        if: always()
+        run: |
+          set -euo pipefail
+
           git config --local user.email "action@github.com"
           git config --local user.name "github-actions[bot]"
 
-          # show git status for debug
           echo "Git status (before add):"
           git status --porcelain --untracked-files=all || :
 
-          # Stage the CHANGELOG only (safe) - use -A if you want all changes
+          # Stage only CHANGELOG.md to avoid accidentally committing other temp files
           git add -- "CHANGELOG.md" || true
 
           echo "Git status (after add):"
@@ -369,26 +409,22 @@ jobs:
           # If nothing staged, skip commit
           if git diff --staged --quiet; then
             echo "No staged changes to commit. Skipping commit."
-          else
-            COMMIT_MSG="chore: update changelog for ${MOD_VER}"
-            git commit -m "$COMMIT_MSG" --no-verify
-            echo "Committed changes: $(git rev-parse --short HEAD)"
-            echo "Pushing to remote..."
-            # Use the default token remote (Actions provides permission) - push and show result
-            if git push --follow-tags; then
-              echo "Push succeeded."
-            else
-              echo "Push FAILED. Showing git remote + logs:"
-              git remote -v
-              git log -n 5 --oneline
-              exit 1
-            fi
+            exit 0
           fi
 
-          # Cleanup temporary files now that commit/push finished
-          rm -f existing_block.md existing_body.md merged_temp.md merged_content.md new_block.md temp_changelog.md tmp_changelog.md "$PROCESSED" .changelogrc.js || true
+          COMMIT_MSG="chore: update changelog for ${{ steps.version_check.outputs.version_header }}"
+          git commit -m "$COMMIT_MSG" --no-verify
 
-          echo "Done."
+          echo "Committed changes: $(git rev-parse --short HEAD)"
+          echo "Pushing to remote..."
+          if git push --follow-tags; then
+            echo "Push succeeded."
+          else
+            echo "Push failed; showing diagnostics:"
+            git remote -v
+            git log -n 5 --oneline
+            exit 1
+          fi
 
       - name: Clean up temporary files
         run: |
