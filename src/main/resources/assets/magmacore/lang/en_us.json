@@ -64,6 +64,8 @@
   "magmacore.configuration.ingame_logs.tooltip": "Shows you ingame in the chat, all logs of the console. Only useful for debugging",
   "magmacore.configuration.show_all_logs": "Show All Logs",
   "magmacore.configuration.show_all_logs.tooltip": "Shows you all logs, if switched off only logs from RexRaptor mods are displayed",
+  "magmacore.configuration.easter_eggs": "Easter eggs",
+  "magmacore.configuration.easter_eggs.tooltip": "Enables very rare easter eggs, like Herobrine messages on Halloween",
   "item.magmacore.certificate": "Certificate",
   "item.magmacore.certificate.lore": "Thank you for supporting me in my work!",
   "item.magmacore.legendary_chestplate": "Legendary Chestplate",

@@ -381,42 +381,44 @@ public class Events {
      */
     @SubscribeEvent
     public static void HerobrineEasterEgg(ServerTickEvent.Pre event) {
-        tickCounter++;
+        if (Config.getEasterEggs()) {
+            tickCounter++;
 
-        if (tickCounter % CHECK_INTERVAL != 0) {
-            return;
-        }
-
-        MinecraftServer server = event.getServer();
-        if (server == null || server.getPlayerList().getPlayerCount() == 0) {
-            return;
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        String dateKey = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-
-        if (!triggeredDates.contains(dateKey) && shouldTriggerHerobrineEvent(now)) {
-            triggeredDates.add(dateKey);
-            herobrineJoinTime = System.currentTimeMillis();
-            MagmaCore.LOGGER.info("Herobrine easter egg event triggered!");
-
-            Component herobrineComponent =
-                    Component.literal("Herobrine").withStyle(style -> style.withColor(ChatFormatting.RED));
-            Component joinText = Component.translatable("multiplayer.player.joined", herobrineComponent)
-                    .withStyle(style -> style.withColor(ChatFormatting.YELLOW));
-
-            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                player.playNotifySound(SoundEvents.AMBIENT_CAVE.value(), SoundSource.AMBIENT, 1.0f, 1.0f);
-                player.sendSystemMessage(joinText);
+            if (tickCounter % CHECK_INTERVAL != 0) {
+                return;
             }
-        }
 
-        if (herobrineJoinTime > 0 && !messageSentDates.contains(dateKey)) {
-            long timeSinceJoin = System.currentTimeMillis() - herobrineJoinTime;
+            MinecraftServer server = event.getServer();
+            if (server == null || server.getPlayerList().getPlayerCount() == 0) {
+                return;
+            }
 
-            if (timeSinceJoin >= 180000) {
-                messageSentDates.add(dateKey);
-                sendHerobrineChatMessage(server);
+            LocalDateTime now = LocalDateTime.now();
+            String dateKey = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+            if (!triggeredDates.contains(dateKey) && shouldTriggerHerobrineEvent(now)) {
+                triggeredDates.add(dateKey);
+                herobrineJoinTime = System.currentTimeMillis();
+                MagmaCore.LOGGER.info("Herobrine easter egg event triggered!");
+
+                Component herobrineComponent =
+                        Component.literal("Herobrine").withStyle(style -> style.withColor(ChatFormatting.RED));
+                Component joinText = Component.translatable("multiplayer.player.joined", herobrineComponent)
+                        .withStyle(style -> style.withColor(ChatFormatting.YELLOW));
+
+                for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                    player.playNotifySound(SoundEvents.AMBIENT_CAVE.value(), SoundSource.AMBIENT, 1.0f, 1.0f);
+                    player.sendSystemMessage(joinText);
+                }
+            }
+
+            if (herobrineJoinTime > 0 && !messageSentDates.contains(dateKey)) {
+                long timeSinceJoin = System.currentTimeMillis() - herobrineJoinTime;
+
+                if (timeSinceJoin >= 180000) {
+                    messageSentDates.add(dateKey);
+                    sendHerobrineChatMessage(server);
+                }
             }
         }
     }

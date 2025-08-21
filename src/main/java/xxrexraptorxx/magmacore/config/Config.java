@@ -1,8 +1,9 @@
 package xxrexraptorxx.magmacore.config;
 
+import net.neoforged.neoforge.common.ModConfigSpec;
+
 import java.util.Arrays;
 import java.util.List;
-import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class Config {
 
@@ -16,6 +17,7 @@ public class Config {
 
     private static ModConfigSpec.BooleanValue UPDATE_CHECKER;
     private static ModConfigSpec.BooleanValue MOD_REPOSTS_INFO;
+    private static ModConfigSpec.BooleanValue EASTER_EGGS;
     private static ModConfigSpec.BooleanValue SUPPORTER_REWARDS;
     private static ModConfigSpec.BooleanValue SUPPORTER_HIGHLIGHTS;
     private static ModConfigSpec.BooleanValue DEBUG_MODE;
@@ -62,6 +64,9 @@ public class Config {
         SUPPORTER_HIGHLIGHTS = SERVER_BUILDER
                 .comment("Enables the supporters to be highlighted ingame with particles around them")
                 .define("supporter_highlights", true);
+        EASTER_EGGS = SERVER_BUILDER
+                .comment("Enables very rare easter eggs, like Herobrine messages on Halloween")
+                .define("easter_eggs", true);
         SERVER_BUILDER.pop();
 
         SERVER_CONFIG = SERVER_BUILDER.build();
@@ -99,6 +104,8 @@ public class Config {
     public static boolean getShowAllLogs() {
         return SHOW_ALL_LOGS.get();
     }
+
+    public static boolean getEasterEggs() { return EASTER_EGGS.get(); }
 
     public static boolean getDebugMode() {
         return DEBUG_MODE != null || DEBUG_MODE.get();
