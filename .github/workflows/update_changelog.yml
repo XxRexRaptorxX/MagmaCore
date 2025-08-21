@@ -231,33 +231,32 @@ jobs:
             echo "No notable changes." >> LATEST_CHANGELOG.md
           fi
 
-      - name: Update CHANGELOG.md
+      - name: Update CHANGELOG.md (merge + commit + push)
         run: |
           set -euo pipefail
 
-          # --- Config / inputs (kept as before) ---
+          # --- Config / inputs ---
           version_header="## ${{ steps.version_check.outputs.version_header }}"
           MOD_VER="v.${{ steps.gradle_props.outputs.mod_version }}"
-          GV="for MC ${{ steps.gradle_props.outputs.game_versions }}"
-
-          # Files expected from previous steps
+          # normalize tags that might use an extra dot (e.g. "v.1.3.1") to "v1.3.1"
+          MOD_VER_NORM="$(printf '%s' "$MOD_VER" | sed 's/^v\\./v/')"
           PROCESSED="processed_content.md"
           CHANGELOG="CHANGELOG.md"
 
-          # If there is no processed content, nothing to do
+          echo "DEBUG: MOD_VER='$MOD_VER' MOD_VER_NORM='$MOD_VER_NORM'"
+          echo "DEBUG: processed file: $PROCESSED"
+
           if [ ! -s "$PROCESSED" ]; then
             echo "No new processed changelog content - nothing to update."
             exit 0
           fi
 
-          # Normalize processed content: remove leading blank lines
           sed -i '1{/^[[:space:]]*$/d;}' "$PROCESSED" || true
 
           if [ "${{ steps.version_check.outputs.version_exists }}" = "true" ]; then
             echo "Version exists: merging changes into existing version block."
 
-            # Extract the existing version block (header + content until next '## ' or EOF)
-            awk -v mv="$MOD_VER" '
+            awk -v mv="$MOD_VER_NORM" '
               BEGIN { in_block=0 }
               {
                 if (/^## /) {
@@ -266,16 +265,13 @@ jobs:
                 }
                 if (in_block) print
               }
-            ' "$CHANGELOG" > existing_block.md || true
+            ' "$CHANGELOG" > existing_block.md || : 
 
-            # If block exists: remove the header line and any immediate indented lines following it,
-            # otherwise create an empty file (prevents executing invalid shell commands).
             if [ -s existing_block.md ]; then
               tail -n +2 existing_block.md | awk '
                 BEGIN{skip=1}
                 {
                   if (skip) {
-                    # skip completely empty or indented lines directly after the header
                     if ($0 ~ /^[[:space:]]*$/) next;
                     else if ($0 ~ /^[[:space:]]/) next;
                     else { skip=0; print }
@@ -283,30 +279,24 @@ jobs:
                 }
               ' > existing_body.md
             else
-              # Create an empty file instead of assigning a variable to avoid "command not found"
               : > existing_body.md
             fi
 
-            # Combine new processed content with existing body (new entries first), then deduplicate bullet lines while keeping section headers
-            cat "$PROCESSED" existing_body.md > merged_temp.md || true
-
+            cat "$PROCESSED" existing_body.md > merged_temp.md || :
             awk '
               {
-                # Preserve section headers (### ...) and blank lines
                 if (/^### /) { print; next }
                 if (/^$/) { print; next }
-                # Remove exact duplicate lines
                 if (!seen[$0]++) print
               }
             ' merged_temp.md > merged_content.md
 
-            # Build the new version block
             printf "%s\n\n" "$version_header" > new_block.md
             cat merged_content.md >> new_block.md
             printf "\n" >> new_block.md
 
-            # Replace the old version block in CHANGELOG.md with the new one
-            awk -v mv="$MOD_VER" -v nb="new_block.md" '
+            # Replace old block (match normalized mod version for safety)
+            awk -v mv="$MOD_VER_NORM" -v nb="new_block.md" '
               BEGIN { printed=0; in_block=0 }
               {
                 if (/^## /) {
@@ -317,9 +307,7 @@ jobs:
                     next
                   }
                 }
-                if (in_block && /^## /) {
-                  in_block=0
-                }
+                if (in_block && /^## /) { in_block=0 }
                 if (!in_block) print
               }
             ' "$CHANGELOG" > temp_changelog.md && mv temp_changelog.md "$CHANGELOG"
@@ -327,8 +315,6 @@ jobs:
           else
             echo "Version does not exist: inserting new version block."
 
-            # Insert the new version block right after the top '# Changelog' header if present,
-            # otherwise ensure a top header and then insert the new block.
             if [ -f "$CHANGELOG" ] && head -n1 "$CHANGELOG" | grep -q "^# Changelog"; then
               {
                 head -n1 "$CHANGELOG"
@@ -352,7 +338,7 @@ jobs:
             fi
           fi
 
-          # Ensure exactly one '# Changelog' at the top (remove duplicates elsewhere)
+          # Ensure single top header
           awk 'BEGIN{first=1}
             {
               if($0=="# Changelog"){
@@ -360,16 +346,49 @@ jobs:
               } else print
             }' "$CHANGELOG" > tmp_changelog.md && mv tmp_changelog.md "$CHANGELOG"
 
-          # Ensure file starts with '# Changelog'
           if ! head -n1 "$CHANGELOG" | grep -q "^# Changelog"; then
             sed -i '1i# Changelog' "$CHANGELOG"
           fi
 
-          # Cleanup temporary files (ignore missing files)
-          rm -f existing_block.md existing_body.md merged_temp.md merged_content.md new_block.md temp_changelog.md tmp_changelog.md || true
+          echo "CHANGELOG.md updated on disk. Preparing to commit."
 
-          echo "CHANGELOG.md updated."
-      
+          # --- Git commit & push (robust) ---
+          git config --local user.email "action@github.com"
+          git config --local user.name "github-actions[bot]"
+
+          # show git status for debug
+          echo "Git status (before add):"
+          git status --porcelain --untracked-files=all || :
+
+          # Stage the CHANGELOG only (safe) - use -A if you want all changes
+          git add -- "CHANGELOG.md" || true
+
+          echo "Git status (after add):"
+          git status --porcelain --untracked-files=all || :
+
+          # If nothing staged, skip commit
+          if git diff --staged --quiet; then
+            echo "No staged changes to commit. Skipping commit."
+          else
+            COMMIT_MSG="chore: update changelog for ${MOD_VER}"
+            git commit -m "$COMMIT_MSG" --no-verify
+            echo "Committed changes: $(git rev-parse --short HEAD)"
+            echo "Pushing to remote..."
+            # Use the default token remote (Actions provides permission) - push and show result
+            if git push --follow-tags; then
+              echo "Push succeeded."
+            else
+              echo "Push FAILED. Showing git remote + logs:"
+              git remote -v
+              git log -n 5 --oneline
+              exit 1
+            fi
+          fi
+
+          # Cleanup temporary files now that commit/push finished
+          rm -f existing_block.md existing_body.md merged_temp.md merged_content.md new_block.md temp_changelog.md tmp_changelog.md "$PROCESSED" .changelogrc.js || true
+
+          echo "Done."
 
       - name: Clean up temporary files
         run: |
