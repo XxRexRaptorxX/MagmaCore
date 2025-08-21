@@ -42,10 +42,13 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @EventBusSubscriber(modid = References.MODID, bus = EventBusSubscriber.Bus.GAME)
 public class Events {
@@ -107,7 +110,13 @@ public class Events {
             URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Premium%20Supporter");
     public static URI eliteSupporterList =
             URI.create("https://raw.githubusercontent.com/XxRexRaptorxX/Patreons/main/Elite");
-    public static Set<String> supporterSet = new HashSet<>();
+
+    // Cache
+    private static Set<String> supporterCache = Set.of();
+    private static Set<String> premiumCache = Set.of();
+    private static Set<String> eliteCache = Set.of();
+
+    private static long lastUpdate = 0L;
 
     /** Distributes supporter rewards on first login. */
     @SubscribeEvent
@@ -118,22 +127,20 @@ public class Events {
         if (Config.getSupporterRewards()) {
             if (Config.getDebugMode()) MagmaCore.LOGGER.info("Supporter rewards will be distributed!");
 
-            // Check if the player already has rewards
             if (!player.getInventory().contains(RewardItems.getCertificate())) {
-                if (player instanceof ServerPlayer serverPlayer) { // Ensure the player is a ServerPlayer
-                    // Check if the player is logging in for the first time
+                if (player instanceof ServerPlayer serverPlayer) {
                     if (serverPlayer.getStats().getValue(Stats.CUSTOM, Stats.PLAY_TIME) < 5) {
                         boolean isDev = player.getName().getString().equals("Dev");
 
-                        // Perform supporter checks asynchronously
                         CompletableFuture.runAsync(() -> {
-                            if (SupporterCheck(supporterList, player) || Config.getDebugMode() && isDev) {
+                            String name = player.getName().getString();
+                            if (supporterCache.contains(name) || Config.getDebugMode() && isDev) {
                                 giveSupporterReward(player, level);
                             }
-                            if (SupporterCheck(premiumSupporterList, player) || Config.getDebugMode() && isDev) {
+                            if (premiumCache.contains(name) || Config.getDebugMode() && isDev) {
                                 givePremiumSupporterReward(player, level);
                             }
-                            if (SupporterCheck(eliteSupporterList, player) || Config.getDebugMode() && isDev) {
+                            if (eliteCache.contains(name) || Config.getDebugMode() && isDev) {
                                 giveEliteReward(player, level);
                             }
                         });
@@ -144,24 +151,72 @@ public class Events {
     }
 
     /**
-     * Checks if the player is in the supporter list from the given URI.
-     *
-     * @param uri URI to a file containing supporter names
-     * @param player The in-game player
-     * @return true if the player is a supporter, otherwise false
+     * Triggered when the server starts. Loads supporter lists and schedules daily refresh.
      */
-    private static boolean SupporterCheck(URI uri, Player player) {
+    @SubscribeEvent
+    public static void syncSupporterLists(ServerStartedEvent event) {
+        CompletableFuture.runAsync(() -> {
+            refreshSupporterLists();
+            scheduleDailyRefresh();
+        });
+    }
+
+    /**
+     * Reloads all supporter lists from the remote URIs.
+     */
+    private static void refreshSupporterLists() {
+        supporterCache = fetchList(supporterList, supporterCache);
+        premiumCache = fetchList(premiumSupporterList, premiumCache);
+        eliteCache = fetchList(eliteSupporterList, eliteCache);
+        lastUpdate = System.currentTimeMillis();
+
+        if (Config.getDebugMode()) {
+            MagmaCore.LOGGER.info("Supporter-Listen aktualisiert: supporter={}, premium={}, elite={} ",
+                    supporterCache.size(), premiumCache.size(), eliteCache.size());
+        }
+    }
+
+
+    /**
+     * Schedules a daily refresh of the supporter lists.
+     */
+    private static void scheduleDailyRefresh() {
+        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
+                () -> {
+                    try {
+                        refreshSupporterLists();
+                    } catch (Exception ex) {
+                        MagmaCore.LOGGER.error("Fehler beim täglichen Refresh: {}", ex.getMessage());
+                    }
+                },
+                25,
+                24,
+                TimeUnit.HOURS
+        );
+    }
+
+    /**
+     * Fetches a list of supporter names from a given URI.
+     * Falls back to the old cache if fetching fails.
+     *
+     * @param uri The remote URI pointing to a supporter list file.
+     * @param oldCache The previously cached set of names.
+     * @return The updated supporter set, or the old cache if an error occurs.
+     */
+    private static Set<String> fetchList(URI uri, Set<String> oldCache) {
         try {
-            HttpRequest request = HttpRequest.newBuilder().uri(uri).GET().build();
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(uri)
+                    .timeout(Duration.ofSeconds(8))
+                    .GET()
+                    .build();
 
-            // Parse supporter list
-            List<String> supporterList = List.of(response.body().split("\\R")); // Split lines
-            return supporterList.contains(player.getName().getString());
+            HttpResponse<String> resp = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            return new HashSet<>(List.of(resp.body().split("\\R")));
 
-        } catch (Exception e) {
-            MagmaCore.LOGGER.error("Failed to fetch or process supporter list from URI: {}", uri, e);
-            return false;
+        } catch (Exception ex) {
+            MagmaCore.LOGGER.error("Fehler beim Laden von {}: {}", uri, ex.getMessage());
+            return oldCache;
         }
     }
 
@@ -191,27 +246,6 @@ public class Events {
         player.getInventory().add(RewardItems.getChestplate(level, player));
     }
 
-    @SubscribeEvent
-    public static void onServerStart(ServerStartedEvent event) {
-        CompletableFuture.runAsync(() -> {
-            supporterSet = fetchList(supporterList);
-
-            if (Config.getDebugMode()) MagmaCore.LOGGER.info("Loaded supporter: {}", supporterSet.size());
-        });
-    }
-
-    private static Set<String> fetchList(URI uri) {
-        try {
-            HttpResponse<String> resp =
-                    HTTP_CLIENT.send(HttpRequest.newBuilder(uri).GET().build(), HttpResponse.BodyHandlers.ofString());
-            return new HashSet<>(List.of(resp.body().split("\\R")));
-
-        } catch (Exception ex) {
-            MagmaCore.LOGGER.error("Error while loading: {}", ex.getMessage());
-
-            return Set.of();
-        }
-    }
 
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
@@ -221,7 +255,7 @@ public class Events {
             boolean isDev = player.getName().getString().equals("Dev");
 
             if (!level.isClientSide()
-                            && supporterSet.contains(event.getEntity().getUUID().toString())
+                            && supporterCache.contains(event.getEntity().getUUID().toString())
                     || Config.getDebugMode() && isDev) {
                 Vec3 pos = player.position();
                 double d0 = pos.x + (level.random.nextFloat() - 0.5F);
