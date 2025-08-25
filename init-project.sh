@@ -56,6 +56,68 @@ git add LATEST_CHANGELOG.md
 EOF
 echo "✅ Created .githooks/pre-commit"
 
+# Create LATEST_CHANGELOG.md
+if [ ! -f "LATEST_CHANGELOG.md" ]; then
+    # try to restore from git HEAD
+    if git show HEAD:./LATEST_CHANGELOG.md >/dev/null 2>&1; then
+        git show HEAD:./LATEST_CHANGELOG.md > LATEST_CHANGELOG.md
+        echo "✅ Restored LATEST_CHANGELOG.md from git HEAD"
+        git add LATEST_CHANGELOG.md >/dev/null 2>&1 || true
+    else
+        # decide: interactive prompt or env var for automation
+        if [ -t 0 ]; then
+            read -r -p "LATEST_CHANGELOG.md not found. Create a minimal LATEST_CHANGELOG.md? [Y/n] " ans
+            ans=${ans:-Y}
+        else
+            ans=${CREATE_LATEST_CHANGELOG:-N}
+        fi
+
+        case "$ans" in
+            [Yy]*)
+                cat > LATEST_CHANGELOG.md <<'EOF'
+EOF
+                git add LATEST_CHANGELOG.md >/dev/null 2>&1 || true
+                echo "✅ Created LATEST_CHANGELOG.md"
+                ;;
+            *)
+                echo "❌ LATEST_CHANGELOG.md missing. Please create it or set CREATE_LATEST_CHANGELOG=1 to auto-create."
+                exit 1
+                ;;
+        esac
+    fi
+fi
+
+# Create CHANGELOG.md
+if [ ! -f "CHANGELOG.md" ]; then
+    # try to restore from git HEAD
+    if git show HEAD:./CHANGELOG.md >/dev/null 2>&1; then
+        git show HEAD:./CHANGELOG.md > CHANGELOG.md
+        echo "✅ Restored CHANGELOG.md from git HEAD"
+        git add CHANGELOG.md >/dev/null 2>&1 || true
+    else
+        # decide: interactive prompt or env var for automation
+        if [ -t 0 ]; then
+            read -r -p "CHANGELOG.md not found. Create a minimal CHANGELOG.md? [Y/n] " ans
+            ans=${ans:-Y}
+        else
+            ans=${CREATE_CHANGELOG:-N}
+        fi
+
+        case "$ans" in
+            [Yy]*)
+                cat > CHANGELOG.md <<'EOF'
+EOF
+                git add CHANGELOG.md >/dev/null 2>&1 || true
+                echo "✅ Created CHANGELOG.md"
+                ;;
+            *)
+                echo "❌ CHANGELOG.md missing. Please create it or set CREATE_CHANGELOG=1 to auto-create."
+                exit 1
+                ;;
+        esac
+    fi
+fi
+
 echo ""
 echo "🎉 Project successfully initialized!"
 echo ""

@@ -3,6 +3,7 @@
 // ========================================
 
 import java.text.SimpleDateFormat
+
 // Conventional commit types and their display names
 def COMMIT_TYPES = [
         'feat': 'New Features',
@@ -52,8 +53,9 @@ tasks.register("previewChangelog") {
 }
 
 // Automatically update changelog before publishing
-tasks.named("jar").dependsOn("updateChangelog")
-
+tasks.named("jar") {
+    dependsOn("updateChangelog")
+}
 def generateLatestChangelogFile() {
     def changelogFile = rootProject.file("LATEST_CHANGELOG.md")
     def content = buildChangelogContent()
@@ -368,7 +370,9 @@ tasks.matching { it.name.contains("publish") || it.name == "modrinth" }.all {
 }
 
 // Also update changelog when building
-tasks.named("build").dependsOn("updateChangelog")
+tasks.named("build") {
+    dependsOn("updateChangelog")
+}
 
 // Helper task to clean and regenerate changelog
 tasks.register("cleanChangelog") {
