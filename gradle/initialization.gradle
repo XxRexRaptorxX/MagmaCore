@@ -1,0 +1,176 @@
+// ========================================
+// PROJECT INITIALIZATION TASKS
+// ========================================
+
+import groovy.json.JsonOutput
+
+tasks.register('#initProjectFromScript', Exec) {
+    group = "initialization"
+    description = "Initializes the project (runs init script)"
+    if (!file("init-project.sh").exists()) {
+        throw new GradleException("❌ No 'init-project.sh'-file in your mod's root directory.")
+    } else {
+        println "✅ Initialization script found"
+        commandLine "bash", "./init-project.sh"
+    }
+}
+
+tasks.register('checkGit') {
+    group = "initialization"
+    description = "Checks if the project is a Git repository"
+    doLast {
+        if (!file(".git").exists()) {
+            throw new GradleException("❌ Not in a git repository. Please run from your mod's root directory.")
+        } else {
+            println "✅ Git repository found"
+        }
+    }
+}
+
+tasks.register('checkGradleProperties') {
+    group = "initialization"
+    description = "Verifies gradle.properties and required properties"
+    doLast {
+        def propsFile = file("gradle.properties")
+        if (!propsFile.exists()) throw new GradleException("❌ gradle.properties not found")
+        def props = propsFile.text
+        if (!props.contains("mod_version=") || !props.contains("game_versions=")) {
+            throw new GradleException("❌ gradle.properties must contain 'mod_version=' and 'game_versions=' properties")
+        } else {
+            println "✅ Found gradle.properties with required properties"
+        }
+    }
+}
+
+tasks.register('setupGitattributes') {
+    group = "initialization"
+    description = "Creates or updates .gitattributes for the project"
+    doLast {
+        def gitattributes = file(".gitattributes")
+        if (!gitattributes.exists()) {
+            gitattributes.text = '''*.java text eol=lf
+*.gradle text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+'''
+            println "✅ Created .gitattributes"
+        } else if (!gitattributes.text.contains("node_modules")) {
+            gitattributes.append("""
+*.java text eol=lf
+*.gradle text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+""")
+            println "✅ Updated .gitattributes"
+        }
+    }
+}
+
+tasks.register('createPreCommitHook') {
+    group = "initialization"
+    description = "Creates a Git pre-commit hook"
+    doLast {
+        def hookDir = file(".githooks")
+        hookDir.mkdirs()
+        def hook = new File(hookDir, "pre-commit")
+        hook.text = """#!/bin/sh
+./gradlew updateChangelog
+git add LATEST_CHANGELOG.md
+"""
+        hook.executable = true
+        println "✅ Created .githooks/pre-commit"
+    }
+}
+
+
+//create or restore CHANGELOG.md / LATEST_CHANGELOG.md
+def restoreOrCreateFile = { fileName, envVar ->
+    def f = file(fileName)
+    if (!f.exists()) {
+        try {
+            exec {
+                commandLine 'git', 'show', "HEAD:./$fileName"
+                standardOutput = new FileOutputStream(f)
+                isIgnoreExitValue = true
+            }
+            println "✅ Restored $fileName from git HEAD"
+            exec { commandLine 'git', 'add', fileName }
+        } catch (Exception e) {
+            def createFlag = System.getenv(envVar) ?: "Y"
+            if (createFlag.toUpperCase() in ["Y", "YES", "1"]) {
+                f.text = ""
+                exec { commandLine 'git', 'add', fileName }
+                println "✅ Created $fileName"
+            } else {
+                throw new GradleException("❌ $fileName missing. Set $envVar=1 to auto-create.")
+            }
+        }
+    }
+}
+
+tasks.register('setupChangelogs') {
+    group = "initialization"
+    description = "Creates or restores CHANGELOG.md and LATEST_CHANGELOG.md"
+    doLast {
+        restoreOrCreateFile("LATEST_CHANGELOG.md", "CREATE_LATEST_CHANGELOG")
+        restoreOrCreateFile("CHANGELOG.md", "CREATE_CHANGELOG")
+    }
+}
+
+tasks.register('setupVersionsJson') {
+    group = "initialization"
+    description = "Creates versions.json if it does not exist"
+    doLast {
+        def versionsFile = file("versions.json")
+        if (!versionsFile.exists()) {
+            def modVersion = project.findProperty("mod_version") ?: "1.0.0"
+            def mcVersion = project.findProperty("minecraft_version") ?: "1.20.1"
+            def json = [
+                    homepage: "https://www.curseforge.com/members/xxrexraptorxx/projects",
+                    promos: [( "${mcVersion}-latest" ): mcVersion, ( "${mcVersion}" ): modVersion]
+            ]
+            versionsFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(json))
+            exec { commandLine 'git', 'add', 'versions.json' }
+            println "✅ Created versions.json"
+        } else {
+            println "✅ versions.json already exists"
+        }
+    }
+}
+
+tasks.register('createGitTag') {
+    group = "initialization"
+    description = "Creates and pushes a git tag based on mod_version"
+    doLast {
+        def modVersion = project.findProperty("mod_version") ?: "1.0.0"
+        def tagName = "v.$modVersion"
+        def result = exec {
+            commandLine 'git', 'rev-parse', tagName
+            isIgnoreExitValue = true
+        }
+        if (result.exitValue != 0) {
+            exec { commandLine 'git', 'tag', tagName }
+            exec { commandLine 'git', 'push', 'origin', tagName }
+            println "🏷️ Created and pushed git tag $tagName"
+        } else {
+            println "✅ Git tag $tagName already exists"
+        }
+    }
+}
+
+tasks.register('#initProject') {
+    group = "initialization"
+    description = "Initializes the project (runs init script)"
+    dependsOn checkGit, checkGradleProperties, setupGitattributes, createPreCommitHook, setupChangelogs, setupVersionsJson, createGitTag
+    doLast {
+        println "\n🎉 Project successfully initialized!"
+        println "📋 Next steps:"
+        println "1. Ensure GitHub Actions have 'Read and write permissions'"
+        println "2. Repository Settings → Actions → General → Workflow permissions"
+        println "3. Select: 'Read and write permissions'"
+        println "4. Allow GitHub Actions to create/approve pull requests"
+        println "5. Verify URL in versions.json"
+    }
+}

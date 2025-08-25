@@ -14,7 +14,7 @@ ext.COMMIT_TYPES = [
         style   : "Style",
         refactor: "Refactoring",
         test    : "Tests",
-        build   : " Build System",
+        build   : "Build System",
         ci      : "Continuous Integration",
         chore   : "Chores",
         revert  : "Reverts"

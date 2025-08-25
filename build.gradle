@@ -15,6 +15,7 @@ apply from: "$rootDir/gradle/changelogs.gradle"
 apply from: "$rootDir/gradle/versioning.gradle"
 apply from: "$rootDir/gradle/publishing.gradle"
 apply from: "$rootDir/gradle/building.gradle"
+apply from: "$rootDir/gradle/initialization.gradle"
 apply from: "$rootDir/gradle/debugging.gradle"
 
 // ========================================
