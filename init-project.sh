@@ -118,6 +118,18 @@ EOF
     fi
 fi
 
+# Extract version from gradle.properties
+MOD_VERSION=$(grep "^mod_version=" gradle.properties | cut -d'=' -f2 | tr -d '[:space:]')
+TAG_NAME="v.$MOD_VERSION"
+
+# Check if tag already exists
+if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+    echo "✅ Git tag $TAG_NAME already exists"
+else
+    git tag "$TAG_NAME"
+    echo "🏷️  Created git tag $TAG_NAME"
+fi
+
 echo ""
 echo "🎉 Project successfully initialized!"
 echo ""

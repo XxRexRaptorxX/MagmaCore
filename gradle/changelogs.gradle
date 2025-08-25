@@ -3,24 +3,31 @@
 // ========================================
 
 import java.text.SimpleDateFormat
+import java.util.concurrent.TimeUnit
 
-// Conventional commit types and their display names
-def COMMIT_TYPES = [
-        'feat': 'New Features',
-        'fix': 'Bug Fixes',
-        'docs': 'Documentation',
-        'style': 'Code Style',
-        'refactor': 'Code Refactoring',
-        'perf': 'Performance Improvements',
-        'test': 'Tests',
-        'build': 'Build System',
-        'ci': 'Continuous Integration',
-        'chore': 'Maintenance',
-        'revert': 'Reverts'
+// Make commit type map available as a project property and as a local var
+ext.COMMIT_TYPES = [
+        feat    : "Features",
+        fix     : "Bug Fixes",
+        perf    : "Performance Improvements",
+        docs    : "Documentation",
+        style   : "Style",
+        refactor: "Refactoring",
+        test    : "Tests",
+        build   : " Build System",
+        ci      : "Continuous Integration",
+        chore   : "Chores",
+        revert  : "Reverts"
 ]
+ext.EXCLUDED_TYPES = ['chore', 'style', 'ci', 'build', 'test', 'docs']
+
+// keep a local convenience variable for backwards compatibility with code that expects COMMIT_TYPES directly
+def COMMIT_TYPES = ext.COMMIT_TYPES
+def EXCLUDED_TYPE = ext.EXCLUDED_TYPES
 
 // Breaking change keywords
-def BREAKING_CHANGE_KEYWORDS = ['BREAKING CHANGE', 'BREAKING-CHANGE', 'BREAKING_CHANGE']
+ext.BREAKING_CHANGE_KEYWORDS = ['BREAKING CHANGE', 'BREAKING-CHANGE', 'BREAKING_CHANGE']
+def BREAKING_CHANGE_KEYWORDS = ext.BREAKING_CHANGE_KEYWORDS
 
 tasks.register("generateChangelog") {
     group = "changelog"
@@ -56,6 +63,7 @@ tasks.register("previewChangelog") {
 tasks.named("jar") {
     dependsOn("updateChangelog")
 }
+
 def generateLatestChangelogFile() {
     def changelogFile = rootProject.file("LATEST_CHANGELOG.md")
     def content = buildChangelogContent()
@@ -71,7 +79,7 @@ def updateChangelogFile() {
 
     if (changelogFile.exists()) {
         def existingContent = changelogFile.text
-        def versionPattern = /^#\s+v\.(\S+)\s+for\s+MC/
+        def versionPattern = /^#\s+(?:\[\s*)?v\.(\S+)\s+for\s+MC/
         def matcher = existingContent =~ versionPattern
 
         if (matcher.find()) {
@@ -117,9 +125,16 @@ def updateExistingChangelog(File changelogFile) {
 }
 
 def buildChangelogContent() {
+    //test version tags
+    ensureCurrentTagExists()
+
+    //get commits
     def commits = getCommitsSinceLastTag()
+
+    //build changelog
     return buildChangelogFromCommits(commits)
 }
+
 
 def buildChangelogFromCommits(List commits) {
     def currentVersion = project.mod_version
@@ -128,8 +143,15 @@ def buildChangelogFromCommits(List commits) {
     def currentDate = dateFormat.format(new Date())
 
     def content = new StringBuilder()
-    content.append("# v.${currentVersion} for MC ${gameVersions}\n\n")
-    content.append("*Released: ${currentDate}*\n\n")
+    def versionLink = getVersionLink(currentVersion)
+    if (versionLink) {
+        def (label, url) = versionLink
+        content.append("# [v.${currentVersion} for MC ${gameVersions}](${url})\n\n")
+    } else {
+        content.append("# v.${currentVersion} for MC ${gameVersions}\n\n")
+    }
+
+    //content.append("### ${currentDate}\n\n")
 
     if (commits.isEmpty()) {
         content.append("No commits found for this version.\n")
@@ -143,6 +165,11 @@ def buildChangelogFromCommits(List commits) {
     commits.each { commit ->
         def parsed = parseConventionalCommit(commit.message)
         def type = parsed.type ?: 'other'
+
+        // überspringen, wenn der Committyp ausgeschlossen ist
+        if (EXCLUDED_TYPES.contains(type)) {
+            return
+        }
 
         if (!groupedCommits.containsKey(type)) {
             groupedCommits[type] = []
@@ -192,8 +219,10 @@ def buildChangelogFromCommits(List commits) {
             groupedCommits[type].each { commit ->
                 def scopeText = commit.scope ? "(${commit.scope}) " : ""
                 def breakingIcon = commit.breaking ? " ⚠️" : ""
-                content.append("- ${scopeText}${commit.subject}${breakingIcon}\n")
+                def shortHash = commit.hash.substring(0,7)
+                content.append("- ${scopeText}${commit.subject} ([${shortHash}](${GITHUB_REPO}/commit/${commit.hash}))${breakingIcon}\n")
             }
+
             content.append("\n")
         }
     }
@@ -201,31 +230,101 @@ def buildChangelogFromCommits(List commits) {
     return content.toString()
 }
 
-def getCommitsSinceLastTag() {
+def getGithubRepoUrl() {
     try {
-        // Try to get commits since last tag
-        def proc = "git describe --tags --abbrev=0".execute()
-        proc.waitFor()
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'remote', 'get-url', 'origin'
+            standardOutput = stdout
+            ignoreExitValue = true
+        }
+        def url = stdout.toString().trim()
+        if (!url) return null
 
-        def gitCommand
-        if (proc.exitValue() == 0) {
-            def lastTag = proc.text.trim()
-            gitCommand = ["git", "log", "${lastTag}..HEAD", "--pretty=format:%H|%s|%b", "--no-merges"]
-        } else {
-            // No tags found, get all commits
-            gitCommand = ["git", "log", "--pretty=format:%H|%s|%b", "--no-merges"]
+        // HTTPS-Format
+        if (url.startsWith('git@')) {
+            // git@github.com:USER/REPO.git -> https://github.com/USER/REPO
+            url = url.replaceFirst(/^git@([^:]+):/, 'https://$1/')
+        }
+        url = url.replaceAll(/\.git$/, '')
+        return url
+    } catch (Exception e) {
+        println "Could not detect GitHub repo URL: ${e.message}"
+        return null
+    }
+}
+ext.GITHUB_REPO = getGithubRepoUrl()
+def GITHUB_REPO = ext.GITHUB_REPO
+
+def ensureCurrentTagExists() {
+    def currentVersion = project.mod_version
+    def tagName = "v.${currentVersion}"
+
+    try {
+        //test if tag already exists
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', '--verify', tagName
+            standardOutput = stdout
+            ignoreExitValue = true
+        }
+        if (stdout.toString().trim()) {
+            println "Git tag ${tagName} already exists."
+            return
         }
 
+        // Tag erstellen
+        println "Creating git tag ${tagName} for current version..."
+        exec {
+            commandLine 'git', 'tag', tagName
+        }
+        println "Git tag ${tagName} created."
+    } catch (Exception e) {
+        println "Failed to create git tag: ${e.message}"
+    }
+}
+
+def getCommitsSinceLastTag() {
+    try {
+        def out = new StringBuffer()
+        def err = new StringBuffer()
+
+        def describeCmd = ["git", "--no-pager", "describe", "--tags", "--abbrev=0"]
+        def proc = describeCmd.execute()
+        proc.consumeProcessOutput(out, err)
+        if (!proc.waitFor(10, TimeUnit.SECONDS)) {
+            proc.destroyForcibly()
+            println "git describe timed out"
+            // fall back to full log
+        }
+
+        def gitCommand
+        if (proc.exitValue() == 0 && out.toString().trim()) {
+            def lastTag = out.toString().trim()
+            gitCommand = ["git", "--no-pager", "log", "${lastTag}..HEAD", "--pretty=format:%H|%s|%b", "--no-merges"]
+        } else {
+            // No tag found -> full history
+            gitCommand = ["git", "--no-pager", "log", "--pretty=format:%H|%s|%b", "--no-merges"]
+        }
+
+        out = new StringBuffer()
+        err = new StringBuffer()
         proc = gitCommand.execute()
-        proc.waitFor()
+        proc.consumeProcessOutput(out, err)
+
+        if (!proc.waitFor(60, TimeUnit.SECONDS)) {
+            proc.destroyForcibly()
+            println "git log timed out"
+            return []
+        }
 
         if (proc.exitValue() != 0) {
-            println "Git command failed: ${proc.err.text}"
+            println "Git command failed: ${err.toString()}"
             return []
         }
 
         def commits = []
-        proc.text.split('\n').each { line ->
+        out.toString().readLines().each { line ->
             if (line.trim()) {
                 def parts = line.split('\\|', 3)
                 if (parts.length >= 2) {
@@ -245,55 +344,87 @@ def getCommitsSinceLastTag() {
     }
 }
 
-def parseConventionalCommit(String message) {
-    // Pattern for conventional commits: type(scope): description
-    def conventionalPattern = /^(\w+)(\(([^)]+)\))?\s*(!?):\s*(.+)$/
-    def matcher = message =~ conventionalPattern
+def getLastTag() {
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'describe', '--tags', '--abbrev=0'
+            standardOutput = stdout
+            ignoreExitValue = true
+        }
+        def tag = stdout.toString().trim()
+        return tag ?: null
+    } catch (Exception e) {
+        println "Could not detect last Git tag: ${e.message}"
+        return null
+    }
+}
 
-    def result = [
-            type: null,
-            scope: null,
-            subject: message,
-            body: null,
-            breaking: false
-    ]
+def getVersionLink(String currentVersion) {
+    def lastTag = getLastTag()
+    def currentTag = "v.${currentVersion}"
 
-    if (matcher.find()) {
-        result.type = matcher.group(1).toLowerCase()
-        result.scope = matcher.group(3)
-        result.breaking = matcher.group(4) == "!"
-        result.subject = matcher.group(5)
+    if (!GITHUB_REPO) return null
+
+    if (lastTag && lastTag != currentTag) {
+        // get diff-link
+        return [ "diff", "${GITHUB_REPO}/compare/${lastTag}...${currentTag}" ]
     } else {
-        // If not conventional format, try to guess type from subject
-        def lowerMessage = message.toLowerCase()
-        if (lowerMessage.startsWith("fix")) {
-            result.type = "fix"
-            result.subject = message.replaceFirst(/^fix\s*:?\s*/i, "")
-        } else if (lowerMessage.startsWith("feat") || lowerMessage.startsWith("add")) {
-            result.type = "feat"
-            result.subject = message.replaceFirst(/^(feat|add)\s*:?\s*/i, "")
-        } else if (lowerMessage.contains("breaking")) {
-            result.breaking = true
-            result.type = "feat"
+        // Fallback if theres no previous tag: get tag-link
+        return [ "tag", "${GITHUB_REPO}/releases/tag/${currentTag}" ]
+    }
+}
+
+
+
+def parseConventionalCommit(String message) {
+    if (!message) {
+        return [type: null, scope: null, subject: "", body: "", breaking: false]
+    }
+    def msgLines = message.split('\n')
+    def header = msgLines[0].trim()
+    def body = (msgLines.size() > 1) ? msgLines[1..-1].join('\n').trim() : ""
+    def type = null
+    def scope = null
+    def subject = header
+    def breaking = false
+
+    // Match header: type(scope)!: subject  or type!: subject  or type(scope): subject  or type: subject
+    def matcher = header =~ /^([A-Za-z0-9_-]+)(?:\(([^)]+)\))?(!)?:\s*(.+)$/
+    if (matcher) {
+        type = matcher[0][1]
+        scope = matcher[0][2]
+        def excl = matcher[0][3]
+        subject = matcher[0][4]
+        if (excl == '!') {
+            breaking = true
+        }
+    } else {
+        // fallback: try to split by colon
+        def idx = header.indexOf(':')
+        if (idx > 0) {
+            type = header.substring(0, idx).trim()
+            subject = header.substring(idx+1).trim()
         } else {
-            result.type = "other"
+            subject = header
         }
     }
 
-    // Check for breaking changes in commit body
-    BREAKING_CHANGE_KEYWORDS.each { keyword ->
-        if (message.contains(keyword)) {
-            result.breaking = true
+    // detect breaking change keywords in body (case-insensitive)
+    def bk = project.findProperty('BREAKING_CHANGE_KEYWORDS') ?: ['BREAKING CHANGE', 'BREAKING-CHANGE', 'BREAKING_CHANGE']
+    bk.each { kw ->
+        if (body?.toLowerCase()?.contains(kw.toLowerCase())) {
+            breaking = true
         }
     }
 
-    return result
+    return [type: type, scope: scope, subject: subject, body: body, breaking: breaking]
 }
 
 def getEmojiForType(String type) {
     def emojis = [
             'feat': '✨',
-            'fix': '🐛',
+            'fix': '🔧',
             'docs': '📚',
             'style': '💎',
             'refactor': '🔨',
@@ -364,6 +495,7 @@ ext.generateLatestChangelog = {
     }
 }
 
+
 // Make sure changelog is updated before any publishing task
 tasks.matching { it.name.contains("publish") || it.name == "modrinth" }.all {
     dependsOn "updateChangelog"
@@ -373,6 +505,7 @@ tasks.matching { it.name.contains("publish") || it.name == "modrinth" }.all {
 tasks.named("build") {
     dependsOn("updateChangelog")
 }
+
 
 // Helper task to clean and regenerate changelog
 tasks.register("cleanChangelog") {
@@ -520,8 +653,6 @@ ext.readLatestChangelog = {
     // 4. Final fallback
     logger.lifecycle("No changelog found - returning minimal changelog.")
     return """# v.${project.mod_version} for MC ${project.minecraft_version}
-
-*Released: ${new Date().format('yyyy-MM-dd')}*
 
 ## 📝 Changes
 
