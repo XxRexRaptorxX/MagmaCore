@@ -20,4 +20,10 @@ spotless {
         gson().indentWithSpaces(2)
         endWithNewline()
     }
+    groovyGradle {
+        target '**/*.gradle'
+        indentWithSpaces()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }

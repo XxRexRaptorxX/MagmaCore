@@ -44,29 +44,35 @@ tasks.register('checkGradleProperties') {
 
 tasks.register('setupGitattributes') {
     group = "initialization"
-    description = "Creates or updates .gitattributes for the project"
+    description = "Creates or updates .gitattributes for the project to fix some Spotless-Git problems"
     doLast {
         def gitattributes = file(".gitattributes")
+        def requiredLines = [
+                '*.java text eol=lf',
+                '*.gradle text eol=lf',
+                '*.md text eol=lf',
+                '*.yml text eol=lf',
+                '*.yaml text eol=lf'
+        ]
+
         if (!gitattributes.exists()) {
-            gitattributes.text = '''*.java text eol=lf
-*.gradle text eol=lf
-*.md text eol=lf
-*.yml text eol=lf
-*.yaml text eol=lf
-'''
+            gitattributes.text = requiredLines.join("\n") + "\n"
             println "✅ Created .gitattributes"
-        } else if (!gitattributes.text.contains("node_modules")) {
-            gitattributes.append("""
-*.java text eol=lf
-*.gradle text eol=lf
-*.md text eol=lf
-*.yml text eol=lf
-*.yaml text eol=lf
-""")
-            println "✅ Updated .gitattributes"
+        } else {
+            // check lines
+            def existingLines = gitattributes.readLines().collect { it.trim() }
+            def linesToAdd = requiredLines.findAll { !existingLines.contains(it) }
+
+            if (linesToAdd) {
+                gitattributes.append("\n" + linesToAdd.join("\n") + "\n")
+                println "✅ Added missing lines to .gitattributes"
+            } else {
+                println "✅ .gitattributes already contains all required lines"
+            }
         }
     }
 }
+
 
 tasks.register('createPreCommitHook') {
     group = "initialization"

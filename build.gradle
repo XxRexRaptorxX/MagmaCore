@@ -288,4 +288,3 @@ String readLatestChangelog() {
     logger.lifecycle("No changelog found — returning empty string.")
     return ""
 }
-
