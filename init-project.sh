@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# Initialization Script
+echo "🚀 Initializing Generator..."
+
+# Check if we're in a git repository
+if [ ! -d ".git" ]; then
+    echo "❌ Error: Not in a git repository. Please run this from your mod's root directory."
+    exit 1
+fi
+
+# Check if gradle.properties exists
+if [ ! -f "gradle.properties" ]; then
+    echo "❌ Error: gradle.properties not found. Please make sure you're in your mod's root directory."
+    exit 1
+fi
+
+# Verify gradle.properties has required fields
+if ! grep -q "mod_version=" gradle.properties || ! grep -q "game_versions=" gradle.properties; then
+    echo "❌ Error: gradle.properties must contain 'mod_version=' and 'game_versions=' properties."
+    echo "Example:"
+    echo "mod_version=1.0.0"
+    echo "game_versions=1.20.1"
+    exit 1
+fi
+
+echo "✅ Found gradle.properties with required properties"
+
+# Create .gitattributes entries if .gitattributes exists
+if [ -f ".gitattributes" ]; then
+    if ! grep -q "node_modules" .gitattributes; then
+        echo "" >> .gitattributes
+        echo "*.java text eol=lf" >> .gitattributes
+        echo "*.gradle text eol=lf" >> .gitattributes
+        echo "*.md text eol=lf" >> .gitattributes
+        echo "*.yml text eol=lf" >> .gitattributes
+        echo "*.yaml text eol=lf" >> .gitattributes
+        echo "✅ Added required entries for Spotless to .gitattributes"
+    fi
+else
+    cat > .gitattributes << 'EOF'
+*.java text eol=lf
+*.gradle text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+EOF
+    echo "✅ Created .gitattributes"
+fi
+
+# Create pre-commit githook
+cat > .githooks/pre-commit << 'EOF'
+#!/bin/sh
+./gradlew updateChangelog
+git add LATEST_CHANGELOG.md
+EOF
+echo "✅ Created .githooks/pre-commit"
+
+echo ""
+echo "🎉 Project successfully initialized!"
+echo ""
+echo "📋 Next steps:"
+echo "1. Make sure your GitHub repository has 'Read and write permissions' for Actions"
+echo "2. Go to: Repository Settings → Actions → General → Workflow permissions"
+echo "3. Select: 'Read and write permissions'"
+echo "4. Check: 'Allow GitHub Actions to create and approve pull requests'"
+echo ""

@@ -1,233 +1,528 @@
-// ============================================
-// CHANGELOG GENERATION AND ORGANISATION TASKS
-// ============================================
+// ========================================
+// CHANGELOG MANAGEMENT
+// ========================================
 
-tasks.register('printVersion') {
-    group = "changelog"
-    description = "Shows the actual mod version"
-    doLast { println mod_version }
-}
+import java.text.SimpleDateFormat
+// Conventional commit types and their display names
+def COMMIT_TYPES = [
+        'feat': 'New Features',
+        'fix': 'Bug Fixes',
+        'docs': 'Documentation',
+        'style': 'Code Style',
+        'refactor': 'Code Refactoring',
+        'perf': 'Performance Improvements',
+        'test': 'Tests',
+        'build': 'Build System',
+        'ci': 'Continuous Integration',
+        'chore': 'Maintenance',
+        'revert': 'Reverts'
+]
 
-tasks.register("resetChangelog") {
+// Breaking change keywords
+def BREAKING_CHANGE_KEYWORDS = ['BREAKING CHANGE', 'BREAKING-CHANGE', 'BREAKING_CHANGE']
+
+tasks.register("generateChangelog") {
     group = "changelog"
-    description = "Resets the changelog"
+    description = "Generate LATEST_CHANGELOG.md from git commits using conventional changelog format"
+
     doLast {
-        def changelogFiles = [file("CHANGELOG.md")]
-        changelogFiles.each { f ->
-            if (f.exists()) {
-                f.delete()
-                println "Reset completed: ${f.name}"
-            } else {
-                println "File not found: ${f.name}"
-            }
-        }
+        generateLatestChangelogFile()
     }
 }
 
-tasks.register("resetLatestChangelog") {
+tasks.register("updateChangelog") {
     group = "changelog"
-    description = "Resets the latest changelog"
+    description = "Update existing LATEST_CHANGELOG.md with new commits (same version) or recreate (new version)"
+
     doLast {
-        def changelogFiles = [file("CHANGELOG_LATEST.md")]
-        changelogFiles.each { f ->
-            if (f.exists()) {
-                f.delete()
-                println "Reset completed: ${f.name}"
-            } else {
-                println "File not found: ${f.name}"
-            }
-        }
+        updateChangelogFile()
     }
 }
 
-tasks.register("showLatestChangelog") {
+tasks.register("previewChangelog") {
     group = "changelog"
-    description = "Shows the latest changelog that will be used for publishing"
+    description = "Preview what the changelog would look like without writing to file"
+
     doLast {
-        def latestChangelog = generateLatestChangelog()
-        println "=== LATEST CHANGELOG ==="
-        println latestChangelog
-        println "========================"
+        def changelog = buildChangelogContent()
+        println "=== CHANGELOG PREVIEW ==="
+        println changelog
+        println "========================="
     }
 }
 
-tasks.register("cleanupDuplicateHeaders") {
-    group = "changelog"
-    description = "Removes duplicate headers from CHANGELOG.md"
-    doLast {
-        def changelogFile = file("CHANGELOG.md")
-        if (!changelogFile.exists()) {
-            println "CHANGELOG.md not found"
-            return
-        }
+// Automatically update changelog before publishing
+tasks.named("jar").dependsOn("updateChangelog")
 
-        // Create backup
-        def timestamp = new Date().format('yyyyMMdd_HHmmss')
-        def backupFile = file("CHANGELOG_BACKUP_${timestamp}.md")
-        changelogFile.renameTo(backupFile)
-        println "Backup created: ${backupFile.name}"
+def generateLatestChangelogFile() {
+    def changelogFile = rootProject.file("LATEST_CHANGELOG.md")
+    def content = buildChangelogContent()
 
-        // Remove duplicates
-        def lines = backupFile.readLines()
-        def cleanedLines = []
-        def seenVersions = new HashSet()
-        def skipUntilNextVersion = false
-
-        lines.each { line ->
-            def versionMatch = line =~ /^# v\.(\d+\.\d+\.\d+) for MC ([\d\.]+)/
-            if (versionMatch) {
-                def versionKey = "${versionMatch[0][1]}_${versionMatch[0][2]}"
-
-                if (seenVersions.contains(versionKey)) {
-                    skipUntilNextVersion = true
-                    println "Skipping duplicate version: ${line}"
-                } else {
-                    seenVersions.add(versionKey)
-                    skipUntilNextVersion = false
-                    cleanedLines.add(line)
-                }
-            } else if (line.startsWith("# v.")) {
-                skipUntilNextVersion = false
-                cleanedLines.add(line)
-            } else if (!skipUntilNextVersion) {
-                cleanedLines.add(line)
-            }
-        }
-
-        // Clean up excessive empty lines
-        def finalLines = []
-        def emptyLineCount = 0
-
-        cleanedLines.each { line ->
-            if (line.trim().isEmpty()) {
-                emptyLineCount++
-                if (emptyLineCount <= 2) {
-                    finalLines.add(line)
-                }
-            } else {
-                emptyLineCount = 0
-                finalLines.add(line)
-            }
-        }
-
-        changelogFile.text = finalLines.join('\n')
-        println "Cleanup completed!"
-    }
+    changelogFile.text = content
+    println "Generated LATEST_CHANGELOG.md with ${content.split('\n').size()} lines"
 }
 
-tasks.register("validateChangelog") {
-    group = "changelog"
-    description = "Validates CHANGELOG.md for duplicate headers"
-    doLast {
-        def changelogFile = file("CHANGELOG.md")
-        if (!changelogFile.exists()) {
-            println "CHANGELOG.md not found"
-            return
-        }
-
-        def lines = changelogFile.readLines()
-        def versions = [:]
-        def duplicates = []
-
-        lines.each { line ->
-            def versionMatch = line =~ /^# v\.(\d+\.\d+\.\d+) for MC ([\d\.]+)/
-            if (versionMatch) {
-                def versionKey = "${versionMatch[0][1]}_${versionMatch[0][2]}"
-                if (versions.containsKey(versionKey)) {
-                    duplicates.add("${versionMatch[0][1]} for MC ${versionMatch[0][2]}")
-                    versions[versionKey]++
-                } else {
-                    versions[versionKey] = 1
-                }
-            }
-        }
-
-        println "=== CHANGELOG VALIDATION ==="
-        if (duplicates.isEmpty()) {
-            println "✓ No duplicate headers found"
-        } else {
-            println "❌ Found duplicate headers:"
-            duplicates.each { duplicate -> println "  - ${duplicate}" }
-            println "\nRun 'gradle cleanupDuplicateHeaders' to fix"
-        }
-
-        println "\nFound versions:"
-        versions.each { version, count ->
-            def status = count > 1 ? "❌ (${count}x)" : "✓"
-            println "  ${status} ${version.replace('_', ' for MC ')}"
-        }
-    }
-}
-
-tasks.register("previewChangelogCleanup") {
-    group = "changelog"
-    description = "Preview what cleanupDuplicateHeaders would do without making changes"
-    doLast {
-        def changelogFile = file("CHANGELOG.md")
-        if (!changelogFile.exists()) {
-            println "CHANGELOG.md not found"
-            return
-        }
-
-        def lines = changelogFile.readLines()
-        def seenVersions = new HashSet()
-        def duplicateLines = []
-        def keptLines = []
-
-        lines.eachWithIndex { line, index ->
-            def versionMatch = line =~ /^# v\.(\d+\.\d+\.\d+) for MC ([\d\.]+)/
-            if (versionMatch) {
-                def versionKey = "${versionMatch[0][1]}_${versionMatch[0][2]}"
-
-                if (seenVersions.contains(versionKey)) {
-                    duplicateLines.add("Line ${index + 1}: ${line}")
-                } else {
-                    seenVersions.add(versionKey)
-                    keptLines.add("Line ${index + 1}: ${line}")
-                }
-            }
-        }
-
-        println "=== CLEANUP PREVIEW ==="
-        println "\n✓ Headers to KEEP:"
-        keptLines.each { println "  ${it}" }
-
-        println "\n❌ Headers to REMOVE:"
-        if (duplicateLines.isEmpty()) {
-            println "  None found"
-        } else {
-            duplicateLines.each { println "  ${it}" }
-        }
-
-        println "\nRun 'gradle cleanupDuplicateHeaders' to apply these changes"
-    }
-}
-
-ext.generateLatestChangelog = {
-    def changelogFile = file("CHANGELOG_LATEST.md")
+def updateChangelogFile() {
+    def changelogFile = rootProject.file("LATEST_CHANGELOG.md")
+    def currentVersion = project.mod_version
+    def shouldRecreate = false
 
     if (changelogFile.exists()) {
-        def content = changelogFile.text.trim()
-        def lines = content.split('\n')
-        if (lines.length > 1) {
-            return lines[1..-1].join('\n').trim()
+        def existingContent = changelogFile.text
+        def versionPattern = /^#\s+v\.(\S+)\s+for\s+MC/
+        def matcher = existingContent =~ versionPattern
+
+        if (matcher.find()) {
+            def existingVersion = matcher.group(1)
+            if (existingVersion != currentVersion) {
+                println "Version changed from ${existingVersion} to ${currentVersion} - recreating changelog"
+                shouldRecreate = true
+            } else {
+                println "Same version ${currentVersion} - updating existing changelog"
+            }
+        } else {
+            println "No version found in existing changelog - recreating"
+            shouldRecreate = true
         }
-        return content
+    } else {
+        println "LATEST_CHANGELOG.md doesn't exist - creating new one"
+        shouldRecreate = true
     }
 
-    // Fallback: Git-based generation
-    println "CHANGELOG_LATEST.md not found, generating from git..."
-    def proc = "git describe --tags --abbrev=0".execute()
-    def lastTag = proc.text.trim()
-    if (!proc.exitValue()) {
-        println "Using tag: $lastTag"
+    if (shouldRecreate) {
+        generateLatestChangelogFile()
+    } else {
+        updateExistingChangelog(changelogFile)
+    }
+}
+
+def updateExistingChangelog(File changelogFile) {
+    def existingContent = changelogFile.text
+    def newContent = buildChangelogContent()
+
+    // Extract commits from both old and new content to merge them
+    def existingCommits = extractCommitsFromChangelog(existingContent)
+    def newCommits = getCommitsSinceLastTag()
+
+    // Merge and deduplicate commits
+    def allCommits = mergeAndDeduplicateCommits(existingCommits, newCommits)
+
+    // Rebuild changelog with merged commits
+    def mergedContent = buildChangelogFromCommits(allCommits)
+    changelogFile.text = mergedContent
+
+    println "Updated LATEST_CHANGELOG.md - merged ${newCommits.size()} new commits"
+}
+
+def buildChangelogContent() {
+    def commits = getCommitsSinceLastTag()
+    return buildChangelogFromCommits(commits)
+}
+
+def buildChangelogFromCommits(List commits) {
+    def currentVersion = project.mod_version
+    def gameVersions = project.findProperty("game_versions") ?: minecraft_version
+    def dateFormat = new SimpleDateFormat("yyyy-MM-dd")
+    def currentDate = dateFormat.format(new Date())
+
+    def content = new StringBuilder()
+    content.append("# v.${currentVersion} for MC ${gameVersions}\n\n")
+    content.append("*Released: ${currentDate}*\n\n")
+
+    if (commits.isEmpty()) {
+        content.append("No commits found for this version.\n")
+        return content.toString()
     }
 
-    def logCmd = ["git", "log", "${lastTag}..HEAD", "--pretty=format:* %s"]
-    def log = new ByteArrayOutputStream()
-    exec {
-        commandLine logCmd
-        standardOutput = log
+    // Group commits by type
+    def groupedCommits = [:]
+    def breakingChanges = []
+
+    commits.each { commit ->
+        def parsed = parseConventionalCommit(commit.message)
+        def type = parsed.type ?: 'other'
+
+        if (!groupedCommits.containsKey(type)) {
+            groupedCommits[type] = []
+        }
+
+        groupedCommits[type].add([
+                hash: commit.hash,
+                subject: parsed.subject,
+                scope: parsed.scope,
+                body: parsed.body,
+                breaking: parsed.breaking,
+                originalMessage: commit.message
+        ])
+
+        if (parsed.breaking) {
+            breakingChanges.add([
+                    subject: parsed.subject,
+                    body: parsed.body,
+                    scope: parsed.scope
+            ])
+        }
     }
-    return log.toString("UTF-8").trim()
+
+    // Add breaking changes section first
+    if (!breakingChanges.isEmpty()) {
+        content.append("## ⚠️ Breaking Changes\n\n")
+        breakingChanges.each { change ->
+            def scopeText = change.scope ? "(${change.scope}) " : ""
+            content.append("- ${scopeText}${change.subject}\n")
+            if (change.body) {
+                content.append("  ${change.body}\n")
+            }
+        }
+        content.append("\n")
+    }
+
+    // Add sections for each commit type (in order of importance)
+    def orderedTypes = ['feat', 'fix', 'perf', 'refactor', 'docs', 'style', 'test', 'build', 'ci', 'chore', 'revert', 'other']
+
+    orderedTypes.each { type ->
+        if (groupedCommits.containsKey(type)) {
+            def displayName = COMMIT_TYPES[type] ?: type.capitalize()
+            def emoji = getEmojiForType(type)
+
+            content.append("## ${emoji} ${displayName}\n\n")
+
+            groupedCommits[type].each { commit ->
+                def scopeText = commit.scope ? "(${commit.scope}) " : ""
+                def breakingIcon = commit.breaking ? " ⚠️" : ""
+                content.append("- ${scopeText}${commit.subject}${breakingIcon}\n")
+            }
+            content.append("\n")
+        }
+    }
+
+    return content.toString()
+}
+
+def getCommitsSinceLastTag() {
+    try {
+        // Try to get commits since last tag
+        def proc = "git describe --tags --abbrev=0".execute()
+        proc.waitFor()
+
+        def gitCommand
+        if (proc.exitValue() == 0) {
+            def lastTag = proc.text.trim()
+            gitCommand = ["git", "log", "${lastTag}..HEAD", "--pretty=format:%H|%s|%b", "--no-merges"]
+        } else {
+            // No tags found, get all commits
+            gitCommand = ["git", "log", "--pretty=format:%H|%s|%b", "--no-merges"]
+        }
+
+        proc = gitCommand.execute()
+        proc.waitFor()
+
+        if (proc.exitValue() != 0) {
+            println "Git command failed: ${proc.err.text}"
+            return []
+        }
+
+        def commits = []
+        proc.text.split('\n').each { line ->
+            if (line.trim()) {
+                def parts = line.split('\\|', 3)
+                if (parts.length >= 2) {
+                    commits.add([
+                            hash: parts[0],
+                            message: parts[1],
+                            body: parts.length > 2 ? parts[2] : ""
+                    ])
+                }
+            }
+        }
+
+        return commits
+    } catch (Exception e) {
+        println "Error getting git commits: ${e.message}"
+        return []
+    }
+}
+
+def parseConventionalCommit(String message) {
+    // Pattern for conventional commits: type(scope): description
+    def conventionalPattern = /^(\w+)(\(([^)]+)\))?\s*(!?):\s*(.+)$/
+    def matcher = message =~ conventionalPattern
+
+    def result = [
+            type: null,
+            scope: null,
+            subject: message,
+            body: null,
+            breaking: false
+    ]
+
+    if (matcher.find()) {
+        result.type = matcher.group(1).toLowerCase()
+        result.scope = matcher.group(3)
+        result.breaking = matcher.group(4) == "!"
+        result.subject = matcher.group(5)
+    } else {
+        // If not conventional format, try to guess type from subject
+        def lowerMessage = message.toLowerCase()
+        if (lowerMessage.startsWith("fix")) {
+            result.type = "fix"
+            result.subject = message.replaceFirst(/^fix\s*:?\s*/i, "")
+        } else if (lowerMessage.startsWith("feat") || lowerMessage.startsWith("add")) {
+            result.type = "feat"
+            result.subject = message.replaceFirst(/^(feat|add)\s*:?\s*/i, "")
+        } else if (lowerMessage.contains("breaking")) {
+            result.breaking = true
+            result.type = "feat"
+        } else {
+            result.type = "other"
+        }
+    }
+
+    // Check for breaking changes in commit body
+    BREAKING_CHANGE_KEYWORDS.each { keyword ->
+        if (message.contains(keyword)) {
+            result.breaking = true
+        }
+    }
+
+    return result
+}
+
+def getEmojiForType(String type) {
+    def emojis = [
+            'feat': '✨',
+            'fix': '🐛',
+            'docs': '📚',
+            'style': '💎',
+            'refactor': '🔨',
+            'perf': '🚀',
+            'test': '🧪',
+            'build': '🛠️',
+            'ci': '⚙️',
+            'chore': '🧹',
+            'revert': '⏪',
+            'other': '📝'
+    ]
+    return emojis[type] ?: '📝'
+}
+
+def extractCommitsFromChangelog(String content) {
+    // Simple extraction - in a real implementation, this would be more sophisticated
+    def commits = []
+    def lines = content.split('\n')
+
+    lines.each { line ->
+        if (line.startsWith('- ')) {
+            // Extract commit info from changelog line
+            def commitText = line.substring(2).trim()
+            commits.add([
+                    subject: commitText,
+                    type: 'other' // We'd need to infer this from the section
+            ])
+        }
+    }
+
+    return commits
+}
+
+def mergeAndDeduplicateCommits(List existingCommits, List newCommits) {
+    def allCommits = []
+    def seenSubjects = [] as Set
+
+    // Add new commits first (they're more recent)
+    newCommits.each { commit ->
+        if (!seenSubjects.contains(commit.message)) {
+            allCommits.add(commit)
+            seenSubjects.add(commit.message)
+        }
+    }
+
+    // Add existing commits that weren't duplicated
+    existingCommits.each { commit ->
+        if (!seenSubjects.contains(commit.subject)) {
+            allCommits.add([
+                    hash: "existing",
+                    message: commit.subject,
+                    body: ""
+            ])
+            seenSubjects.add(commit.subject)
+        }
+    }
+
+    return allCommits
+}
+
+// Integration with existing changelog reading function
+ext.generateLatestChangelog = {
+    def changelogFile = rootProject.file("LATEST_CHANGELOG.md")
+    if (changelogFile.exists()) {
+        return changelogFile.text
+    } else {
+        return buildChangelogContent()
+    }
+}
+
+// Make sure changelog is updated before any publishing task
+tasks.matching { it.name.contains("publish") || it.name == "modrinth" }.all {
+    dependsOn "updateChangelog"
+}
+
+// Also update changelog when building
+tasks.named("build").dependsOn("updateChangelog")
+
+// Helper task to clean and regenerate changelog
+tasks.register("cleanChangelog") {
+    group = "changelog"
+    description = "Delete LATEST_CHANGELOG.md and regenerate it from scratch"
+
+    doLast {
+        def changelogFile = rootProject.file("LATEST_CHANGELOG.md")
+        if (changelogFile.exists()) {
+            changelogFile.delete()
+            println "Deleted existing LATEST_CHANGELOG.md"
+        }
+        generateLatestChangelogFile()
+        println "Generated fresh LATEST_CHANGELOG.md"
+    }
+}
+
+// Task to validate changelog format
+tasks.register("validateChangelog") {
+    group = "changelog"
+    description = "Validate that LATEST_CHANGELOG.md follows the expected format"
+
+    doLast {
+        def changelogFile = rootProject.file("LATEST_CHANGELOG.md")
+        if (!changelogFile.exists()) {
+            throw new GradleException("LATEST_CHANGELOG.md not found. Run 'gradle generateChangelog' first.")
+        }
+
+        def content = changelogFile.text
+        def currentVersion = project.mod_version
+
+        // Check version header
+        if (!content.contains("v.${currentVersion}")) {
+            throw new GradleException("Changelog doesn't contain current version ${currentVersion}")
+        }
+
+        // Check basic structure
+        if (!content.contains("# v.")) {
+            throw new GradleException("Changelog missing version header")
+        }
+
+        println "✅ LATEST_CHANGELOG.md validation passed"
+        println "📝 Version: ${currentVersion}"
+        println "📄 Lines: ${content.split('\n').size()}"
+    }
+}
+
+// Task to show changelog statistics
+tasks.register("changelogStats") {
+    group = "changelog"
+    description = "Show statistics about the current changelog"
+
+    doLast {
+        def changelogFile = rootProject.file("LATEST_CHANGELOG.md")
+        if (!changelogFile.exists()) {
+            println "LATEST_CHANGELOG.md not found"
+            return
+        }
+
+        def content = changelogFile.text
+        def lines = content.split('\n')
+
+        def stats = [
+                totalLines: lines.size(),
+                sections: 0,
+                features: 0,
+                bugFixes: 0,
+                breakingChanges: 0
+        ]
+
+        lines.each { line ->
+            if (line.startsWith('## ')) stats.sections++
+            if (line.contains('New Features') || line.contains('✨')) stats.features++
+            if (line.contains('Bug Fixes') || line.contains('🐛')) stats.bugFixes++
+            if (line.contains('Breaking Changes') || line.contains('⚠️')) stats.breakingChanges++
+        }
+
+        println "=== CHANGELOG STATISTICS ==="
+        println "Total lines: ${stats.totalLines}"
+        println "Sections: ${stats.sections}"
+        println "Features: ${stats.features}"
+        println "Bug fixes: ${stats.bugFixes}"
+        println "Breaking changes: ${stats.breakingChanges}"
+        println "=========================="
+    }
+}
+
+// Integration with existing functions - enhanced readLatestChangelog
+ext.readLatestChangelog = {
+    // 1. Try reading from file first
+    def file = rootProject.file("LATEST_CHANGELOG.md")
+    if (file.exists()) {
+        try {
+            def text = file.getText('UTF-8').trim()
+            if (text) {
+                logger.lifecycle("Using changelog from file: ${file}")
+                return text
+            } else {
+                logger.lifecycle("LATEST_CHANGELOG.md exists but is empty.")
+            }
+        } catch (Exception e) {
+            logger.warn("Error reading LATEST_CHANGELOG.md: ${e.message}")
+        }
+    } else {
+        logger.lifecycle("LATEST_CHANGELOG.md not found in project root.")
+    }
+
+    // 2. Try from Git HEAD
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'show', 'HEAD:LATEST_CHANGELOG.md'
+            standardOutput = stdout
+            ignoreExitValue = true
+        }
+        def gitText = stdout.toString('UTF-8').trim()
+        if (gitText) {
+            logger.lifecycle("Using changelog from git HEAD:LATEST_CHANGELOG.md")
+            return gitText
+        } else {
+            logger.lifecycle("No LATEST_CHANGELOG.md content found at git HEAD.")
+        }
+    } catch (Exception e) {
+        logger.warn("Error executing 'git show': ${e.message}")
+    }
+
+    // 3. Generate from commits as fallback
+    try {
+        def generated = generateLatestChangelog()
+        if (generated) {
+            logger.lifecycle("Using generated changelog from commits.")
+            // Save it for next time
+            try {
+                file.text = generated
+                logger.lifecycle("Saved generated changelog to LATEST_CHANGELOG.md")
+            } catch (Exception saveError) {
+                logger.warn("Could not save generated changelog: ${saveError.message}")
+            }
+            return generated
+        }
+    } catch (Exception e) {
+        logger.warn("Failed to generate changelog from commits: ${e.message}")
+    }
+
+    // 4. Final fallback
+    logger.lifecycle("No changelog found - returning minimal changelog.")
+    return """# v.${project.mod_version} for MC ${project.minecraft_version}
+
+*Released: ${new Date().format('yyyy-MM-dd')}*
+
+## 📝 Changes
+
+- Initial release or changes not documented
+
+Please refer to commit history for detailed changes.
+"""
 }
