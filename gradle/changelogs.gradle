@@ -256,9 +256,24 @@ def getGithubRepoUrl() {
 ext.GITHUB_REPO = getGithubRepoUrl()
 def GITHUB_REPO = ext.GITHUB_REPO
 
+def getExistingTags() {
+    try {
+        def proc = ['git', 'tag', '--list'].execute()
+        proc.waitFor()
+        if (proc.exitValue() != 0) {
+            throw new GradleException("Cannot get Git-Tags")
+        }
+        return proc.in.text.readLines().collect { it.trim() }.findAll { it }
+    } catch (Exception e) {
+        logger.warn("Error: Cannot get Git-Tags: ${e.message}")
+        return []
+    }
+}
+
 def ensureCurrentTagExists() {
     def currentVersion = project.mod_version
     def tagName = "v.${currentVersion}"
+    def existingTags = getExistingTags()
 
     try {
         //test if tag already exists
@@ -273,7 +288,7 @@ def ensureCurrentTagExists() {
             return
         }
 
-        // Tag erstellen
+        //create tag
         println "Creating git tag ${tagName} for current version..."
         exec {
             commandLine 'git', 'tag', tagName

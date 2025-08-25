@@ -118,6 +118,42 @@ EOF
     fi
 fi
 
+# Create versions.json if not exists
+if [ ! -f "versions.json" ]; then
+    # decide: interactive prompt or env var for automation
+    if [ -t 0 ]; then
+        read -r -p "versions.json not found. Create one now? [Y/n] " ans
+        ans=${ans:-Y}
+    else
+        ans=${CREATE_VERSIONS_JSON:-N}
+    fi
+
+    case "$ans" in
+        [Yy]*)
+          MOD_VERSION=$(grep "^mod_version=" gradle.properties | cut -d'=' -f2 | tr -d '[:space:]')
+          MC_VERSION=$(grep "^minecraft_version=" gradle.properties | cut -d'=' -f2 | tr -d '[:space:]')
+
+    cat > versions.json <<EOF
+{
+    "homepage": "https://www.curseforge.com/members/xxrexraptorxx/projects",
+    "promos": {
+        "${MC_VERSION}-latest": "${MC_VERSION}",
+        "${MC_VERSION}": "${MOD_VERSION}"
+    }
+}
+EOF
+
+            git add versions.json >/dev/null 2>&1 || true
+            echo "✅ Created versions.json"
+            ;;
+        *)
+            echo "❌ versions.json missing. Please create it or set CREATE_VERSIONS_JSON=1 to auto-create."
+            ;;
+    esac
+else
+    echo "✅ versions.json already exists"
+fi
+
 # Extract version from gradle.properties
 MOD_VERSION=$(grep "^mod_version=" gradle.properties | cut -d'=' -f2 | tr -d '[:space:]')
 TAG_NAME="v.$MOD_VERSION"
@@ -127,7 +163,8 @@ if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
     echo "✅ Git tag $TAG_NAME already exists"
 else
     git tag "$TAG_NAME"
-    echo "🏷️  Created git tag $TAG_NAME"
+    git push origin "$TAG_NAME"
+    echo "🏷️  Created and pushed git tag $TAG_NAME"
 fi
 
 echo ""
@@ -138,4 +175,5 @@ echo "1. Make sure your GitHub repository has 'Read and write permissions' for A
 echo "2. Go to: Repository Settings → Actions → General → Workflow permissions"
 echo "3. Select: 'Read and write permissions'"
 echo "4. Check: 'Allow GitHub Actions to create and approve pull requests'"
+echo "5. Check: If the URL in your versions.json file is correct"
 echo ""
