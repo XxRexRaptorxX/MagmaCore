@@ -1,9 +1,9 @@
 // ========================================
-// CHANGELOG MANAGEMENT WITH RC VERSIONING
+// AUTOMATIC RC TAGGING AND CHANGELOG MANAGEMENT
 // ========================================
 
+
 import java.text.SimpleDateFormat
-import java.util.concurrent.TimeUnit
 
 // Make commit type map available as a project property and as a local var
 ext.COMMIT_TYPES = [
@@ -29,9 +29,18 @@ def EXCLUDED_TYPE = ext.EXCLUDED_TYPES
 ext.BREAKING_CHANGE_KEYWORDS = ['BREAKING CHANGE', 'BREAKING-CHANGE', 'BREAKING_CHANGE']
 def BREAKING_CHANGE_KEYWORDS = ext.BREAKING_CHANGE_KEYWORDS
 
+tasks.register("setupAutoRCHook") {
+    group = "changelog"
+    description = "Setup pre-commit hook for automatic RC tagging"
+
+    doLast {
+        setupPreCommitHook()
+    }
+}
+
 tasks.register("generateChangelog") {
     group = "changelog"
-    description = "Generate LATEST_CHANGELOG.md from git commits using conventional changelog format"
+    description = "Generate LATEST_CHANGELOG.md from all RC commits of current version"
 
     doLast {
         generateLatestChangelogFile()
@@ -40,7 +49,7 @@ tasks.register("generateChangelog") {
 
 tasks.register("updateChangelog") {
     group = "changelog"
-    description = "Update existing LATEST_CHANGELOG.md with new commits (same version) or recreate (new version)"
+    description = "Update existing LATEST_CHANGELOG.md with all commits from current version RC tags"
 
     doLast {
         updateChangelogFile()
@@ -59,13 +68,13 @@ tasks.register("previewChangelog") {
     }
 }
 
-tasks.register("createReleaseCandidate") {
+tasks.register("tagCurrentCommit") {
     group = "changelog"
-    description = "Create a new release candidate tag with auto-incrementing RC number and push it"
+    description = "Manually tag the current commit with next RC number and push"
 
     doLast {
-        def rcTag = createAndPushReleaseCandidate()
-        println "Created and pushed release candidate: ${rcTag}"
+        def rcTag = tagCurrentCommitWithRC()
+        println "Tagged current commit with: ${rcTag}"
     }
 }
 
@@ -79,14 +88,118 @@ tasks.register("createReleaseTag") {
     }
 }
 
-// Automatically update changelog and create RC before publishing
+// Automatically update changelog when building
 tasks.named("jar") {
     dependsOn("updateChangelog")
-    doLast {
-        if (project.hasProperty('autoRC') && project.autoRC.toBoolean()) {
-            createAndPushReleaseCandidate()
+}
+
+def setupPreCommitHook() {
+    def hookFile = file(".git/hooks/pre-commit")
+    def hookScript = generatePreCommitHookScript()
+
+    // Create .git/hooks directory if it doesn't exist
+    hookFile.parentFile.mkdirs()
+
+    // Write the hook script
+    hookFile.text = hookScript
+
+    // Make it executable (Unix/Linux/Mac)
+    if (!System.getProperty("os.name").toLowerCase().contains("windows")) {
+        exec {
+            commandLine 'chmod', '+x', hookFile.absolutePath
         }
     }
+
+    println "✅ Pre-commit hook installed at: ${hookFile.absolutePath}"
+    println "🔄 Every commit will now automatically get an RC tag and be pushed"
+
+    // Also create a post-commit hook for pushing tags
+    def postCommitHook = file(".git/hooks/post-commit")
+    def postCommitScript = generatePostCommitHookScript()
+    postCommitHook.text = postCommitScript
+
+    if (!System.getProperty("os.name").toLowerCase().contains("windows")) {
+        exec {
+            commandLine 'chmod', '+x', postCommitHook.absolutePath
+        }
+    }
+
+    println "✅ Post-commit hook installed for automatic tag pushing"
+}
+
+def generatePreCommitHookScript() {
+    def currentVersion = project.mod_version
+    def projectDir = projectDir.absolutePath
+
+    return """#!/bin/sh
+# Auto-generated pre-commit hook for RC tagging
+# This hook will be executed before every commit
+
+echo "🏷️  Preparing RC tag for commit..."
+
+# Get the project directory
+PROJECT_DIR="${projectDir}"
+
+# Change to project directory
+cd "\$PROJECT_DIR"
+
+# Get current version from gradle.properties or build.gradle
+CURRENT_VERSION="${currentVersion}"
+
+echo "📋 Current version: \$CURRENT_VERSION"
+
+# The actual RC tagging will happen in post-commit to avoid issues
+# Pre-commit just validates that we can create tags
+exit 0
+"""
+}
+
+def generatePostCommitHookScript() {
+    def currentVersion = project.mod_version
+    def projectDir = projectDir.absolutePath
+
+    return """#!/bin/sh
+# Auto-generated post-commit hook for RC tagging and pushing
+# This hook will be executed after every commit
+
+echo "🏷️  Creating RC tag for new commit..."
+
+# Get the project directory
+PROJECT_DIR="${projectDir}"
+
+# Change to project directory
+cd "\$PROJECT_DIR"
+
+# Get current version
+CURRENT_VERSION="${currentVersion}"
+
+# Get next RC number by checking existing RC tags
+RC_TAGS=\$(git tag -l "v.\$CURRENT_VERSION-RC*" | wc -l)
+NEXT_RC=\$((RC_TAGS + 1))
+RC_TAG="v.\$CURRENT_VERSION-RC\$NEXT_RC"
+
+echo "🔖 Creating tag: \$RC_TAG"
+
+# Create the RC tag on the latest commit
+git tag -a "\$RC_TAG" -m "Auto-generated RC tag \$NEXT_RC for version \$CURRENT_VERSION"
+
+# Push the tag to remote
+echo "⬆️  Pushing tag to remote..."
+git push origin "\$RC_TAG"
+
+if [ \$? -eq 0 ]; then
+    echo "✅ Successfully created and pushed RC tag: \$RC_TAG"
+else
+    echo "❌ Failed to push RC tag: \$RC_TAG"
+fi
+
+# Also update the changelog
+echo "📝 Updating changelog..."
+cd "\$PROJECT_DIR"
+./gradlew updateChangelog -q
+
+echo "🎉 RC tagging complete!"
+"""
 }
 
 def generateLatestChangelogFile() {
@@ -99,62 +212,131 @@ def generateLatestChangelogFile() {
 
 def updateChangelogFile() {
     def changelogFile = rootProject.file("LATEST_CHANGELOG.md")
-    def currentVersion = project.mod_version
-    def shouldRecreate = false
+    def content = buildChangelogContent()
 
-    if (changelogFile.exists()) {
-        def existingContent = changelogFile.text
-        def versionPattern = /^#\s+(?:\[\s*)?v\.(\S+)\s+for\s+MC/
-        def matcher = existingContent =~ versionPattern
-
-        if (matcher.find()) {
-            def existingVersion = matcher.group(1)
-            if (existingVersion != currentVersion) {
-                println "Version changed from ${existingVersion} to ${currentVersion} - recreating changelog"
-                shouldRecreate = true
-            } else {
-                println "Same version ${currentVersion} - updating existing changelog"
-            }
-        } else {
-            println "No version found in existing changelog - recreating"
-            shouldRecreate = true
-        }
-    } else {
-        println "LATEST_CHANGELOG.md doesn't exist - creating new one"
-        shouldRecreate = true
-    }
-
-    if (shouldRecreate) {
-        generateLatestChangelogFile()
-    } else {
-        updateExistingChangelog(changelogFile)
-    }
-}
-
-def updateExistingChangelog(File changelogFile) {
-    def existingContent = changelogFile.text
-    def newContent = buildChangelogContent()
-
-    // Extract commits from both old and new content to merge them
-    def existingCommits = extractCommitsFromChangelog(existingContent)
-    def newCommits = getCommitsSinceLastTag()
-
-    // Merge and deduplicate commits
-    def allCommits = mergeAndDeduplicateCommits(existingCommits, newCommits)
-
-    // Rebuild changelog with merged commits
-    def mergedContent = buildChangelogFromCommits(allCommits)
-    changelogFile.text = mergedContent
-
-    println "Updated LATEST_CHANGELOG.md - merged ${newCommits.size()} new commits"
+    changelogFile.text = content
+    println "Updated LATEST_CHANGELOG.md with all RC commits for current version"
 }
 
 def buildChangelogContent() {
-    //get commits
-    def commits = getCommitsSinceLastTag()
+    // Get all commits from RC tags of current version
+    def commits = getAllRCCommitsForCurrentVersion()
 
-    //build changelog
+    // Build changelog from these commits
     return buildChangelogFromCommits(commits)
+}
+
+def getAllRCCommitsForCurrentVersion() {
+    def currentVersion = project.mod_version
+
+    try {
+        // Get all RC tags for current version
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'tag', '--list', "v.${currentVersion}-RC*", '--sort=-version:refname'
+            standardOutput = stdout
+            ignoreExitValue = true
+        }
+
+        def rcTags = stdout.toString().trim().split('\n').findAll { it.trim() }
+
+        if (rcTags.isEmpty()) {
+            println "No RC tags found for version ${currentVersion}"
+            return []
+        }
+
+        println "Found ${rcTags.size()} RC tags for version ${currentVersion}"
+
+        // Get commits for each RC tag
+        def allCommits = []
+        def seenHashes = [] as Set
+
+        rcTags.each { tag ->
+            try {
+                def commitOut = new ByteArrayOutputStream()
+                exec {
+                    commandLine 'git', 'rev-list', '-n', '1', tag
+                    standardOutput = commitOut
+                    ignoreExitValue = true
+                }
+
+                def commitHash = commitOut.toString().trim()
+                if (commitHash && !seenHashes.contains(commitHash)) {
+                    seenHashes.add(commitHash)
+
+                    // Get commit details
+                    def detailOut = new ByteArrayOutputStream()
+                    exec {
+                        commandLine 'git', 'show', '--no-patch', '--format=%H|%s|%b', commitHash
+                        standardOutput = detailOut
+                        ignoreExitValue = true
+                    }
+
+                    def details = detailOut.toString().trim()
+                    if (details) {
+                        def parts = details.split('\\|', 3)
+                        if (parts.length >= 2) {
+                            allCommits.add([
+                                    hash: parts[0],
+                                    message: parts[1],
+                                    body: parts.length > 2 ? parts[2] : "",
+                                    rcTag: tag
+                            ])
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                println "Error processing RC tag ${tag}: ${e.message}"
+            }
+        }
+
+        // Sort commits by RC number (newest first)
+        allCommits.sort { a, b ->
+            def aNum = extractRCNumber(a.rcTag)
+            def bNum = extractRCNumber(b.rcTag)
+            return bNum <=> aNum
+        }
+
+        println "Collected ${allCommits.size()} unique commits from RC tags"
+        return allCommits
+
+    } catch (Exception e) {
+        println "Error getting RC commits: ${e.message}"
+        return []
+    }
+}
+
+def extractRCNumber(String rcTag) {
+    def matcher = rcTag =~ /RC(\d+)$/
+    if (matcher) {
+        return Integer.parseInt(matcher[0][1])
+    }
+    return 0
+}
+
+def tagCurrentCommitWithRC() {
+    def currentVersion = project.mod_version
+    def rcNumber = getNextRCNumber(currentVersion)
+    def rcTag = "v.${currentVersion}-RC${rcNumber}"
+
+    try {
+        // Create the RC tag on HEAD
+        println "Creating RC tag ${rcTag} on current commit..."
+        exec {
+            commandLine 'git', 'tag', '-a', rcTag, '-m', "RC ${rcNumber} for version ${currentVersion}"
+        }
+
+        // Push the tag
+        println "Pushing RC tag ${rcTag} to remote..."
+        exec {
+            commandLine 'git', 'push', 'origin', rcTag
+        }
+
+        println "Successfully created and pushed RC tag: ${rcTag}"
+        return rcTag
+    } catch (Exception e) {
+        throw new GradleException("Failed to create or push RC tag: ${e.message}")
+    }
 }
 
 def getNextRCNumber(String baseVersion) {
@@ -183,31 +365,6 @@ def getNextRCNumber(String baseVersion) {
     } catch (Exception e) {
         println "Error getting next RC number, defaulting to 1: ${e.message}"
         return 1
-    }
-}
-
-def createAndPushReleaseCandidate() {
-    def currentVersion = project.mod_version
-    def rcNumber = getNextRCNumber(currentVersion)
-    def rcTag = "v.${currentVersion}-RC${rcNumber}"
-
-    try {
-        // Create the RC tag
-        println "Creating RC tag ${rcTag}..."
-        exec {
-            commandLine 'git', 'tag', '-a', rcTag, '-m', "Release Candidate ${rcNumber} for version ${currentVersion}"
-        }
-
-        // Push the tag
-        println "Pushing RC tag ${rcTag} to remote..."
-        exec {
-            commandLine 'git', 'push', 'origin', rcTag
-        }
-
-        println "Successfully created and pushed RC tag: ${rcTag}"
-        return rcTag
-    } catch (Exception e) {
-        throw new GradleException("Failed to create or push RC tag: ${e.message}")
     }
 }
 
@@ -264,9 +421,12 @@ def buildChangelogFromCommits(List commits) {
     }
 
     if (commits.isEmpty()) {
-        content.append("No commits found for this version.\n")
+        content.append("No RC commits found for this version.\n")
+        content.append("\n*Commits will appear here as they are made with RC tags.*\n")
         return content.toString()
     }
+
+    content.append("*This changelog includes all commits tagged with RC versions for v.${currentVersion}*\n\n")
 
     // Group commits by type
     def groupedCommits = [:]
@@ -291,14 +451,16 @@ def buildChangelogFromCommits(List commits) {
                 scope: parsed.scope,
                 body: parsed.body,
                 breaking: parsed.breaking,
-                originalMessage: commit.message
+                originalMessage: commit.message,
+                rcTag: commit.rcTag
         ])
 
         if (parsed.breaking) {
             breakingChanges.add([
                     subject: parsed.subject,
                     body: parsed.body,
-                    scope: parsed.scope
+                    scope: parsed.scope,
+                    rcTag: commit.rcTag
             ])
         }
     }
@@ -308,7 +470,7 @@ def buildChangelogFromCommits(List commits) {
         content.append("## ⚠️ Breaking Changes\n\n")
         breakingChanges.each { change ->
             def scopeText = change.scope ? "(${change.scope}) " : ""
-            content.append("- ${scopeText}${change.subject}\n")
+            content.append("- ${scopeText}${change.subject} `${change.rcTag}`\n")
             if (change.body) {
                 content.append("  ${change.body}\n")
             }
@@ -330,7 +492,8 @@ def buildChangelogFromCommits(List commits) {
                 def scopeText = commit.scope ? "(${commit.scope}) " : ""
                 def breakingIcon = commit.breaking ? " ⚠️" : ""
                 def shortHash = commit.hash.substring(0,7)
-                content.append("- ${scopeText}${commit.subject} ([${shortHash}](${GITHUB_REPO}/commit/${commit.hash}))${breakingIcon}\n")
+                def rcTagDisplay = commit.rcTag ? " `${commit.rcTag}`" : ""
+                content.append("- ${scopeText}${commit.subject} ([${shortHash}](${GITHUB_REPO}/commit/${commit.hash}))${breakingIcon}${rcTagDisplay}\n")
             }
 
             content.append("\n")
@@ -366,113 +529,13 @@ def getGithubRepoUrl() {
 ext.GITHUB_REPO = getGithubRepoUrl()
 def GITHUB_REPO = ext.GITHUB_REPO
 
-def getExistingTags() {
-    try {
-        def proc = ['git', 'tag', '--list'].execute()
-        proc.waitFor()
-        if (proc.exitValue() != 0) {
-            throw new GradleException("Cannot get Git-Tags")
-        }
-        return proc.in.text.readLines().collect { it.trim() }.findAll { it }
-    } catch (Exception e) {
-        logger.warn("Error: Cannot get Git-Tags: ${e.message}")
-        return []
-    }
-}
-
-def getCommitsSinceLastTag() {
-    try {
-        def out = new StringBuffer()
-        def err = new StringBuffer()
-
-        // Try to get the last tag (including RC tags)
-        def describeCmd = ["git", "--no-pager", "describe", "--tags", "--abbrev=0"]
-        def proc = describeCmd.execute()
-        proc.consumeProcessOutput(out, err)
-        if (!proc.waitFor(10, TimeUnit.SECONDS)) {
-            proc.destroyForcibly()
-            println "git describe timed out"
-            // fall back to full log
-        }
-
-        def gitCommand
-        if (proc.exitValue() == 0 && out.toString().trim()) {
-            def lastTag = out.toString().trim()
-            println "Getting commits since last tag: ${lastTag}"
-            gitCommand = ["git", "--no-pager", "log", "${lastTag}..HEAD", "--pretty=format:%H|%s|%b", "--no-merges"]
-        } else {
-            // No tag found -> full history
-            println "No previous tag found, getting full commit history"
-            gitCommand = ["git", "--no-pager", "log", "--pretty=format:%H|%s|%b", "--no-merges"]
-        }
-
-        out = new StringBuffer()
-        err = new StringBuffer()
-        proc = gitCommand.execute()
-        proc.consumeProcessOutput(out, err)
-
-        if (!proc.waitFor(60, TimeUnit.SECONDS)) {
-            proc.destroyForcibly()
-            println "git log timed out"
-            return []
-        }
-
-        if (proc.exitValue() != 0) {
-            println "Git command failed: ${err.toString()}"
-            return []
-        }
-
-        def commits = []
-        out.toString().readLines().each { line ->
-            if (line.trim()) {
-                def parts = line.split('\\|', 3)
-                if (parts.length >= 2) {
-                    commits.add([
-                            hash: parts[0],
-                            message: parts[1],
-                            body: parts.length > 2 ? parts[2] : ""
-                    ])
-                }
-            }
-        }
-
-        println "Found ${commits.size()} commits since last tag"
-        return commits
-    } catch (Exception e) {
-        println "Error getting git commits: ${e.message}"
-        return []
-    }
-}
-
-def getLastTag() {
-    try {
-        def stdout = new ByteArrayOutputStream()
-        exec {
-            commandLine 'git', 'describe', '--tags', '--abbrev=0'
-            standardOutput = stdout
-            ignoreExitValue = true
-        }
-        def tag = stdout.toString().trim()
-        return tag ?: null
-    } catch (Exception e) {
-        println "Could not detect last Git tag: ${e.message}"
-        return null
-    }
-}
-
 def getVersionLink(String currentVersion) {
-    def lastTag = getLastTag()
     def currentTag = "v.${currentVersion}"
 
     if (!GITHUB_REPO) return null
 
-    if (lastTag && lastTag != currentTag) {
-        // get diff-link
-        return [ "diff", "${GITHUB_REPO}/compare/${lastTag}...${currentTag}" ]
-    } else {
-        // Fallback if there's no previous tag: get tag-link
-        return [ "tag", "${GITHUB_REPO}/releases/tag/${currentTag}" ]
-    }
+    // For RC versions, link to releases page
+    return [ "tag", "${GITHUB_REPO}/releases/tag/${currentTag}" ]
 }
 
 def parseConventionalCommit(String message) {
@@ -537,86 +600,20 @@ def getEmojiForType(String type) {
     return emojis[type] ?: '📝'
 }
 
-def extractCommitsFromChangelog(String content) {
-    // Simple extraction - in a real implementation, this would be more sophisticated
-    def commits = []
-    def lines = content.split('\n')
-
-    lines.each { line ->
-        if (line.startsWith('- ')) {
-            // Extract commit info from changelog line
-            def commitText = line.substring(2).trim()
-            commits.add([
-                    subject: commitText,
-                    type: 'other' // We'd need to infer this from the section
-            ])
-        }
-    }
-
-    return commits
-}
-
-def mergeAndDeduplicateCommits(List existingCommits, List newCommits) {
-    def allCommits = []
-    def seenSubjects = [] as Set
-
-    // Add new commits first (they're more recent)
-    newCommits.each { commit ->
-        if (!seenSubjects.contains(commit.message)) {
-            allCommits.add(commit)
-            seenSubjects.add(commit.message)
-        }
-    }
-
-    // Add existing commits that weren't duplicated
-    existingCommits.each { commit ->
-        if (!seenSubjects.contains(commit.subject)) {
-            allCommits.add([
-                    hash: "existing",
-                    message: commit.subject,
-                    body: ""
-            ])
-            seenSubjects.add(commit.subject)
-        }
-    }
-
-    return allCommits
-}
-
-// Integration with existing changelog reading function
-ext.generateLatestChangelog = {
-    def changelogFile = rootProject.file("LATEST_CHANGELOG.md")
-    if (changelogFile.exists()) {
-        return changelogFile.text
-    } else {
-        return buildChangelogContent()
-    }
-}
-
-// Make sure changelog is updated and RC is created before any publishing task
+// Make sure changelog is updated before any publishing task
 tasks.matching { it.name.contains("publish") || it.name == "modrinth" }.all {
     dependsOn "updateChangelog"
-    doLast {
-        if (project.hasProperty('autoRC') && project.autoRC.toBoolean()) {
-            createAndPushReleaseCandidate()
-        }
-    }
 }
 
 // Also update changelog when building
 tasks.named("build") {
     dependsOn("updateChangelog")
-    doLast {
-        if (project.hasProperty('autoRC') && project.autoRC.toBoolean()) {
-            createAndPushReleaseCandidate()
-        }
-    }
 }
 
 // Helper task to clean and regenerate changelog
 tasks.register("cleanChangelog") {
     group = "changelog"
-    description = "Delete LATEST_CHANGELOG.md and regenerate it from scratch"
+    description = "Delete LATEST_CHANGELOG.md and regenerate it from RC tags"
 
     doLast {
         def changelogFile = rootProject.file("LATEST_CHANGELOG.md")
@@ -625,7 +622,7 @@ tasks.register("cleanChangelog") {
             println "Deleted existing LATEST_CHANGELOG.md"
         }
         generateLatestChangelogFile()
-        println "Generated fresh LATEST_CHANGELOG.md"
+        println "Generated fresh LATEST_CHANGELOG.md from RC tags"
     }
 }
 
@@ -679,14 +676,16 @@ tasks.register("changelogStats") {
                 sections: 0,
                 features: 0,
                 bugFixes: 0,
-                breakingChanges: 0
+                breakingChanges: 0,
+                rcCommits: 0
         ]
 
         lines.each { line ->
             if (line.startsWith('## ')) stats.sections++
-            if (line.contains('New Features') || line.contains('✨')) stats.features++
-            if (line.contains('Bug Fixes') || line.contains('🛠')) stats.bugFixes++
+            if (line.contains('Features') || line.contains('✨')) stats.features++
+            if (line.contains('Bug Fixes') || line.contains('🔧')) stats.bugFixes++
             if (line.contains('Breaking Changes') || line.contains('⚠️')) stats.breakingChanges++
+            if (line.contains('-RC')) stats.rcCommits++
         }
 
         println "=== CHANGELOG STATISTICS ==="
@@ -695,6 +694,7 @@ tasks.register("changelogStats") {
         println "Features: ${stats.features}"
         println "Bug fixes: ${stats.bugFixes}"
         println "Breaking changes: ${stats.breakingChanges}"
+        println "RC commits: ${stats.rcCommits}"
         println "=========================="
     }
 }
@@ -708,7 +708,7 @@ tasks.register("listRCTags") {
         def currentVersion = project.mod_version
         def stdout = new ByteArrayOutputStream()
         exec {
-            commandLine 'git', 'tag', '--list', "v.${currentVersion}-RC*"
+            commandLine 'git', 'tag', '--list', "v.${currentVersion}-RC*", '--sort=version:refname'
             standardOutput = stdout
             ignoreExitValue = true
         }
@@ -719,14 +719,45 @@ tasks.register("listRCTags") {
         if (rcTags.isEmpty()) {
             println "No RC tags found for version ${currentVersion}"
         } else {
-            rcTags.sort().each { tag ->
-                println "- ${tag}"
+            rcTags.each { tag ->
+                // Get commit info for each tag
+                def commitOut = new ByteArrayOutputStream()
+                exec {
+                    commandLine 'git', 'log', '-1', '--format=%h %s', tag
+                    standardOutput = commitOut
+                    ignoreExitValue = true
+                }
+                def commitInfo = commitOut.toString().trim()
+                println "- ${tag} -> ${commitInfo}"
             }
         }
 
         def nextRC = getNextRCNumber(currentVersion)
         println "Next RC would be: v.${currentVersion}-RC${nextRC}"
         println "============================================"
+    }
+}
+
+// Task to remove RC hook
+tasks.register("removeAutoRCHook") {
+    group = "changelog"
+    description = "Remove the automatic RC tagging hooks"
+
+    doLast {
+        def preCommitHook = file(".git/hooks/pre-commit")
+        def postCommitHook = file(".git/hooks/post-commit")
+
+        if (preCommitHook.exists()) {
+            preCommitHook.delete()
+            println "🗑️ Removed pre-commit hook"
+        }
+
+        if (postCommitHook.exists()) {
+            postCommitHook.delete()
+            println "🗑️ Removed post-commit hook"
+        }
+
+        println "✅ Automatic RC tagging hooks removed"
     }
 }
 
@@ -769,11 +800,11 @@ ext.readLatestChangelog = {
         logger.warn("Error executing 'git show': ${e.message}")
     }
 
-    // 3. Generate from commits as fallback
+    // 3. Generate from RC commits as fallback
     try {
-        def generated = generateLatestChangelog()
+        def generated = buildChangelogContent()
         if (generated) {
-            logger.lifecycle("Using generated changelog from commits.")
+            logger.lifecycle("Using generated changelog from RC commits.")
             // Save it for next time
             try {
                 file.text = generated
@@ -784,7 +815,7 @@ ext.readLatestChangelog = {
             return generated
         }
     } catch (Exception e) {
-        logger.warn("Failed to generate changelog from commits: ${e.message}")
+        logger.warn("Failed to generate changelog from RC commits: ${e.message}")
     }
 
     // 4. Final fallback

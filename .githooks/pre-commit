@@ -1,3 +1,4 @@
 #!/bin/sh
+./gradlew setupAutoRCHook
 ./gradlew updateChangelog
 git add LATEST_CHANGELOG.md
