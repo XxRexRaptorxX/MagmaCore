@@ -1,5 +1,5 @@
 // ========================================
-// CHANGELOG MANAGEMENT
+// CHANGELOG MANAGEMENT WITH RC VERSIONING
 // ========================================
 
 import java.text.SimpleDateFormat
@@ -19,7 +19,7 @@ ext.COMMIT_TYPES = [
         chore   : "Chores",
         revert  : "Reverts"
 ]
-ext.EXCLUDED_TYPES = ['chore', 'style', 'ci', 'build', 'test', 'docs']
+ext.EXCLUDED_TYPES = ['style', 'ci', 'build', 'test', 'docs']
 
 // keep a local convenience variable for backwards compatibility with code that expects COMMIT_TYPES directly
 def COMMIT_TYPES = ext.COMMIT_TYPES
@@ -59,9 +59,34 @@ tasks.register("previewChangelog") {
     }
 }
 
-// Automatically update changelog before publishing
+tasks.register("createReleaseCandidate") {
+    group = "changelog"
+    description = "Create a new release candidate tag with auto-incrementing RC number and push it"
+
+    doLast {
+        def rcTag = createAndPushReleaseCandidate()
+        println "Created and pushed release candidate: ${rcTag}"
+    }
+}
+
+tasks.register("createReleaseTag") {
+    group = "changelog"
+    description = "Create the final release tag (without RC) and push it"
+
+    doLast {
+        def releaseTag = createAndPushReleaseTag()
+        println "Created and pushed release tag: ${releaseTag}"
+    }
+}
+
+// Automatically update changelog and create RC before publishing
 tasks.named("jar") {
     dependsOn("updateChangelog")
+    doLast {
+        if (project.hasProperty('autoRC') && project.autoRC.toBoolean()) {
+            createAndPushReleaseCandidate()
+        }
+    }
 }
 
 def generateLatestChangelogFile() {
@@ -125,9 +150,6 @@ def updateExistingChangelog(File changelogFile) {
 }
 
 def buildChangelogContent() {
-    //test version tags
-    ensureCurrentTagExists()
-
     //get commits
     def commits = getCommitsSinceLastTag()
 
@@ -135,6 +157,96 @@ def buildChangelogContent() {
     return buildChangelogFromCommits(commits)
 }
 
+def getNextRCNumber(String baseVersion) {
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'tag', '--list', "v.${baseVersion}-RC*"
+            standardOutput = stdout
+            ignoreExitValue = true
+        }
+
+        def existingRCTags = stdout.toString().trim().split('\n').findAll { it.trim() }
+        def maxRC = 0
+
+        existingRCTags.each { tag ->
+            def rcMatch = tag =~ /v\.${baseVersion.replaceAll(/[.*+?^${}()|[\]\\]/, '\\\\$0')}-RC(\d+)/
+            if (rcMatch) {
+                def rcNum = Integer.parseInt(rcMatch[0][1])
+                if (rcNum > maxRC) {
+                    maxRC = rcNum
+                }
+            }
+        }
+
+        return maxRC + 1
+    } catch (Exception e) {
+        println "Error getting next RC number, defaulting to 1: ${e.message}"
+        return 1
+    }
+}
+
+def createAndPushReleaseCandidate() {
+    def currentVersion = project.mod_version
+    def rcNumber = getNextRCNumber(currentVersion)
+    def rcTag = "v.${currentVersion}-RC${rcNumber}"
+
+    try {
+        // Create the RC tag
+        println "Creating RC tag ${rcTag}..."
+        exec {
+            commandLine 'git', 'tag', '-a', rcTag, '-m', "Release Candidate ${rcNumber} for version ${currentVersion}"
+        }
+
+        // Push the tag
+        println "Pushing RC tag ${rcTag} to remote..."
+        exec {
+            commandLine 'git', 'push', 'origin', rcTag
+        }
+
+        println "Successfully created and pushed RC tag: ${rcTag}"
+        return rcTag
+    } catch (Exception e) {
+        throw new GradleException("Failed to create or push RC tag: ${e.message}")
+    }
+}
+
+def createAndPushReleaseTag() {
+    def currentVersion = project.mod_version
+    def releaseTag = "v.${currentVersion}"
+
+    try {
+        // Check if release tag already exists
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', '--verify', releaseTag
+            standardOutput = stdout
+            ignoreExitValue = true
+        }
+
+        if (stdout.toString().trim()) {
+            println "Release tag ${releaseTag} already exists, skipping creation"
+            return releaseTag
+        }
+
+        // Create the release tag
+        println "Creating release tag ${releaseTag}..."
+        exec {
+            commandLine 'git', 'tag', '-a', releaseTag, '-m', "Release version ${currentVersion}"
+        }
+
+        // Push the tag
+        println "Pushing release tag ${releaseTag} to remote..."
+        exec {
+            commandLine 'git', 'push', 'origin', releaseTag
+        }
+
+        println "Successfully created and pushed release tag: ${releaseTag}"
+        return releaseTag
+    } catch (Exception e) {
+        throw new GradleException("Failed to create or push release tag: ${e.message}")
+    }
+}
 
 def buildChangelogFromCommits(List commits) {
     def currentVersion = project.mod_version
@@ -151,8 +263,6 @@ def buildChangelogFromCommits(List commits) {
         content.append("# v.${currentVersion} for MC ${gameVersions}\n\n")
     }
 
-    //content.append("### ${currentDate}\n\n")
-
     if (commits.isEmpty()) {
         content.append("No commits found for this version.\n")
         return content.toString()
@@ -166,7 +276,7 @@ def buildChangelogFromCommits(List commits) {
         def parsed = parseConventionalCommit(commit.message)
         def type = parsed.type ?: 'other'
 
-        // überspringen, wenn der Committyp ausgeschlossen ist
+        // Skip if commit type is excluded
         if (EXCLUDED_TYPES.contains(type)) {
             return
         }
@@ -241,7 +351,7 @@ def getGithubRepoUrl() {
         def url = stdout.toString().trim()
         if (!url) return null
 
-        // HTTPS-Format
+        // HTTPS format
         if (url.startsWith('git@')) {
             // git@github.com:USER/REPO.git -> https://github.com/USER/REPO
             url = url.replaceFirst(/^git@([^:]+):/, 'https://$1/')
@@ -270,40 +380,12 @@ def getExistingTags() {
     }
 }
 
-def ensureCurrentTagExists() {
-    def currentVersion = project.mod_version
-    def tagName = "v.${currentVersion}"
-    def existingTags = getExistingTags()
-
-    try {
-        //test if tag already exists
-        def stdout = new ByteArrayOutputStream()
-        exec {
-            commandLine 'git', 'rev-parse', '--verify', tagName
-            standardOutput = stdout
-            ignoreExitValue = true
-        }
-        if (stdout.toString().trim()) {
-            println "Git tag ${tagName} already exists."
-            return
-        }
-
-        //create tag
-        println "Creating git tag ${tagName} for current version..."
-        exec {
-            commandLine 'git', 'tag', tagName
-        }
-        println "Git tag ${tagName} created."
-    } catch (Exception e) {
-        println "Failed to create git tag: ${e.message}"
-    }
-}
-
 def getCommitsSinceLastTag() {
     try {
         def out = new StringBuffer()
         def err = new StringBuffer()
 
+        // Try to get the last tag (including RC tags)
         def describeCmd = ["git", "--no-pager", "describe", "--tags", "--abbrev=0"]
         def proc = describeCmd.execute()
         proc.consumeProcessOutput(out, err)
@@ -316,9 +398,11 @@ def getCommitsSinceLastTag() {
         def gitCommand
         if (proc.exitValue() == 0 && out.toString().trim()) {
             def lastTag = out.toString().trim()
+            println "Getting commits since last tag: ${lastTag}"
             gitCommand = ["git", "--no-pager", "log", "${lastTag}..HEAD", "--pretty=format:%H|%s|%b", "--no-merges"]
         } else {
             // No tag found -> full history
+            println "No previous tag found, getting full commit history"
             gitCommand = ["git", "--no-pager", "log", "--pretty=format:%H|%s|%b", "--no-merges"]
         }
 
@@ -352,6 +436,7 @@ def getCommitsSinceLastTag() {
             }
         }
 
+        println "Found ${commits.size()} commits since last tag"
         return commits
     } catch (Exception e) {
         println "Error getting git commits: ${e.message}"
@@ -385,12 +470,10 @@ def getVersionLink(String currentVersion) {
         // get diff-link
         return [ "diff", "${GITHUB_REPO}/compare/${lastTag}...${currentTag}" ]
     } else {
-        // Fallback if theres no previous tag: get tag-link
+        // Fallback if there's no previous tag: get tag-link
         return [ "tag", "${GITHUB_REPO}/releases/tag/${currentTag}" ]
     }
 }
-
-
 
 def parseConventionalCommit(String message) {
     if (!message) {
@@ -510,17 +593,25 @@ ext.generateLatestChangelog = {
     }
 }
 
-
-// Make sure changelog is updated before any publishing task
+// Make sure changelog is updated and RC is created before any publishing task
 tasks.matching { it.name.contains("publish") || it.name == "modrinth" }.all {
     dependsOn "updateChangelog"
+    doLast {
+        if (project.hasProperty('autoRC') && project.autoRC.toBoolean()) {
+            createAndPushReleaseCandidate()
+        }
+    }
 }
 
 // Also update changelog when building
 tasks.named("build") {
     dependsOn("updateChangelog")
+    doLast {
+        if (project.hasProperty('autoRC') && project.autoRC.toBoolean()) {
+            createAndPushReleaseCandidate()
+        }
+    }
 }
-
 
 // Helper task to clean and regenerate changelog
 tasks.register("cleanChangelog") {
@@ -563,7 +654,7 @@ tasks.register("validateChangelog") {
         }
 
         println "✅ LATEST_CHANGELOG.md validation passed"
-        println "📝 Version: ${currentVersion}"
+        println "📋 Version: ${currentVersion}"
         println "📄 Lines: ${content.split('\n').size()}"
     }
 }
@@ -594,7 +685,7 @@ tasks.register("changelogStats") {
         lines.each { line ->
             if (line.startsWith('## ')) stats.sections++
             if (line.contains('New Features') || line.contains('✨')) stats.features++
-            if (line.contains('Bug Fixes') || line.contains('🐛')) stats.bugFixes++
+            if (line.contains('Bug Fixes') || line.contains('🛠')) stats.bugFixes++
             if (line.contains('Breaking Changes') || line.contains('⚠️')) stats.breakingChanges++
         }
 
@@ -605,6 +696,37 @@ tasks.register("changelogStats") {
         println "Bug fixes: ${stats.bugFixes}"
         println "Breaking changes: ${stats.breakingChanges}"
         println "=========================="
+    }
+}
+
+// Task to list all RC tags for current version
+tasks.register("listRCTags") {
+    group = "changelog"
+    description = "List all RC tags for the current version"
+
+    doLast {
+        def currentVersion = project.mod_version
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'tag', '--list', "v.${currentVersion}-RC*"
+            standardOutput = stdout
+            ignoreExitValue = true
+        }
+
+        def rcTags = stdout.toString().trim().split('\n').findAll { it.trim() }
+
+        println "=== RC TAGS FOR VERSION ${currentVersion} ==="
+        if (rcTags.isEmpty()) {
+            println "No RC tags found for version ${currentVersion}"
+        } else {
+            rcTags.sort().each { tag ->
+                println "- ${tag}"
+            }
+        }
+
+        def nextRC = getNextRCNumber(currentVersion)
+        println "Next RC would be: v.${currentVersion}-RC${nextRC}"
+        println "============================================"
     }
 }
 
