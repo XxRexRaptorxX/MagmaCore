@@ -2,9 +2,10 @@
 // PROJECT INITIALIZATION TASKS
 // ========================================
 
+
 import groovy.json.JsonOutput
 
-tasks.register('#initProjectFromScript', Exec) {
+tasks.register('initProjectFromScript', Exec) {
     group = "initialization"
     description = "Initializes the project (runs init script)"
     if (!file("init-project.sh").exists()) {
@@ -27,18 +28,100 @@ tasks.register('checkGit') {
     }
 }
 
+ext.requiredProps = [
+        mod_id: "MOD",
+        mod_name: "MOD",
+        mod_version: "1.0.0",
+        game_versions: "1.21.5",
+        minecraft_version_range: "[1.21.5,1.22)",
+        neo_version_range: "[21.5,)",
+        loader_version_range: "[3,)",
+        pack_format_number: "71",
+        mod_group_id: "xxrexraptorxx",
+        mod_authors: "XxRexRaptorxX (RexRaptor)",
+        environment_type: "client,server",
+        mod_loader: "NEO",
+        release_type: "release",
+        cf_id: "ID",
+        mr_id: "ID",
+        minecraft_version: "1.21.5",
+        neo_version: "21.5.74",
+        parchment_minecraft_version: "1.21.5",
+        parchment_mappings_version: "2025.06.15",
+        java_version: "21",
+        jei_version: "21.3.0.17",
+        rei_version: "19.0.806",
+        emi_version: "1.1.20+1.21.1",
+        jade_version: "6524708",
+]
+
 tasks.register('checkGradleProperties') {
-    group = "initialization"
-    description = "Verifies gradle.properties and required properties"
+    group = 'verification'
+    description = 'Check gradle.properties for required keys and optionally add missing ones.'
+
     doLast {
-        def propsFile = file("gradle.properties")
-        if (!propsFile.exists()) throw new GradleException("❌ gradle.properties not found")
-        def props = propsFile.text
-        if (!props.contains("mod_version=") || !props.contains("game_versions=")) {
-            throw new GradleException("❌ gradle.properties must contain 'mod_version=' and 'game_versions=' properties")
+        def propsFile = rootProject.file('gradle.properties')
+        def props = new Properties()
+        if (propsFile.exists()) {
+            propsFile.withInputStream { stream -> props.load(stream) }
         } else {
-            println "✅ Found gradle.properties with required properties"
+            println "No gradle.properties found — a new one will be created if you choose to add properties."
         }
+
+        def missing = requiredProps.keySet().findAll { !props.containsKey(it) }
+        if (missing.isEmpty()) {
+            println "✅ All required properties are present."
+            return
+        }
+
+        println "Missing properties: ${missing.join(', ')}"
+
+        def nonInteractive = project.hasProperty('nonInteractive')
+        def stdin = new BufferedReader(new InputStreamReader(System.in))
+
+        def askLine = { prompt ->
+            try {
+                if (System.console()) {
+                    System.console().readLine(prompt)
+                } else {
+                    print prompt
+                    stdin.readLine()
+                }
+            } catch (Exception e) {
+                null
+            }
+        }
+
+        def addAll
+        if (nonInteractive) {
+            println "nonInteractive: missing properties will be added with defaults."
+            addAll = true
+        } else {
+            def ans = askLine("Add all missing properties? (y/n) ") ?: "n"
+            addAll = ans.trim().toLowerCase().startsWith('y')
+        }
+
+        if (!addAll) {
+            println "No changes made."
+            return
+        }
+
+        missing.each { key ->
+            def defaultVal = requiredProps[key]
+            def value
+            if (nonInteractive) {
+                value = defaultVal
+            } else {
+                def prompt = "Value for '${key}' (press Enter to use default '${defaultVal}'): "
+                def v = askLine(prompt)
+                value = (v == null || v.trim() == '') ? defaultVal : v
+            }
+            props.setProperty(key, value)
+            println "-> set: ${key}=${value}"
+        }
+
+        propsFile.withOutputStream { out -> props.store(out, "Automatically updated by task checkGradleProperties") }
+        println "✅ gradle.properties updated: ${propsFile.absolutePath}"
     }
 }
 
