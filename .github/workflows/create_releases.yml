@@ -1,4 +1,4 @@
-name: Create previous-version RC release
+name: Create previous-version Dev release
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
       - '**'
 
 jobs:
-  create-rc-release:
+  create-dev-release:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
