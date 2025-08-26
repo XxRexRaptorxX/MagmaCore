@@ -2,14 +2,13 @@
 // PROJECT INITIALIZATION TASKS
 // ========================================
 
-
 import groovy.json.JsonOutput
 
 tasks.register('initProjectFromScript', Exec) {
     group = "initialization"
     description = "Initializes the project (runs init script)"
     if (!file("init-project.sh").exists()) {
-        throw new GradleException("❌ No 'init-project.sh'-file in your mod's root directory.")
+        //throw new GradleException("❌ No 'init-project.sh'-file in your mod's root directory.")
     } else {
         println "✅ Initialization script found"
         commandLine "bash", "./init-project.sh"
@@ -157,23 +156,6 @@ tasks.register('setupGitattributes') {
 }
 
 
-tasks.register('createPreCommitHook') {
-    group = "initialization"
-    description = "Creates a Git pre-commit hook"
-    doLast {
-        def hookDir = file(".githooks")
-        hookDir.mkdirs()
-        def hook = new File(hookDir, "pre-commit")
-        hook.text = """#!/bin/sh
-./gradlew updateChangelog
-git add LATEST_CHANGELOG.md
-"""
-        hook.executable = true
-        println "✅ Created .githooks/pre-commit"
-    }
-}
-
-
 //create or restore CHANGELOG.md / LATEST_CHANGELOG.md
 def restoreOrCreateFile = { fileName, envVar ->
     def f = file(fileName)
@@ -234,7 +216,7 @@ tasks.register('createGitTag') {
     description = "Creates and pushes a git tag based on mod_version"
     doLast {
         def modVersion = project.findProperty("mod_version") ?: "1.0.0"
-        def tagName = "v.$modVersion"
+        def tagName = "v.$modVersion-pre1"
         def result = exec {
             commandLine 'git', 'rev-parse', tagName
             isIgnoreExitValue = true
@@ -256,7 +238,7 @@ tasks.register('createReadme') {
         def readmeFile = file('README.md')
         def oldReadmeTxt = file('README.txt')
 
-        // Prüfen, ob README.txt existiert
+        // check, is README.txt exists
         if (oldReadmeTxt.exists()) {
             def deleteTxt = true
             if (System.console() != null) {
@@ -275,7 +257,7 @@ tasks.register('createReadme') {
             }
         }
 
-        //check if readme file already exists
+        // check if readme file already exists
         if (!readmeFile.exists()) {
             def createReadme = true
             if (System.console() != null) {
@@ -403,10 +385,149 @@ tasks.register('createReadme') {
     }
 }
 
+tasks.register("setupGitHooks") {
+    group = "changelog"
+    description = "Setup pre-commit hook for automatic dev tagging"
+    doLast {
+        setupCommitHooks()
+    }
+}
+
+def setupCommitHooks() {
+    // Create hooks in project .githooks directory
+    def hooksDir = file(".githooks")
+    hooksDir.mkdirs()
+
+    def preCommitHook = file(".githooks/pre-commit")
+    def postCommitHook = file(".githooks/post-commit")
+
+    def preCommitScript = generatePreCommitHookScript()
+    def postCommitScript = generatePostCommitHookScript()
+
+    // Write the hook scripts
+    preCommitHook.text = preCommitScript
+    postCommitHook.text = postCommitScript
+
+    // Make them executable (Unix/Linux/Mac)
+    if (!System.getProperty("os.name").toLowerCase().contains("windows")) {
+        exec {
+            commandLine 'chmod', '+x', preCommitHook.absolutePath
+        }
+        exec {
+            commandLine 'chmod', '+x', postCommitHook.absolutePath
+        }
+    }
+
+    // Configure Git to use our custom hooks directory
+    try {
+        exec {
+            commandLine 'git', 'config', 'core.hooksPath', '.githooks'
+        }
+        println "✅ Git configured to use .githooks directory"
+    } catch (Exception e) {
+        println "⚠️ Could not configure Git hooks path: ${e.message}"
+        println "Please run manually: git config core.hooksPath .githooks"
+    }
+
+    println "✅ Pre-commit hook installed at: ${preCommitHook.absolutePath}"
+    println "✅ Post-commit hook installed at: ${postCommitHook.absolutePath}"
+    println "🔄 Every commit will now automatically get an dev tag and be pushed"
+}
+
+def generatePreCommitHookScript() {
+    def currentVersion = project.mod_version
+    def projectDir = projectDir.absolutePath
+
+    return """#!/bin/sh
+# Auto-generated pre-commit hook for dev tagging
+# This hook will be executed before every commit
+
+echo "🏷️  Preparing Dev tag for commit..."
+
+# Get project root (one level up from .githooks folder)
+PROJECT_DIR="\$(dirname "\$(dirname "\$0")")"
+cd "$PROJECT_DIR" || exit 1
+
+# Read version from gradle.properties
+CURRENT_VERSION=\$(grep "^mod_version=" gradle.properties | cut -d'=' -f2)
+
+echo "📋 Current version: $CURRENT_VERSION"
+
+# The actual dev tagging will happen in post-commit to avoid issues
+# Pre-commit just validates that we can create tags
+exit 0
+"""
+}
+
+def generatePostCommitHookScript() {
+    def currentVersion = project.mod_version
+    def projectDir = projectDir.absolutePath
+
+    return """#!/bin/sh
+# Auto-generated post-commit hook for RC tagging and pushing
+# This hook will be executed after every commit
+
+echo "🏷️  Creating Dev tag for new commit..."
+
+# Get project root (one level up from .githooks folder)
+PROJECT_DIR="\$(dirname "\$(dirname "\$0")")"
+cd "$PROJECT_DIR" || exit 1
+
+# Read version from gradle.properties
+CURRENT_VERSION=\$(grep "^mod_version=" gradle.properties | cut -d'=' -f2)
+
+if [ -z "$CURRENT_VERSION" ]; then
+    echo "❌ Could not read version from gradle.properties"
+    exit 1
+fi
+
+# Check if this is a version change by comparing with the last Dev tag
+LAST_DEV_TAG=\$(git tag -l "v.*-dev*" --sort=-version:refname | head -n1)
+if [ -n "$LAST_DEV_TAG" ]; then
+    LAST_VERSION=\$(echo "$LAST_DEV_TAG" | sed 's/v\\.\\([0-9]\\+\\.[0-9]\\+\\.[0-9]\\+\\)-dev[0-9]\\+/\\1/')
+    echo "📋 Last version from tags: $LAST_VERSION"
+    echo "📋 Current version: $CURRENT_VERSION"
+
+    if [ "$LAST_VERSION" != "$CURRENT_VERSION" ]; then
+        echo "🎉 Version change detected: $LAST_VERSION -> $CURRENT_VERSION"
+        echo "🚀 Creating GitHub release for version $LAST_VERSION..."
+
+        ./gradlew createGitHubRelease -PreleaseVersion="$LAST_VERSION" -q
+    fi
+fi
+
+# Get next dev number by checking existing dev tags for current version
+DEV_TAGS=\$(git tag -l "v.$CURRENT_VERSION-dev*" | wc -l)
+NEXT_DEV=\$((DEV_TAGS + 1))
+DEV_TAG="v.$CURRENT_VERSION-dev$NEXT_DEV"
+
+echo "🔖 Creating tag: $DEV_TAG"
+
+# Create the DEV tag on the latest commit
+git tag -a "$DEV_TAG" -m "Auto-generated dev tag $NEXT_DEV for version $CURRENT_VERSION"
+
+# Push the tag to remote
+echo "⬆️  Pushing tag to remote..."
+git push origin "$DEV_TAG"
+
+if [ \$? -eq 0 ]; then
+    echo "✅ Successfully created and pushed dev tag: $DEV_TAG"
+else
+    echo "❌ Failed to push dev tag: $DEV_TAG"
+fi
+
+# Also update the changelog
+echo "📝 Updating changelog..."
+./gradlew updateChangelog -q
+
+echo "🎉 Dev tagging complete!"
+"""
+}
+
 tasks.register('#initProject') {
     group = "initialization"
     description = "Initializes the project (runs init script)"
-    dependsOn checkGit, checkGradleProperties, setupGitattributes, createPreCommitHook, setupChangelogs, setupVersionsJson, createGitTag, createReadme
+    dependsOn checkGit, checkGradleProperties, setupGitattributes,  setupGitHooks, setupChangelogs, setupVersionsJson, createGitTag, createReadme
     doLast {
         println "\n🎉 Project successfully initialized!"
         println "📋 Next steps:"

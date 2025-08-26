@@ -102,138 +102,6 @@ tasks.named("jar") {
     dependsOn("updateChangelog")
 }
 
-def setupPreCommitHook() {
-    // Create hooks in project .githooks directory
-    def hooksDir = file(".githooks")
-    hooksDir.mkdirs()
-
-    def preCommitHook = file(".githooks/pre-commit")
-    def postCommitHook = file(".githooks/post-commit")
-
-    def preCommitScript = generatePreCommitHookScript()
-    def postCommitScript = generatePostCommitHookScript()
-
-    // Write the hook scripts
-    preCommitHook.text = preCommitScript
-    postCommitHook.text = postCommitScript
-
-    // Make them executable (Unix/Linux/Mac)
-    if (!System.getProperty("os.name").toLowerCase().contains("windows")) {
-        exec {
-            commandLine 'chmod', '+x', preCommitHook.absolutePath
-        }
-        exec {
-            commandLine 'chmod', '+x', postCommitHook.absolutePath
-        }
-    }
-
-    // Configure Git to use our custom hooks directory
-    try {
-        exec {
-            commandLine 'git', 'config', 'core.hooksPath', '.githooks'
-        }
-        println "✅ Git configured to use .githooks directory"
-    } catch (Exception e) {
-        println "⚠️ Could not configure Git hooks path: ${e.message}"
-        println "Please run manually: git config core.hooksPath .githooks"
-    }
-
-    println "✅ Pre-commit hook installed at: ${preCommitHook.absolutePath}"
-    println "✅ Post-commit hook installed at: ${postCommitHook.absolutePath}"
-    println "🔄 Every commit will now automatically get an dev tag and be pushed"
-}
-
-def generatePreCommitHookScript() {
-    def currentVersion = project.mod_version
-    def projectDir = projectDir.absolutePath
-
-    return """#!/bin/sh
-# Auto-generated pre-commit hook for dev tagging
-# This hook will be executed before every commit
-
-echo "🏷️  Preparing dev tag for commit..."
-
-# Get the project directory
-PROJECT_DIR="${projectDir}"
-
-# Change to project directory
-cd "\$PROJECT_DIR"
-
-# Get current version from gradle.properties or build.gradle
-CURRENT_VERSION="${currentVersion}"
-
-echo "📋 Current version: \$CURRENT_VERSION"
-
-# The actual dev tagging will happen in post-commit to avoid issues
-# Pre-commit just validates that we can create tags
-exit 0
-"""
-}
-
-def generatePostCommitHookScript() {
-    def currentVersion = project.mod_version
-    def projectDir = projectDir.absolutePath
-
-    return """#!/bin/sh
-# Auto-generated post-commit hook for dev tagging and pushing
-# This hook will be executed after every commit
-
-echo "🏷️  Creating dev tag for new commit..."
-
-# Get the project directory
-PROJECT_DIR="${projectDir}"
-
-# Change to project directory
-cd "\$PROJECT_DIR"
-
-# Get current version
-CURRENT_VERSION="${currentVersion}"
-
-# Check if this is a version change by comparing with the last dev tag
-LAST_DEV_TAG=\$(git tag -l "v.*-dev*" --sort=-version:refname | head -n1)
-if [ -n "\$LAST_DEV_TAG" ]; then
-    LAST_VERSION=\$(echo "\$LAST_DEV_TAG" | sed 's/v\\.\\([0-9]\\+\\.[0-9]\\+\\.[0-9]\\+\\)-dev[0-9]\\+/\\1/')
-    echo "📋 Last version from tags: \$LAST_VERSION"
-    echo "📋 Current version: \$CURRENT_VERSION"
-    
-    if [ "\$LAST_VERSION" != "\$CURRENT_VERSION" ]; then
-        echo "🎉 Version change detected: \$LAST_VERSION -> \$CURRENT_VERSION"
-        echo "🚀 Creating GitHub release for version \$LAST_VERSION..."
-        
-        # Run Gradle task to create GitHub release for the old version
-        cd "\$PROJECT_DIR"
-        ./gradlew createGitHubRelease -PreleaseVersion="\$LAST_VERSION" -q
-    fi
-fi
-
-# Get next dev number by checking existing dev tags for current version
-DEV_TAGS=\$(git tag -l "v.\$CURRENT_VERSION-dev*" | wc -l)
-NEXT_DEV=\$((DEV_TAGS + 1))
-DEV_TAG="v.\$CURRENT_VERSION-dev\$NEXT_DEV"
-
-echo "🔖 Creating tag: \$DEV_TAG"
-
-# Create the dev tag on the latest commit
-git tag -a "\$DEV_TAG" -m "Auto-generated dev tag \$NEXT_DEV for version \$CURRENT_VERSION"
-
-# Push the tag to remote
-echo "⬆️  Pushing tag to remote..."
-git push origin "\$DEV_TAG"
-
-if [ \$? -eq 0 ]; then
-    echo "✅ Successfully created and pushed dev tag: \$DEV_TAG"
-else
-    echo "❌ Failed to push dev tag: \$DEV_TAG"
-fi
-
-# Also update the changelog
-echo "📝 Updating changelog..."
-cd "\$PROJECT_DIR"
-./gradlew updateChangelog -q
-
-echo "🎉 dev tagging complete!"
-"""
-}
 
 def generateLatestChangelogFile() {
     def changelogFile = rootProject.file("LATEST_CHANGELOG.md")
@@ -401,7 +269,62 @@ def getNextDevNumber(String baseVersion) {
     }
 }
 
+def archiveLatestChangelogIfPresent(String releaseVersion) {
+    try {
+        def latestFile = rootProject.file("LATEST_CHANGELOG.md")
+        if (!latestFile.exists()) {
+            println "ℹ️ LATEST_CHANGELOG.md not found — nothing to archive."
+            return
+        }
+
+        def latestText = latestFile.getText('UTF-8').trim()
+        if (!latestText) {
+            println "ℹ️ LATEST_CHANGELOG.md is empty — nothing to archive."
+            return
+        }
+
+        println "📦 Archiving LATEST_CHANGELOG.md for release ${releaseVersion} -> inserting into CHANGELOG.md"
+
+        def changelogFile = rootProject.file("CHANGELOG.md")
+        if (!changelogFile.exists()) {
+            changelogFile.write("# Changelog\n\n", 'UTF-8')
+            println "🆕 Created CHANGELOG.md"
+        }
+
+        def existing = changelogFile.getText('UTF-8')
+
+        // check for duplicated "# Changelog" header
+        if (!existing.startsWith("# Changelog")) {
+            existing = "# Changelog\n\n" + existing
+        }
+
+        // split: header + patch notes
+        def header = "# Changelog"
+        def parts = existing.split("(?m)^# Changelog\\s*")
+        def body = parts.size() > 1 ? parts[1].trim() : ""
+
+        // append patch notes
+        def combined = header + "\n\n" + latestText + "\n\n" + body
+
+        changelogFile.write(combined.trim() + "\n", 'UTF-8')
+
+        println "✅ Inserted LATEST_CHANGELOG.md content"
+
+        // reset LATEST_CHANGELOG.md
+        def gameVersions = project.findProperty("game_versions") ?: project.minecraft_version
+        def newHeader = "# v.${project.mod_version} for MC ${gameVersions}\n\n## 📝 Changes\n\n"
+        latestFile.write(newHeader, 'UTF-8')
+        println "♻️ Reset LATEST_CHANGELOG.md for new version header: v.${project.mod_version}"
+
+    } catch (Exception e) {
+        println "⚠️ Error while archiving LATEST_CHANGELOG.md: ${e.message}"
+        e.printStackTrace()
+    }
+}
+
 def createGitHubReleaseForVersion(String version) {
+    archiveLatestChangelogIfPresent(version)
+
     if (!GITHUB_REPO) {
         println "❌ No GitHub repository URL found. Cannot create release."
         return
@@ -760,13 +683,40 @@ ext.GITHUB_REPO = getGithubRepoUrl()
 def GITHUB_REPO = ext.GITHUB_REPO
 
 def getVersionLink(String currentVersion) {
-    def currentTag = "v.${currentVersion}"
-
     if (!GITHUB_REPO) return null
 
-    // For dev versions, link to releases page
-    return [ "tag", "${GITHUB_REPO}/releases/tag/${currentTag}" ]
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'tag', '--list', "v.${currentVersion}-dev*", '--sort=version:refname'
+            standardOutput = stdout
+            ignoreExitValue = true
+        }
+
+        def devTags = stdout.toString().trim().split('\n').findAll { it.trim() }
+
+        if (devTags.size() >= 2) {
+            def firstTag = devTags.first()
+            def lastTag = devTags.last()
+
+            // GitHub compare-link: https://github.com/USER/REPO/compare/v.x-dev1...v.x-devN
+            def url = "${GITHUB_REPO}/compare/${firstTag}...${lastTag}"
+            return [ "diff", url ]
+        } else if (devTags.size() == 1) {
+            // only 1 dev-tag -> link current commit
+            def url = "${GITHUB_REPO}/tree/${devTags.first()}"
+            return [ "tag", url ]
+        } else {
+            // no dev-tags -> fallback to release tag
+            def currentTag = "v.${currentVersion}"
+            return [ "tag", "${GITHUB_REPO}/releases/tag/${currentTag}" ]
+        }
+    } catch (Exception e) {
+        println "⚠️ Error while creating the Versionslinks: ${e.message}"
+        return null
+    }
 }
+
 
 def parseConventionalCommit(String message) {
     if (!message) {
@@ -780,7 +730,7 @@ def parseConventionalCommit(String message) {
     def subject = header
     def breaking = false
 
-    // Match header: type(scope)!: subject  or type!: subject  or type(scope): subject  or type: subject
+    // Matching header: Type(range)!: Subject or Type!: Subject or Type(range): Subject or Type: Subject
     def matcher = header =~ /^([A-Za-z0-9_-]+)(?:\(([^)]+)\))?(!)?:\s*(.+)$/
     if (matcher) {
         type = matcher[0][1]
