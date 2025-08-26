@@ -9,7 +9,7 @@ PROJECT_DIR="$(dirname "$(dirname "$0")")"
 cd "$PROJECT_DIR" || exit 1
 
 # Read version from gradle.properties
-CURRENT_VERSION=$(grep "^version=" gradle.properties | cut -d'=' -f2)
+CURRENT_VERSION=$(grep "^mod_version=" gradle.properties | cut -d'=' -f2)
 
 echo "📋 Current version: $CURRENT_VERSION"
 
