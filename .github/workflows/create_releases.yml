@@ -1,0 +1,176 @@
+name: Create previous-version RC release
+
+on:
+  push:
+    # listens to any tag push
+    tags:
+      - '**'
+
+jobs:
+  create-rc-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (fetch all tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create release containing previous version's RC tags
+        uses: actions/github-script@v7
+        with:
+          # English comments are inside the script
+          script: |
+            // Get the pushed tag, strip refs/tags/
+            const pushedRef = process.env.GITHUB_REF;
+            const pushedTag = pushedRef.replace('refs/tags/', '');
+
+            // Helper: strip leading "v" if present
+            function stripV(s) {
+              return s.startsWith('v') ? s.slice(1) : s;
+            }
+
+            // Helper: parse "X.Y.Z" to [X,Y,Z] as numbers
+            function parseBaseVersion(s) {
+              const parts = s.split('.');
+              return parts.map(p => Number(p || 0));
+            }
+
+            // Helper: semver compare for base versions "X.Y.Z"
+            function semverCompare(a, b) {
+              const pa = parseBaseVersion(a);
+              const pb = parseBaseVersion(b);
+              for (let i = 0; i < 3; i++) {
+                const da = pa[i] || 0;
+                const db = pb[i] || 0;
+                if (da < db) return -1;
+                if (da > db) return 1;
+              }
+              return 0;
+            }
+
+            // Extract base part of a tag: "1.2.3-rc4" => "1.2.3"
+            function baseFromTag(tag) {
+              const m = tag.match(/^v?(\d+\.\d+\.\d+)(?:-rc\d+)?$/);
+              return m ? m[1] : null;
+            }
+
+            // Extract rc number: "1.2.3-rc4" => 4
+            function rcNumberFromTag(tag) {
+              const m = tag.match(/-rc(\d+)$/);
+              return m ? Number(m[1]) : null;
+            }
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const currentTag = stripV(pushedTag);
+            const currentBase = currentTag.replace(/-rc\d+$/, '');
+
+            // List all tags (paginated)
+            const allTags = await github.paginate(github.rest.repos.listTags, {
+              owner,
+              repo,
+              per_page: 100
+            });
+
+            // Filter for rc tags like "1.0.0-rc1"
+            const rcTags = allTags
+              .map(t => t.name)
+              .filter(n => /^v?\d+\.\d+\.\d+-rc\d+$/.test(n))
+              .map(n => stripV(n));
+
+            // Group rc tags by base version
+            const groups = {};
+            for (const t of rcTags) {
+              const base = baseFromTag(t);
+              const rcNum = rcNumberFromTag(t);
+              if (!base || rcNum === null) continue;
+              if (!groups[base]) groups[base] = [];
+              groups[base].push({ tag: t, rc: rcNum });
+            }
+
+            // Choose the previous base version: the largest base < currentBase
+            const bases = Object.keys(groups);
+            let prevBase = null;
+            for (const b of bases) {
+              if (semverCompare(b, currentBase) < 0) {
+                if (prevBase === null || semverCompare(b, prevBase) > 0) {
+                  prevBase = b;
+                }
+              }
+            }
+
+            if (!prevBase) {
+              core.info(`No previous base version found before ${currentBase}. Nothing to do.`);
+              return;
+            }
+
+            // Sort rc tags by rc number ascending
+            groups[prevBase].sort((a, b) => a.rc - b.rc);
+            const rcList = groups[prevBase].map(x => x.tag);
+
+            // Build release body listing tags and links
+            const bodyLines = [
+              `This release collects the RC tags for version **${prevBase}**.`,
+              '',
+              'Included RC tags:',
+              ''
+            ];
+            for (const t of rcList) {
+              bodyLines.push(`- ${t} — https://github.com/${owner}/${repo}/releases/tag/${t}`);
+            }
+            const body = bodyLines.join('\n');
+
+            // Determine the target commitish: use the commit SHA of the highest rc tag
+            const latestRc = groups[prevBase].slice().sort((a,b)=>b.rc-a.rc)[0];
+            // find tag object in allTags to get its commit.sha
+            const tagObj = allTags.find(x => stripV(x.name) === latestRc.tag);
+            const targetCommitish = tagObj ? tagObj.commit.sha : context.sha;
+
+            // If a release for prevBase already exists, update it; otherwise create it.
+            // We'll try to get release by tag_name = prevBase (without 'v') first.
+            const tagNameToUse = prevBase; // preserve no 'v' by default
+            let existingRelease = null;
+            try {
+              const got = await github.rest.repos.getReleaseByTag({
+                owner, repo, tag: tagNameToUse
+              });
+              existingRelease = got.data;
+            } catch (e) {
+              // not found => we'll create
+            }
+
+            if (existingRelease) {
+              // Update existing release: append missing rc tags to body if necessary
+              const existingBody = existingRelease.body || '';
+              let newBody = existingBody;
+              for (const t of rcList) {
+                if (!existingBody.includes(t)) {
+                  newBody += `\n- ${t} — https://github.com/${owner}/${repo}/releases/tag/${t}`;
+                }
+              }
+              await github.rest.repos.updateRelease({
+                owner,
+                repo,
+                release_id: existingRelease.id,
+                body: newBody,
+                target_commitish: targetCommitish,
+                name: `RCs for ${prevBase}`,
+                draft: false,
+                prerelease: false
+              });
+              core.info(`Updated existing release for tag ${tagNameToUse}`);
+            } else {
+              // create new release
+              await github.rest.repos.createRelease({
+                owner,
+                repo,
+                tag_name: tagNameToUse,
+                name: `RCs for ${prevBase}`,
+                body,
+                draft: false,
+                prerelease: false,
+                target_commitish: targetCommitish
+              });
+              core.info(`Created release for ${tagNameToUse} including ${rcList.length} RC tags.`);
+            }
