@@ -94,37 +94,53 @@ tasks.named("jar") {
 }
 
 def setupPreCommitHook() {
-    def hookFile = file(".git/hooks/pre-commit")
-    def hookScript = generatePreCommitHookScript()
+    // Create hooks in project .githooks directory
+    def hooksDir = file(".githooks")
+    hooksDir.mkdirs()
 
-    // Create .git/hooks directory if it doesn't exist
-    hookFile.parentFile.mkdirs()
+    def preCommitHook = file(".githooks/pre-commit")
+    def postCommitHook = file(".githooks/post-commit")
 
-    // Write the hook script
-    hookFile.text = hookScript
-
-    // Make it executable (Unix/Linux/Mac)
-    if (!System.getProperty("os.name").toLowerCase().contains("windows")) {
-        exec {
-            commandLine 'chmod', '+x', hookFile.absolutePath
-        }
-    }
-
-    println "✅ Pre-commit hook installed at: ${hookFile.absolutePath}"
-    println "🔄 Every commit will now automatically get an RC tag and be pushed"
-
-    // Also create a post-commit hook for pushing tags
-    def postCommitHook = file(".git/hooks/post-commit")
+    def preCommitScript = generatePreCommitHookScript()
     def postCommitScript = generatePostCommitHookScript()
+
+    // Write the hook scripts
+    preCommitHook.text = preCommitScript
     postCommitHook.text = postCommitScript
 
+    // Make them executable (Unix/Linux/Mac)
     if (!System.getProperty("os.name").toLowerCase().contains("windows")) {
+        exec {
+            commandLine 'chmod', '+x', preCommitHook.absolutePath
+        }
         exec {
             commandLine 'chmod', '+x', postCommitHook.absolutePath
         }
     }
 
-    println "✅ Post-commit hook installed for automatic tag pushing"
+    // Configure Git to use our custom hooks directory
+    try {
+        exec {
+            commandLine 'git', 'config', 'core.hooksPath', '.githooks'
+        }
+        println "✅ Git configured to use .githooks directory"
+    } catch (Exception e) {
+        println "⚠️ Could not configure Git hooks path: ${e.message}"
+        println "Please run manually: git config core.hooksPath .githooks"
+    }
+
+    println "✅ Pre-commit hook installed at: ${preCommitHook.absolutePath}"
+    println "✅ Post-commit hook installed at: ${postCommitHook.absolutePath}"
+    println "🔄 Every commit will now automatically get an RC tag and be pushed"
+
+    // Create a .gitignore entry for the hooks directory if it doesn't exist
+    def gitignoreFile = file(".gitignore")
+    def gitignoreContent = gitignoreFile.exists() ? gitignoreFile.text : ""
+
+    if (!gitignoreContent.contains(".githooks/")) {
+        gitignoreFile.text = gitignoreContent + "\n# Auto-RC Git Hooks\n# Uncomment next line if you don't want to commit hooks\n# .githooks/\n"
+        println "📝 Updated .gitignore with .githooks entry (commented out)"
+    }
 }
 
 def generatePreCommitHookScript() {
@@ -741,11 +757,12 @@ tasks.register("listRCTags") {
 // Task to remove RC hook
 tasks.register("removeAutoRCHook") {
     group = "changelog"
-    description = "Remove the automatic RC tagging hooks"
+    description = "Remove the automatic RC tagging hooks and reset Git config"
 
     doLast {
-        def preCommitHook = file(".git/hooks/pre-commit")
-        def postCommitHook = file(".git/hooks/post-commit")
+        def preCommitHook = file(".githooks/pre-commit")
+        def postCommitHook = file(".githooks/post-commit")
+        def hooksDir = file(".githooks")
 
         if (preCommitHook.exists()) {
             preCommitHook.delete()
@@ -755,6 +772,23 @@ tasks.register("removeAutoRCHook") {
         if (postCommitHook.exists()) {
             postCommitHook.delete()
             println "🗑️ Removed post-commit hook"
+        }
+
+        // Remove the hooks directory if it's empty
+        if (hooksDir.exists() && hooksDir.list().length == 0) {
+            hooksDir.delete()
+            println "🗑️ Removed empty .githooks directory"
+        }
+
+        // Reset Git hooks path to default
+        try {
+            exec {
+                commandLine 'git', 'config', '--unset', 'core.hooksPath'
+                ignoreExitValue = true
+            }
+            println "🔄 Reset Git hooks path to default"
+        } catch (Exception e) {
+            println "ℹ️ Git hooks path was already at default"
         }
 
         println "✅ Automatic RC tagging hooks removed"

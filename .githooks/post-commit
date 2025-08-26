@@ -1,0 +1,41 @@
+#!/bin/sh
+# Auto-generated post-commit hook for RC tagging and pushing
+# This hook will be executed after every commit
+
+echo "🏷️  Creating RC tag for new commit..."
+
+# Get the project directory
+PROJECT_DIR="F:\Modding\MagmaCore"
+
+# Change to project directory
+cd "$PROJECT_DIR"
+
+# Get current version
+CURRENT_VERSION="1.3.3"
+
+# Get next RC number by checking existing RC tags
+RC_TAGS=$(git tag -l "v.$CURRENT_VERSION-RC*" | wc -l)
+NEXT_RC=$((RC_TAGS + 1))
+RC_TAG="v.$CURRENT_VERSION-RC$NEXT_RC"
+
+echo "🔖 Creating tag: $RC_TAG"
+
+# Create the RC tag on the latest commit
+git tag -a "$RC_TAG" -m "Auto-generated RC tag $NEXT_RC for version $CURRENT_VERSION"
+
+# Push the tag to remote
+echo "⬆️  Pushing tag to remote..."
+git push origin "$RC_TAG"
+
+if [ $? -eq 0 ]; then
+    echo "✅ Successfully created and pushed RC tag: $RC_TAG"
+else
+    echo "❌ Failed to push RC tag: $RC_TAG"
+fi
+
+# Also update the changelog
+echo "📝 Updating changelog..."
+cd "$PROJECT_DIR"
+./gradlew updateChangelog -q
+
+echo "🎉 RC tagging complete!"
