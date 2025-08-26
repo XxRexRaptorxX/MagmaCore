@@ -78,6 +78,16 @@ tasks.register("tagCurrentCommit") {
     }
 }
 
+tasks.register("createGitHubRelease") {
+    group = "changelog"
+    description = "Create a GitHub release for the specified version with all RC tags"
+
+    doLast {
+        def releaseVersion = project.findProperty("releaseVersion") ?: project.mod_version
+        createGitHubReleaseForVersion(releaseVersion)
+    }
+}
+
 tasks.register("createReleaseTag") {
     group = "changelog"
     description = "Create the final release tag (without RC) and push it"
@@ -189,7 +199,24 @@ cd "\$PROJECT_DIR"
 # Get current version
 CURRENT_VERSION="${currentVersion}"
 
-# Get next RC number by checking existing RC tags
+# Check if this is a version change by comparing with the last RC tag
+LAST_RC_TAG=\$(git tag -l "v.*-RC*" --sort=-version:refname | head -n1)
+if [ -n "\$LAST_RC_TAG" ]; then
+    LAST_VERSION=\$(echo "\$LAST_RC_TAG" | sed 's/v\\.\\([0-9]\\+\\.[0-9]\\+\\.[0-9]\\+\\)-RC[0-9]\\+/\\1/')
+    echo "📋 Last version from tags: \$LAST_VERSION"
+    echo "📋 Current version: \$CURRENT_VERSION"
+    
+    if [ "\$LAST_VERSION" != "\$CURRENT_VERSION" ]; then
+        echo "🎉 Version change detected: \$LAST_VERSION -> \$CURRENT_VERSION"
+        echo "🚀 Creating GitHub release for version \$LAST_VERSION..."
+        
+        # Run Gradle task to create GitHub release for the old version
+        cd "\$PROJECT_DIR"
+        ./gradlew createGitHubRelease -PreleaseVersion="\$LAST_VERSION" -q
+    fi
+fi
+
+# Get next RC number by checking existing RC tags for current version
 RC_TAGS=\$(git tag -l "v.\$CURRENT_VERSION-RC*" | wc -l)
 NEXT_RC=\$((RC_TAGS + 1))
 RC_TAG="v.\$CURRENT_VERSION-RC\$NEXT_RC"
@@ -384,6 +411,268 @@ def getNextRCNumber(String baseVersion) {
     }
 }
 
+def createGitHubReleaseForVersion(String version) {
+    if (!GITHUB_REPO) {
+        println "❌ No GitHub repository URL found. Cannot create release."
+        return
+    }
+
+    try {
+        // Get all RC tags for the specified version
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'tag', '--list', "v.${version}-RC*", '--sort=version:refname'
+            standardOutput = stdout
+            ignoreExitValue = true
+        }
+
+        def rcTags = stdout.toString().trim().split('\n').findAll { it.trim() }
+
+        if (rcTags.isEmpty()) {
+            println "⚠️ No RC tags found for version ${version}. Skipping release creation."
+            return
+        }
+
+        println "📋 Found ${rcTags.size()} RC tags for version ${version}: ${rcTags.join(', ')}"
+
+        // Generate changelog content for this version
+        def changelogContent = buildChangelogForVersion(version, rcTags)
+
+        // Create release tag if it doesn't exist
+        def releaseTag = "v.${version}"
+        def releaseTagExists = false
+
+        try {
+            def tagCheck = new ByteArrayOutputStream()
+            exec {
+                commandLine 'git', 'rev-parse', '--verify', releaseTag
+                standardOutput = tagCheck
+                ignoreExitValue = true
+            }
+            releaseTagExists = tagCheck.toString().trim()
+        } catch (Exception e) {
+            // Tag doesn't exist, which is fine
+        }
+
+        if (!releaseTagExists) {
+            // Create release tag on the last RC commit
+            def lastRCTag = rcTags.last()
+            println "🔖 Creating release tag ${releaseTag} from ${lastRCTag}"
+
+            exec {
+                commandLine 'git', 'tag', '-a', releaseTag, lastRCTag, '-m', "Release version ${version}"
+            }
+
+            exec {
+                commandLine 'git', 'push', 'origin', releaseTag
+            }
+
+            println "✅ Created and pushed release tag: ${releaseTag}"
+        }
+
+        // Use GitHub CLI to create release if available
+        if (isGitHubCLIAvailable()) {
+            createGitHubReleaseWithCLI(releaseTag, version, changelogContent)
+        } else {
+            println "⚠️ GitHub CLI not available. Please install 'gh' CLI tool for automatic release creation."
+            println "🔗 Release would be created at: ${GITHUB_REPO}/releases/new?tag=${releaseTag}"
+
+            // Save changelog to a file for manual use
+            def releaseFile = file("RELEASE_${version}.md")
+            releaseFile.text = changelogContent
+            println "📄 Release notes saved to: ${releaseFile.absolutePath}"
+        }
+
+    } catch (Exception e) {
+        println "❌ Failed to create GitHub release for version ${version}: ${e.message}"
+        e.printStackTrace()
+    }
+}
+
+def buildChangelogForVersion(String version, List<String> rcTags) {
+    // Get commits for all RC tags of this version
+    def commits = []
+    def seenHashes = [] as Set
+
+    rcTags.each { tag ->
+        try {
+            def commitOut = new ByteArrayOutputStream()
+            exec {
+                commandLine 'git', 'rev-list', '-n', '1', tag
+                standardOutput = commitOut
+                ignoreExitValue = true
+            }
+
+            def commitHash = commitOut.toString().trim()
+            if (commitHash && !seenHashes.contains(commitHash)) {
+                seenHashes.add(commitHash)
+
+                // Get commit details
+                def detailOut = new ByteArrayOutputStream()
+                exec {
+                    commandLine 'git', 'show', '--no-patch', '--format=%H|%s|%b', commitHash
+                    standardOutput = detailOut
+                    ignoreExitValue = true
+                }
+
+                def details = detailOut.toString().trim()
+                if (details) {
+                    def parts = details.split('\\|', 3)
+                    if (parts.length >= 2) {
+                        commits.add([
+                                hash: parts[0],
+                                message: parts[1],
+                                body: parts.length > 2 ? parts[2] : "",
+                                rcTag: tag
+                        ])
+                    }
+                }
+            }
+        } catch (Exception e) {
+            println "Error processing RC tag ${tag}: ${e.message}"
+        }
+    }
+
+    // Sort commits by RC number
+    commits.sort { a, b ->
+        def aNum = extractRCNumber(a.rcTag)
+        def bNum = extractRCNumber(b.rcTag)
+        return aNum <=> bNum
+    }
+
+    // Build changelog content
+    def gameVersions = project.findProperty("game_versions") ?: minecraft_version
+    def content = new StringBuilder()
+
+    content.append("# Release v.${version} for MC ${gameVersions}\n\n")
+
+    if (commits.isEmpty()) {
+        content.append("No commits found for this version.\n")
+        return content.toString()
+    }
+
+    // Group commits by type
+    def groupedCommits = [:]
+    def breakingChanges = []
+
+    commits.each { commit ->
+        def parsed = parseConventionalCommit(commit.message)
+        def type = parsed.type ?: 'other'
+
+        // Skip if commit type is excluded
+        if (EXCLUDED_TYPES.contains(type)) {
+            return
+        }
+
+        if (!groupedCommits.containsKey(type)) {
+            groupedCommits[type] = []
+        }
+
+        groupedCommits[type].add([
+                hash: commit.hash,
+                subject: parsed.subject,
+                scope: parsed.scope,
+                body: parsed.body,
+                breaking: parsed.breaking,
+                originalMessage: commit.message
+        ])
+
+        if (parsed.breaking) {
+            breakingChanges.add([
+                    subject: parsed.subject,
+                    body: parsed.body,
+                    scope: parsed.scope
+            ])
+        }
+    }
+
+    // Add breaking changes section first
+    if (!breakingChanges.isEmpty()) {
+        content.append("## ⚠️ Breaking Changes\n\n")
+        breakingChanges.each { change ->
+            def scopeText = change.scope ? "(${change.scope}) " : ""
+            content.append("- ${scopeText}${change.subject}\n")
+            if (change.body) {
+                content.append("  ${change.body}\n")
+            }
+        }
+        content.append("\n")
+    }
+
+    // Add sections for each commit type
+    def orderedTypes = ['feat', 'fix', 'perf', 'refactor', 'docs', 'style', 'test', 'build', 'ci', 'chore', 'revert', 'other']
+
+    orderedTypes.each { type ->
+        if (groupedCommits.containsKey(type)) {
+            def displayName = COMMIT_TYPES[type] ?: type.capitalize()
+            def emoji = getEmojiForType(type)
+
+            content.append("## ${emoji} ${displayName}\n\n")
+
+            groupedCommits[type].each { commit ->
+                def scopeText = commit.scope ? "(${commit.scope}) " : ""
+                def breakingIcon = commit.breaking ? " ⚠️" : ""
+                def shortHash = commit.hash.substring(0,7)
+                content.append("- ${scopeText}${commit.subject} ([${shortHash}](${GITHUB_REPO}/commit/${commit.hash}))${breakingIcon}\n")
+            }
+
+            content.append("\n")
+        }
+    }
+
+    // Add RC tags information at the end
+    content.append("---\n\n")
+    content.append("**Release Candidates included:**\n")
+    rcTags.each { tag ->
+        content.append("- `${tag}`\n")
+    }
+
+    return content.toString()
+}
+
+def isGitHubCLIAvailable() {
+    try {
+        exec {
+            commandLine 'gh', '--version'
+            standardOutput = new ByteArrayOutputStream()
+            errorOutput = new ByteArrayOutputStream()
+        }
+        return true
+    } catch (Exception e) {
+        return false
+    }
+}
+
+def createGitHubReleaseWithCLI(String releaseTag, String version, String changelogContent) {
+    try {
+        // Save changelog to temporary file
+        def tempFile = File.createTempFile("release_notes_", ".md")
+        tempFile.text = changelogContent
+
+        println "🚀 Creating GitHub release with CLI..."
+
+        exec {
+            commandLine 'gh', 'release', 'create', releaseTag,
+                    '--title', "Release ${version}",
+                    '--notes-file', tempFile.absolutePath
+        }
+
+        // Clean up temp file
+        tempFile.delete()
+
+        println "✅ GitHub release created: ${GITHUB_REPO}/releases/tag/${releaseTag}"
+
+    } catch (Exception e) {
+        println "❌ Failed to create GitHub release with CLI: ${e.message}"
+        println "💡 You may need to authenticate with 'gh auth login'"
+
+        // Fallback: save to file
+        def releaseFile = file("RELEASE_${version}.md")
+        releaseFile.text = changelogContent
+        println "📄 Release notes saved to: ${releaseFile.absolutePath}"
+    }
+}
+
 def createAndPushReleaseTag() {
     def currentVersion = project.mod_version
     def releaseTag = "v.${currentVersion}"
@@ -442,7 +731,7 @@ def buildChangelogFromCommits(List commits) {
         return content.toString()
     }
 
-    content.append("*This changelog includes all commits tagged with RC versions for v.${currentVersion}*\n\n")
+
 
     // Group commits by type
     def groupedCommits = [:]
@@ -486,7 +775,7 @@ def buildChangelogFromCommits(List commits) {
         content.append("## ⚠️ Breaking Changes\n\n")
         breakingChanges.each { change ->
             def scopeText = change.scope ? "(${change.scope}) " : ""
-            content.append("- ${scopeText}${change.subject} `${change.rcTag}`\n")
+            content.append("- ${scopeText}${change.subject}\n")
             if (change.body) {
                 content.append("  ${change.body}\n")
             }
@@ -508,8 +797,7 @@ def buildChangelogFromCommits(List commits) {
                 def scopeText = commit.scope ? "(${commit.scope}) " : ""
                 def breakingIcon = commit.breaking ? " ⚠️" : ""
                 def shortHash = commit.hash.substring(0,7)
-                def rcTagDisplay = commit.rcTag ? " `${commit.rcTag}`" : ""
-                content.append("- ${scopeText}${commit.subject} ([${shortHash}](${GITHUB_REPO}/commit/${commit.hash}))${breakingIcon}${rcTagDisplay}\n")
+                content.append("- ${scopeText}${commit.subject} ([${shortHash}](${GITHUB_REPO}/commit/${commit.hash}))${breakingIcon}\n")
             }
 
             content.append("\n")

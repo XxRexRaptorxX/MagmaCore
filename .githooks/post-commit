@@ -13,7 +13,24 @@ cd "$PROJECT_DIR"
 # Get current version
 CURRENT_VERSION="1.3.3"
 
-# Get next RC number by checking existing RC tags
+# Check if this is a version change by comparing with the last RC tag
+LAST_RC_TAG=$(git tag -l "v.*-RC*" --sort=-version:refname | head -n1)
+if [ -n "$LAST_RC_TAG" ]; then
+    LAST_VERSION=$(echo "$LAST_RC_TAG" | sed 's/v\.\([0-9]\+\.[0-9]\+\.[0-9]\+\)-RC[0-9]\+/\1/')
+    echo "📋 Last version from tags: $LAST_VERSION"
+    echo "📋 Current version: $CURRENT_VERSION"
+    
+    if [ "$LAST_VERSION" != "$CURRENT_VERSION" ]; then
+        echo "🎉 Version change detected: $LAST_VERSION -> $CURRENT_VERSION"
+        echo "🚀 Creating GitHub release for version $LAST_VERSION..."
+        
+        # Run Gradle task to create GitHub release for the old version
+        cd "$PROJECT_DIR"
+        ./gradlew createGitHubRelease -PreleaseVersion="$LAST_VERSION" -q
+    fi
+fi
+
+# Get next RC number by checking existing RC tags for current version
 RC_TAGS=$(git tag -l "v.$CURRENT_VERSION-RC*" | wc -l)
 NEXT_RC=$((RC_TAGS + 1))
 RC_TAG="v.$CURRENT_VERSION-RC$NEXT_RC"
