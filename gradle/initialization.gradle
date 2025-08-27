@@ -386,7 +386,7 @@ tasks.register('createReadme') {
 }
 
 tasks.register("setupGitHooks") {
-    group = "changelog"
+    group = "initialization"
     description = "Setup pre-commit hook for automatic dev tagging"
     doLast {
         setupCommitHooks()
