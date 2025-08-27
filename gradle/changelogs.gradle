@@ -18,7 +18,7 @@ ext.COMMIT_TYPES = [
         chore   : "Chores",
         revert  : "Reverts"
 ]
-ext.EXCLUDED_TYPES = ['chore', 'style', 'ci', 'build', 'test', 'docs']
+ext.EXCLUDED_TYPES = ['style', 'ci', 'build', 'test', 'docs']
 
 // keep a local convenience variable for backwards compatibility with code that expects COMMIT_TYPES directly
 def COMMIT_TYPES = ext.COMMIT_TYPES
@@ -27,6 +27,30 @@ def EXCLUDED_TYPE = ext.EXCLUDED_TYPES
 // Breaking change keywords
 ext.BREAKING_CHANGE_KEYWORDS = ['BREAKING CHANGE', 'BREAKING-CHANGE', 'BREAKING_CHANGE']
 def BREAKING_CHANGE_KEYWORDS = ext.BREAKING_CHANGE_KEYWORDS
+
+// -----------------------------
+// Helper: only write file when content actually changed
+// -----------------------------
+
+def writeIfChanged(File file, String content) {
+    try {
+        def existing = file.exists() ? file.getText('UTF-8') : null
+        if (existing == content) {
+            println "ℹ️ ${file.name} unchanged — skipping write."
+            return false
+        }
+        file.withWriter('UTF-8') { it.write(content) }
+        println "✅ Wrote ${file.name} (content changed)"
+        return true
+    } catch (Exception e) {
+        println "⚠️ Failed writing ${file}: ${e.message}"
+        throw e
+    }
+}
+
+// ==================================
+// Tasks
+// ==================================
 
 tasks.register("setupAutoDevHook") {
     group = "changelog"
@@ -103,21 +127,35 @@ tasks.named("jar") {
 }
 
 
+// ==================================
+// Functions (using writeIfChanged to avoid unnecessary rewrites)
+// ==================================
+
 def generateLatestChangelogFile() {
     def changelogFile = rootProject.file("LATEST_CHANGELOG.md")
     def content = buildChangelogContent()
 
-    changelogFile.text = content
-    println "Generated LATEST_CHANGELOG.md with ${content.split('\n').size()} lines"
+    def changed = writeIfChanged(changelogFile, content)
+    if (changed) {
+        println "Generated LATEST_CHANGELOG.md with ${content.split('\n').size()} lines"
+    } else {
+        println "LATEST_CHANGELOG.md already up-to-date"
+    }
 }
+
 
 def updateChangelogFile() {
     def changelogFile = rootProject.file("LATEST_CHANGELOG.md")
     def content = buildChangelogContent()
 
-    changelogFile.text = content
-    println "Updated LATEST_CHANGELOG.md with all dev commits for current version"
+    def changed = writeIfChanged(changelogFile, content)
+    if (changed) {
+        println "Updated LATEST_CHANGELOG.md with all dev commits for current version"
+    } else {
+        println "LATEST_CHANGELOG.md already up-to-date"
+    }
 }
+
 
 def buildChangelogContent() {
     // Get all commits from dev tags of current version
@@ -126,6 +164,7 @@ def buildChangelogContent() {
     // Build changelog from these commits
     return buildChangelogFromCommits(commits)
 }
+
 
 def getAllDevCommitsForCurrentVersion() {
     def currentVersion = project.mod_version
@@ -207,6 +246,7 @@ def getAllDevCommitsForCurrentVersion() {
     }
 }
 
+
 def extractDevNumber(String devTag) {
     def matcher = devTag =~ /dev(\d+)$/
     if (matcher) {
@@ -214,6 +254,7 @@ def extractDevNumber(String devTag) {
     }
     return 0
 }
+
 
 def tagCurrentCommitWithDev() {
     def currentVersion = project.mod_version
@@ -240,6 +281,7 @@ def tagCurrentCommitWithDev() {
     }
 }
 
+
 def getNextDevNumber(String baseVersion) {
     try {
         def stdout = new ByteArrayOutputStream()
@@ -253,7 +295,7 @@ def getNextDevNumber(String baseVersion) {
         def maxDev = 0
 
         existingDevTags.each { tag ->
-            def devMatch = tag =~ /v\.${baseVersion.replaceAll(/[.*+?^${}()|[\]\\]/, '\\\\$0')}-dev(\d+)/
+            def devMatch = tag =~ /v\.${baseVersion.replaceAll(/[.*+?^${}()|[\\]\\]/, '\\\\$0')}-dev(\d+)/
             if (devMatch) {
                 def devNum = Integer.parseInt(devMatch[0][1])
                 if (devNum > maxDev) {
@@ -268,6 +310,7 @@ def getNextDevNumber(String baseVersion) {
         return 1
     }
 }
+
 
 def archiveLatestChangelogIfPresent(String releaseVersion) {
     try {
@@ -287,7 +330,7 @@ def archiveLatestChangelogIfPresent(String releaseVersion) {
 
         def changelogFile = rootProject.file("CHANGELOG.md")
         if (!changelogFile.exists()) {
-            changelogFile.write("# Changelog\n\n", 'UTF-8')
+            writeIfChanged(changelogFile, "# Changelog\n\n")
             println "🆕 Created CHANGELOG.md"
         }
 
@@ -306,21 +349,28 @@ def archiveLatestChangelogIfPresent(String releaseVersion) {
         // append patch notes
         def combined = header + "\n\n" + latestText + "\n\n" + body
 
-        changelogFile.write(combined.trim() + "\n", 'UTF-8')
+        writeIfChanged(changelogFile, combined.trim() + "\n")
 
         println "✅ Inserted LATEST_CHANGELOG.md content"
 
         // reset LATEST_CHANGELOG.md
         def gameVersions = project.findProperty("game_versions") ?: project.minecraft_version
         def newHeader = "# v.${project.mod_version} for MC ${gameVersions}\n\n## 📝 Changes\n\n"
-        latestFile.write(newHeader, 'UTF-8')
-        println "♻️ Reset LATEST_CHANGELOG.md for new version header: v.${project.mod_version}"
+        def currentLatest = latestFile.exists() ? latestFile.getText('UTF-8') : ""
+
+        if (!currentLatest.startsWith(newHeader)) {
+            writeIfChanged(latestFile, newHeader)
+            println "♻️ Reset LATEST_CHANGELOG.md for new version header: v.${project.mod_version}"
+        } else {
+            println "♻️ LATEST_CHANGELOG.md header already up-to-date"
+        }
 
     } catch (Exception e) {
         println "⚠️ Error while archiving LATEST_CHANGELOG.md: ${e.message}"
         e.printStackTrace()
     }
 }
+
 
 def createGitHubReleaseForVersion(String version) {
     archiveLatestChangelogIfPresent(version)
@@ -388,7 +438,7 @@ def createGitHubReleaseForVersion(String version) {
 
         // Save changelog to a file for manual use
         def releaseFile = file("RELEASE_${version}.md")
-        releaseFile.text = changelogContent
+        writeIfChanged(releaseFile, changelogContent)
         println "📄 Release notes saved to: ${releaseFile.absolutePath}"
 
     } catch (Exception e) {
@@ -396,6 +446,7 @@ def createGitHubReleaseForVersion(String version) {
         e.printStackTrace()
     }
 }
+
 
 def buildChangelogForVersion(String version, List<String> devTags) {
     // Get commits for all dev tags of this version
@@ -562,6 +613,7 @@ def createAndPushReleaseTag() {
     }
 }
 
+
 def buildChangelogFromCommits(List commits) {
     def currentVersion = project.mod_version
     def gameVersions = project.findProperty("game_versions") ?: minecraft_version
@@ -656,6 +708,7 @@ def buildChangelogFromCommits(List commits) {
     return content.toString()
 }
 
+
 def getGithubRepoUrl() {
     try {
         def stdout = new ByteArrayOutputStream()
@@ -681,6 +734,7 @@ def getGithubRepoUrl() {
 }
 ext.GITHUB_REPO = getGithubRepoUrl()
 def GITHUB_REPO = ext.GITHUB_REPO
+
 
 def getVersionLink(String currentVersion) {
     if (!GITHUB_REPO) return null
@@ -716,6 +770,7 @@ def getVersionLink(String currentVersion) {
         return null
     }
 }
+
 
 
 def parseConventionalCommit(String message) {
@@ -761,6 +816,7 @@ def parseConventionalCommit(String message) {
 
     return [type: type, scope: scope, subject: subject, body: body, breaking: breaking]
 }
+
 
 def getEmojiForType(String type) {
     def emojis = [
@@ -1005,7 +1061,7 @@ ext.readLatestChangelog = {
             logger.lifecycle("Using generated changelog from dev commits.")
             // Save it for next time
             try {
-                file.text = generated
+                writeIfChanged(file, generated)
                 logger.lifecycle("Saved generated changelog to LATEST_CHANGELOG.md")
             } catch (Exception saveError) {
                 logger.warn("Could not save generated changelog: ${saveError.message}")

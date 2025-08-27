@@ -465,15 +465,19 @@ def generatePostCommitHookScript() {
 
     return """#!/bin/sh
 # Auto-generated post-commit hook for RC tagging and pushing
-# This hook will be executed after every commit
+
+# Check last commit message to prevent infinite loop
+LAST_COMMIT_MSG=\$(git log -1 --pretty=%B)
+if echo "$LAST_COMMIT_MSG" | grep -q "\\[skip ci\\]"; then
+    echo "⏭️  Skipping post-commit hook (commit created by hook itself)"
+    exit 0
+fi
 
 echo "🏷️  Creating Dev tag for new commit..."
 
-# Get project root (one level up from .githooks folder)
 PROJECT_DIR="\$(dirname "\$(dirname "\$0")")"
 cd "$PROJECT_DIR" || exit 1
 
-# Read version from gradle.properties
 CURRENT_VERSION=\$(grep "^mod_version=" gradle.properties | cut -d'=' -f2)
 
 if [ -z "$CURRENT_VERSION" ]; then
@@ -481,53 +485,201 @@ if [ -z "$CURRENT_VERSION" ]; then
     exit 1
 fi
 
-# Check if this is a version change by comparing with the last Dev tag
 LAST_DEV_TAG=\$(git tag -l "v.*-dev*" --sort=-version:refname | head -n1)
 if [ -n "$LAST_DEV_TAG" ]; then
     LAST_VERSION=\$(echo "$LAST_DEV_TAG" | sed 's/v\\.\\([0-9]\\+\\.[0-9]\\+\\.[0-9]\\+\\)-dev[0-9]\\+/\\1/')
-    echo "📋 Last version from tags: $LAST_VERSION"
-    echo "📋 Current version: $CURRENT_VERSION"
-
     if [ "$LAST_VERSION" != "$CURRENT_VERSION" ]; then
         echo "🎉 Version change detected: $LAST_VERSION -> $CURRENT_VERSION"
-        echo "🚀 Creating GitHub release for version $LAST_VERSION..."
-
         ./gradlew createGitHubRelease -PreleaseVersion="$LAST_VERSION" -q
     fi
 fi
 
-# Get next dev number by checking existing dev tags for current version
 DEV_TAGS=\$(git tag -l "v.$CURRENT_VERSION-dev*" | wc -l)
 NEXT_DEV=\$((DEV_TAGS + 1))
 DEV_TAG="v.$CURRENT_VERSION-dev$NEXT_DEV"
 
 echo "🔖 Creating tag: $DEV_TAG"
-
-# Create the DEV tag on the latest commit
 git tag -a "$DEV_TAG" -m "Auto-generated dev tag $NEXT_DEV for version $CURRENT_VERSION"
-
-# Push the tag to remote
-echo "⬆️  Pushing tag to remote..."
 git push origin "$DEV_TAG"
 
-if [ \$? -eq 0 ]; then
-    echo "✅ Successfully created and pushed dev tag: $DEV_TAG"
-else
-    echo "❌ Failed to push dev tag: $DEV_TAG"
-fi
-
-# Also update the changelog
+# Update the changelog
 echo "📝 Updating changelog..."
 ./gradlew updateChangelog -q
+
+# Commit only if changelog changed
+if ! git diff --quiet -- LATEST_CHANGELOG.md; then
+  git add LATEST_CHANGELOG.md
+  git commit -m "chore: update LATEST_CHANGELOG.md [skip ci]"
+else
+  echo "ℹ️ No changes in LATEST_CHANGELOG.md"
+fi
 
 echo "🎉 Dev tagging complete!"
 """
 }
 
+tasks.register("setupGithubWorkflow") {
+    group = "initialization"
+    description = "Generates the GitHub Actions workflow create_releases.yml"
+
+    doLast {
+        def workflowDir = file(".github/workflows")
+        if (!workflowDir.exists()) {
+            workflowDir.mkdirs()
+        }
+
+        def workflowFile = new File(workflowDir, "create_releases.yml")
+
+        if (workflowFile.exists()) {
+            println("The workflow file '.github/workflows/create_releases.yml' already exists. No action taken.")
+            return
+        }
+
+        println("The workflow file '.github/workflows/create_releases.yml' does not exist.")
+        println("Do you want to generate it now? [y/N]")
+
+        def userInput = System.console()?.readLine()?.trim()?.toLowerCase() ?: "n"
+
+        if (userInput != "y") {
+            println("Aborted: Workflow file not generated.")
+            return
+        }
+
+        workflowFile.text = '''\
+name: Create previous-version Dev release
+
+on:
+  push:
+    # listens to any tag push
+    tags:
+      - '**'
+
+jobs:
+  create-dev-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (fetch all tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create release containing previous version's Dev tags
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get the pushed tag, strip refs/tags/
+            const pushedRef = process.env.GITHUB_REF;
+            const pushedTag = pushedRef.replace('refs/tags/', '');
+
+            function stripV(s) { return s.startsWith('v') ? s.slice(1) : s; }
+            function parseBaseVersion(s) { return s.split('.').map(p => Number(p || 0)); }
+            function semverCompare(a, b) {
+              const pa = parseBaseVersion(a), pb = parseBaseVersion(b);
+              for (let i = 0; i < 3; i++) {
+                const da = pa[i] || 0, db = pb[i] || 0;
+                if (da < db) return -1;
+                if (da > db) return 1;
+              }
+              return 0;
+            }
+            function baseFromTag(tag) {
+              const m = tag.match(/^v?(\\d+\\.\\d+\\.\\d+)(?:-dev\\d+)?$/);
+              return m ? m[1] : null;
+            }
+            function devNumberFromTag(tag) {
+              const m = tag.match(/-dev(\\d+)$/);
+              return m ? Number(m[1]) : null;
+            }
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const currentTag = stripV(pushedTag);
+            const currentBase = currentTag.replace(/-dev\\d+$/, '');
+
+            const allTags = await github.paginate(github.rest.repos.listTags, { owner, repo, per_page: 100 });
+            const devTags = allTags.map(t => t.name)
+                                   .filter(n => /^v?\\d+\\.\\d+\\.\\d+-dev\\d+$/.test(n))
+                                   .map(n => stripV(n));
+
+            const groups = {};
+            for (const t of devTags) {
+              const base = baseFromTag(t);
+              const devNum = devNumberFromTag(t);
+              if (!base || devNum === null) continue;
+              if (!groups[base]) groups[base] = [];
+              groups[base].push({ tag: t, dev: devNum });
+            }
+
+            let prevBase = null;
+            for (const b of Object.keys(groups)) {
+              if (semverCompare(b, currentBase) < 0) {
+                if (!prevBase || semverCompare(b, prevBase) > 0) prevBase = b;
+              }
+            }
+
+            if (!prevBase) {
+              core.info(`No previous base version found before ${currentBase}. Nothing to do.`);
+              return;
+            }
+
+            groups[prevBase].sort((a,b) => a.dev - b.dev);
+            const devList = groups[prevBase].map(x => x.tag);
+
+            const bodyLines = [
+              `This release collects the Dev tags for version **${prevBase}**.`,
+              '',
+              'Included Dev tags:',
+              ''
+            ];
+            for (const t of devList) {
+              bodyLines.push(`- ${t} — https://github.com/${owner}/${repo}/releases/tag/${t}`);
+            }
+            const body = bodyLines.join('\\n');
+
+            const latestDev = groups[prevBase].slice().sort((a,b)=>b.dev-a.dev)[0];
+            const tagObj = allTags.find(x => stripV(x.name) === latestDev.tag);
+            const targetCommitish = tagObj ? tagObj.commit.sha : context.sha;
+
+            const tagNameToUse = prevBase;
+            let existingRelease = null;
+            try {
+              const got = await github.rest.repos.getReleaseByTag({ owner, repo, tag: tagNameToUse });
+              existingRelease = got.data;
+            } catch (e) { }
+
+            if (existingRelease) {
+              const existingBody = existingRelease.body || '';
+              let newBody = existingBody;
+              for (const t of devList) {
+                if (!existingBody.includes(t)) newBody += `\\n- ${t} — https://github.com/${owner}/${repo}/releases/tag/${t}`;
+              }
+              await github.rest.repos.updateRelease({
+                owner, repo, release_id: existingRelease.id,
+                body: newBody, target_commitish: targetCommitish,
+                name: `Devs for ${prevBase}`, draft: false, prerelease: false
+              });
+              core.info(`Updated existing release for tag ${tagNameToUse}`);
+            } else {
+              await github.rest.repos.createRelease({
+                owner, repo, tag_name: tagNameToUse,
+                name: `Devs for ${prevBase}`, body,
+                draft: false, prerelease: false,
+                target_commitish: targetCommitish
+              });
+              core.info(`Created release for ${tagNameToUse} including ${devList.length} Dev tags.`);
+            }
+'''
+
+        println("✅ GitHub workflow '.github/workflows/create_releases.yml' has been generated.")
+    }
+}
+
+
 tasks.register('#initProject') {
     group = "initialization"
     description = "Initializes the project (runs init script)"
-    dependsOn checkGit, checkGradleProperties, setupGitattributes,  setupGitHooks, setupChangelogs, setupVersionsJson, createGitTag, createReadme
+    dependsOn checkGit, checkGradleProperties, setupGitattributes, setupGitHooks, setupGithubWorkflow, setupChangelogs, setupVersionsJson, createGitTag, createReadme
     doLast {
         println "\n🎉 Project successfully initialized!"
         println "📋 Next steps:"
@@ -536,7 +688,7 @@ tasks.register('#initProject') {
         println "3. Select: 'Read and write permissions'"
         println "4. Allow GitHub Actions to create/approve pull requests"
         println "5. Verify the URL in versions.json"
-        println "6. Check the README.MD file and fix missing stuff"
+        println "6. Check the README.md file and fix missing stuff"
         println ""
         println "📌 By XxRexRaptorxX"
         println "©️ All rights reserved. Especially for the README design!"
