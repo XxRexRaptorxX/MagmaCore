@@ -55,4 +55,9 @@ fi
 echo "📝 Updating changelog..."
 ./gradlew updateChangelog -q
 
-echo "🎉 Dev tagging complete!"
+if ! git diff --quiet -- LATEST_CHANGELOG.md; then
+  git add LATEST_CHANGELOG.md
+  git commit -m "chore: update LATEST_CHANGELOG.md [skip ci]"
+else
+  echo "ℹ️ No changes in LATEST_CHANGELOG.md"
+fi
