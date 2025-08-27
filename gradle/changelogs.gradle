@@ -18,7 +18,7 @@ ext.COMMIT_TYPES = [
         chore   : "Chores",
         revert  : "Reverts"
 ]
-ext.EXCLUDED_TYPES = ['style', 'ci', 'build', 'test', 'docs']
+ext.EXCLUDED_TYPES = ['chore', 'style', 'ci', 'build', 'test', 'docs']
 
 // keep a local convenience variable for backwards compatibility with code that expects COMMIT_TYPES directly
 def COMMIT_TYPES = ext.COMMIT_TYPES
