@@ -1,7 +1,8 @@
-# [v.1.3.3 for MC 1.21.5](https://github.com/XxRexRaptorxX/MagmaCore/compare/v.1.3.3-dev1...v.1.3.3-dev32)
+# [v.1.3.3 for MC 1.21.5](https://github.com/XxRexRaptorxX/MagmaCore/compare/v.1.3.3-dev1...v.1.3.3-dev33)
 
 ## 🧹 Chores
 
+- changelog generation ([6d2448c](https://github.com/XxRexRaptorxX/MagmaCore/commit/6d2448ca2f4378d3a39aefff8af1ff992f7dc0d0))
 - changelog generation ([50b9bfe](https://github.com/XxRexRaptorxX/MagmaCore/commit/50b9bfedd242eb7779bdbe8fa3c3c291e632c0ca))
 - changelog generation ([05a0023](https://github.com/XxRexRaptorxX/MagmaCore/commit/05a00238e1a1204c1b703f0f7be9067a01e7cdce))
 - update LATEST_CHANGELOG.md [skip ci] ([9e15fcf](https://github.com/XxRexRaptorxX/MagmaCore/commit/9e15fcf9a7261bab9f6cd0149a2fb1570182c31d))
