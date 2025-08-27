@@ -195,6 +195,7 @@ publishing {
 // Modrinth Configuration
 def rawGameVersions = project.findProperty("game_versions")?.toString() ?: ""
 def parsedGameVersions = rawGameVersions.split(",").collect { it.trim() }
+//def modrinthDeps = evaluate(file("dependencies.gradle"))
 
 afterEvaluate {
     modrinth {
@@ -208,14 +209,14 @@ afterEvaluate {
         failSilently = true
         syncBodyFrom = rootProject.file("PROJECT_PAGE.md").text
         dependencies {
-            // Add dependencies here as needed
+            //dependencies(modrinthDeps)
         }
     }
 }
 
 
 // CurseForge Configuration
-task publishCurseForge(type: TaskPublishCurseForge) {
+tasks.register('publishCurseForge', TaskPublishCurseForge) {
     def tokens = validateTokens()
     apiToken = tokens[1] // CurseForge token
 

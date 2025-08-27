@@ -49,3 +49,9 @@ dependencies {
     // JADE
     runtimeOnly "curse.maven:jade-324717:${jade_version}"
 }
+
+// Dependencies for Modrinth publishing!
+return {
+    //required.project "magma-core"
+    //optional.project "jei"
+}
