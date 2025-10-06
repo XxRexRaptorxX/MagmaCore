@@ -9,9 +9,7 @@ tasks.register("#publishNewVersion") {
     group = "publishing"
     description = "Publish to both Modrinth and CurseForge"
 
-    dependsOn "build", "modrinth", "publishCurseForge"
-
-    doFirst { updateVersionsJson() }
+    dependsOn "build", "modrinth", "publishCurseForge", "archiveChangelog", "updateVersionsJson"
 
     doLast {
         println "=== Publish Completed ==="
@@ -26,7 +24,7 @@ tasks.register("#publishModrinthOnly") {
     group = "publishing"
     description = "Publish only to Modrinth"
 
-    dependsOn "build", "publishCurseForge", "updateVersionFile"
+    dependsOn "build", "modrinth", "updateVersionsJson"
 
     doLast {
         println "=== Modrinth Publish Completed ==="
@@ -40,7 +38,7 @@ tasks.register("#publishCurseForgeOnly") {
     group = "publishing"
     description = "Publish only to CurseForge"
 
-    dependsOn "build", "publishCurseForge", "updateVersionFile"
+    dependsOn "build", "publishCurseForge", "updateVersionsJson"
 
     doLast {
         println "=== CurseForge Publish Completed ==="
@@ -50,7 +48,7 @@ tasks.register("#publishCurseForgeOnly") {
     }
 }
 
-tasks.register("#dryRunPublish") {
+tasks.register("dryRunPublish") {
     group = "publishing"
     description = "Dry run - shows what would be published without actually publishing"
 
@@ -115,7 +113,7 @@ def releaseType = project.findProperty('release_type')?.toString()?.trim()?.toLo
 def onlyLatest = ['alpha', 'beta'].contains(releaseType)
 
 tasks.register('updateVersionsJson') {
-    group = 'release'
+    group = 'publishing'
     description = 'Update versions.json promos for each game version to the current mod_version. If release_type is "alpha" or "beta", only the "-latest" entries are modified.'
 
     doLast {

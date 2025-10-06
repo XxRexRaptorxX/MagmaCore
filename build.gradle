@@ -195,12 +195,13 @@ publishing {
 // Modrinth Configuration
 def rawGameVersions = project.findProperty("game_versions")?.toString() ?: ""
 def parsedGameVersions = rawGameVersions.split(",").collect { it.trim() }
-//def modrinthDeps = evaluate(file("dependencies.gradle"))
 
 afterEvaluate {
     modrinth {
         token = System.getenv("MODRINTH_TOKEN") ?: project.findProperty("modrinthToken")?.toString()
         projectId = mr_id
+        versionName = "v.${mod_version}-${mod_loader}"
+        versionNumber = "v.${mod_version}"
         versionType = release_type
         uploadFile = jar
         loaders = ["neoforge"]

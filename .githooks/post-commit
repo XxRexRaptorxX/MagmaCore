@@ -1,52 +1,49 @@
-#!/bin/sh
-# Auto-generated post-commit hook for RC tagging and pushing
-
-# Check last commit message to prevent infinite loop
-LAST_COMMIT_MSG=$(git log -1 --pretty=%B)
-if echo "$LAST_COMMIT_MSG" | grep -q "\[skip ci\]"; then
-    echo "⏭️  Skipping post-commit hook (commit created by hook itself)"
-    exit 0
-fi
-
-echo "🏷️  Creating Dev tag for new commit..."
-
-PROJECT_DIR="$(dirname "$(dirname "$0")")"
+#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+PROJECT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || (cd "$(dirname "$0")/../.." && pwd))
 cd "$PROJECT_DIR" || exit 1
-
-CURRENT_VERSION=$(grep "^mod_version=" gradle.properties | cut -d'=' -f2)
-
-if [ -z "$CURRENT_VERSION" ]; then
-    echo "❌ Could not read version from gradle.properties"
-    exit 1
+MSG=$(git log -1 --pretty=%B 2>/dev/null || true)
+if echo "$MSG" | grep -qi "\[skip hooks\]"; then
+  echo "post-commit: commit contains [skip hooks] -> skipping hook actions"
+  exit 0
 fi
-
-LAST_DEV_TAG=$(git tag -l "v.*-dev*" --sort=-version:refname | head -n1)
-if [ -n "$LAST_DEV_TAG" ]; then
-    LAST_VERSION=$(echo "$LAST_DEV_TAG" | sed 's/v\.\([0-9]\+\.[0-9]\+\.[0-9]\+\)-dev[0-9]\+/\1/')
-    if [ "$LAST_VERSION" != "$CURRENT_VERSION" ]; then
-        echo "🎉 Version change detected: $LAST_VERSION -> $CURRENT_VERSION"
-        ./gradlew createGitHubRelease -PreleaseVersion="$LAST_VERSION" -q
-    fi
+MOD_VERSION=$(grep '^mod_version=' gradle.properties | cut -d'=' -f2 || true)
+if [ -z "$MOD_VERSION" ]; then
+  echo "post-commit: mod_version not found, aborting" >&2
+  exit 1
 fi
-
-DEV_TAGS=$(git tag -l "v.$CURRENT_VERSION-dev*" | wc -l)
-NEXT_DEV=$((DEV_TAGS + 1))
-DEV_TAG="v.$CURRENT_VERSION-dev$NEXT_DEV"
-
-echo "🔖 Creating tag: $DEV_TAG"
-git tag -a "$DEV_TAG" -m "Auto-generated dev tag $NEXT_DEV for version $CURRENT_VERSION"
-git push origin "$DEV_TAG"
-
-# Update the changelog
-echo "📝 Updating changelog..."
-./gradlew updateChangelog -q
-
-# Commit only if changelog changed
-if ! git diff --quiet -- LATEST_CHANGELOG.md; then
-  git add LATEST_CHANGELOG.md
-  git commit -m "chore: update LATEST_CHANGELOG.md [skip ci]"
+LAST_TAG=$(git tag --list "v.${MOD_VERSION}-dev*" --sort=-version:refname | head -n1 || true)
+if [ -z "$LAST_TAG" ]; then
+  NEXT=1
 else
-  echo "ℹ️ No changes in LATEST_CHANGELOG.md"
+  N=$(echo "$LAST_TAG" | sed -E 's/.*-dev([0-9]+)$/\1/' || true)
+  if [[ "$N" =~ ^[0-9]+$ ]]; then
+    NEXT=$((N+1))
+  else
+    NEXT=1
+  fi
 fi
-
-echo "🎉 Dev tagging complete!"
+DEV_TAG="v.${MOD_VERSION}-dev${NEXT}"
+git tag -a "$DEV_TAG" -m "dev ${NEXT} for version ${MOD_VERSION}" || true
+if git remote get-url origin >/dev/null 2>&1; then
+  echo "post-commit: pushing tag $DEV_TAG to origin"
+  git push origin "$DEV_TAG" || echo "post-commit: git push tag failed (check auth/remote)"
+else
+  echo "post-commit: no origin remote configured -> skipping push"
+fi
+if [ -x ./gradlew ]; then
+  ./gradlew updateChangelog --no-daemon --quiet || echo "post-commit: updateChangelog failed"
+elif [ -x ./gradlew.bat ]; then
+  ./gradlew.bat updateChangelog --no-daemon --quiet || echo "post-commit: updateChangelog failed"
+else
+  echo "post-commit: gradlew not found" >&2
+fi
+if git status --porcelain | grep -q "LATEST_CHANGELOG.md"; then
+  git add LATEST_CHANGELOG.md
+  git commit -m "chore: update LATEST_CHANGELOG.md [skip hooks]" || true
+  if git remote get-url origin >/dev/null 2>&1; then
+    git push origin HEAD || echo "post-commit: push of changelog commit failed"
+  fi
+fi
+exit 0
