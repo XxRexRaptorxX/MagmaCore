@@ -18,13 +18,16 @@ public class ItemHelper {
         return BuiltInRegistries.ITEM.getValue(getLocation(modId, name));
     }
 
+
     public static ItemStack getStack(String modId, String name) {
         return getStack(modId, name, 0);
     }
 
+
     public static ItemStack getStack(String modId, String name, int count) {
         return new ItemStack(BuiltInRegistries.ITEM.getValue(getLocation(modId, name)), count);
     }
+
 
     /**
      * Creates a {@link ResourceKey} for an {@link Item} given a mod ID and item name.
@@ -37,6 +40,7 @@ public class ItemHelper {
         return ResourceKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(modId, name));
     }
 
+
     /**
      * Retrieves the path (resource name) of the given item.
      *
@@ -46,6 +50,7 @@ public class ItemHelper {
     public static String getPath(Item item) {
         return BuiltInRegistries.ITEM.getKey(item).getPath();
     }
+
 
     /**
      * Retrieves the path (resource name) of the item inside the given {@link ItemStack}.
@@ -57,6 +62,7 @@ public class ItemHelper {
         return BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
     }
 
+
     /**
      * Creates a {@link ResourceKey} for an {@link Item} using the detected mod ID and the given name.
      *
@@ -67,9 +73,9 @@ public class ItemHelper {
         return ResourceKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(modId, name));
     }
 
+
     /**
-     * Constructs a {@link ResourceLocation} under the current mod's namespace for the given resource
-     * name.
+     * Constructs a {@link ResourceLocation} under the current mod's namespace for the given resource name.
      *
      * @param name the path/name of the resource
      * @return a {@code ResourceLocation} with namespace = detected mod ID and the given path
@@ -77,6 +83,7 @@ public class ItemHelper {
     public static ResourceLocation getLocation(String modId, String name) {
         return ResourceLocation.fromNamespaceAndPath(modId, name);
     }
+
 
     /**
      * Retrieves the path (resource name) of the given item. Alias for {@link #getPath(Item)}.
@@ -88,9 +95,9 @@ public class ItemHelper {
         return BuiltInRegistries.ITEM.getKey(item).getPath();
     }
 
+
     /**
-     * Retrieves the path (resource name) of the item inside the given {@link ItemStack}. Alias for
-     * {@link #getPath(ItemStack)}.
+     * Retrieves the path (resource name) of the item inside the given {@link ItemStack}. Alias for {@link #getPath(ItemStack)}.
      *
      * @param stack the item stack to query
      * @return the path portion of the item's registry key
@@ -99,16 +106,17 @@ public class ItemHelper {
         return BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
     }
 
+
     /**
      * Retrieves the namespace (mod ID) of the given item.
      *
      * @param item the item whose namespace to retrieve
-     * @return the namespace portion of the item's {@link ResourceLocation} (e.g. "minecraft",
-     *     "mymod")
+     * @return the namespace portion of the item's {@link ResourceLocation} (e.g. "minecraft", "mymod")
      */
     public static String getId(Item item) {
         return BuiltInRegistries.ITEM.getKey(item).getNamespace();
     }
+
 
     /**
      * Retrieves the namespace (mod ID) of the item inside the given {@link ItemStack}.
@@ -120,28 +128,27 @@ public class ItemHelper {
         return BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace();
     }
 
+
     /**
      * Checks if the given path string indicates a tool item based on known tool-related keywords.
      *
      * @param path the string path of the item, typically derived from its registry name or ID
-     * @return {@code true} if the path contains any known tool-related keyword (e.g., "pickaxe",
-     *     "axe", etc.), {@code false} otherwise
+     * @return {@code true} if the path contains any known tool-related keyword (e.g., "pickaxe", "axe", etc.), {@code false} otherwise
      */
     public static boolean isToolType(String path) {
         return TOOL_KEYWORDS.stream().anyMatch(path::contains);
     }
 
+
     /**
-     * Determines whether the given {@link Item} is considered a tool, optionally checking the item's
-     * name.
+     * Determines whether the given {@link Item} is considered a tool, optionally checking the item's name.
      *
-     * <p>This method checks whether the item has a {@code TOOL} component. If {@code withNameCheck}
-     * is set to {@code true}, it also verifies that the item's path (usually its registry ID)
-     * contains any known tool-related keyword (e.g., "pickaxe", "axe", "sword", etc.).
+     * <p>
+     * This method checks whether the item has a {@code TOOL} component. If {@code withNameCheck} is set to {@code true}, it also verifies that the item's path (usually its
+     * registry ID) contains any known tool-related keyword (e.g., "pickaxe", "axe", "sword", etc.).
      *
      * @param item the item to check
-     * @param withNameCheck if {@code true}, performs an additional name-based check; if {@code false}
-     *     or {@code null}, only the presence of the tool component is considered
+     * @param withNameCheck if {@code true}, performs an additional name-based check; if {@code false} or {@code null}, only the presence of the tool component is considered
      * @return {@code true} if the item is considered a tool based on the specified checks; {@code
      *     false} otherwise
      */

@@ -17,6 +17,7 @@ public class MiscUtils {
         }
     }
 
+
     public static ResourceLocation setLoc(String modId, String location) {
         return ResourceLocation.fromNamespaceAndPath(modId, location);
     }

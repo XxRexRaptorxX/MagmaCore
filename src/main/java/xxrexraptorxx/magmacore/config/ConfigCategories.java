@@ -20,18 +20,22 @@ public enum ConfigCategories {
         this.categoryName = categoryName;
     }
 
+
     public String getCategoryName() {
         return categoryName;
     }
+
 
     public String getCategoryLangTag() {
         return References.MODID + ".configuration." + categoryName;
     }
 
+
     @Override
     public String toString() {
         return categoryName;
     }
+
 
     public static ConfigCategories fromString(String categoryName) {
         for (ConfigCategories category : ConfigCategories.values()) {

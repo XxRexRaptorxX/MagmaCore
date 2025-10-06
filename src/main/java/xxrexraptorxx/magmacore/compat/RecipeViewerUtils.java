@@ -15,11 +15,10 @@ import xxrexraptorxx.magmacore.utils.MiscUtils;
 public class RecipeViewerUtils {
 
     /**
-     * Registers integration info entries (tooltips/descriptions) for a single {@link ItemStack} in
-     * JEI, REI, and EMI under the specified mod ID.
+     * Registers integration info entries (tooltips/descriptions) for a single {@link ItemStack} in JEI, REI, and EMI under the specified mod ID.
      *
-     * <p>This method automatically constructs the translation key and registers the item stack with
-     * all supported integration systems.
+     * <p>
+     * This method automatically constructs the translation key and registers the item stack with all supported integration systems.
      *
      * @param modId the mod ID used for generating the translation key and recipe ID
      * @param stack the item stack to register integration info for
@@ -33,6 +32,7 @@ public class RecipeViewerUtils {
         registerListInfo(modId, Collections.singletonList(stack), name);
     }
 
+
     /** Registers integration info for an item. */
     public static void registerItemInfo(String modId, Item item) {
         if (item == null) {
@@ -40,6 +40,7 @@ public class RecipeViewerUtils {
         }
         registerItemInfo(modId, new ItemStack(item));
     }
+
 
     /** Registers integration info for a block. */
     public static void registerItemInfo(String modId, Block block) {
@@ -49,16 +50,16 @@ public class RecipeViewerUtils {
         registerItemInfo(modId, new ItemStack(block));
     }
 
+
     /**
-     * Registers integration info entries (tooltips/descriptions) for a list of {@link ItemStack}s in
-     * JEI, REI, and EMI under the specified mod ID.
+     * Registers integration info entries (tooltips/descriptions) for a list of {@link ItemStack}s in JEI, REI, and EMI under the specified mod ID.
      *
-     * <p>It uses a shared translation key and recipe ID for all stacks in the list.
+     * <p>
+     * It uses a shared translation key and recipe ID for all stacks in the list.
      *
      * @param modId the mod ID used for generating the translation key and recipe ID
      * @param list a list of item stacks to register
-     * @param name the resource name used for the translation key and recipe path (e.g.
-     *     "copper_ingot")
+     * @param name the resource name used for the translation key and recipe path (e.g. "copper_ingot")
      */
     public static void registerListInfo(String modId, List<ItemStack> list, String name) {
         if (list.stream().anyMatch(ItemStack::isEmpty)) {

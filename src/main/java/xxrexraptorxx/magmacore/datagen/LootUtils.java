@@ -29,23 +29,21 @@ public class LootUtils {
      * @return a {@link LootItemFunction.Builder} that applies the translated name to the item
      */
     public static LootItemFunction.Builder setItemName(String name) {
-        return SetNameFunction.setName(
-                FormattingHelper.setCoreLangComponent("item", name), SetNameFunction.Target.ITEM_NAME);
+        return SetNameFunction.setName(FormattingHelper.setCoreLangComponent("item", name), SetNameFunction.Target.ITEM_NAME);
     }
 
+
     /**
-     * Sets the item's name using the default "item" lang prefix and applies a specific text
-     * formatting.
+     * Sets the item's name using the default "item" lang prefix and applies a specific text formatting.
      *
      * @param name the translation key suffix
      * @param formatting the {@link ChatFormatting} style to apply (e.g., bold, italic)
      * @return a {@link LootItemFunction.Builder} that sets and formats the item's name
      */
     public static LootItemFunction.Builder setItemName(String name, ChatFormatting formatting) {
-        return SetNameFunction.setName(
-                FormattingHelper.setCoreLangComponent("item", name).withStyle(formatting),
-                SetNameFunction.Target.ITEM_NAME);
+        return SetNameFunction.setName(FormattingHelper.setCoreLangComponent("item", name).withStyle(formatting), SetNameFunction.Target.ITEM_NAME);
     }
+
 
     /**
      * Sets the item's lore using the default "lore" lang prefix and the given translation key.
@@ -57,6 +55,7 @@ public class LootUtils {
         return new SetLoreFunction.Builder().addLine(FormattingHelper.setCoreLangComponent("lore", name));
     }
 
+
     /**
      * Sets the item's lore with a specified text formatting.
      *
@@ -65,9 +64,9 @@ public class LootUtils {
      * @return a {@link LootItemFunction.Builder} that adds the formatted translated lore line
      */
     public static LootItemFunction.Builder setLore(String name, ChatFormatting formatting) {
-        return new SetLoreFunction.Builder()
-                .addLine(FormattingHelper.setCoreLangComponent("lore", name).withStyle(formatting));
+        return new SetLoreFunction.Builder().addLine(FormattingHelper.setCoreLangComponent("lore", name).withStyle(formatting));
     }
+
 
     /**
      * Sets a randomized item count between a minimum and maximum value.
@@ -80,6 +79,7 @@ public class LootUtils {
         return SetItemCountFunction.setCount(UniformGenerator.between(min, max));
     }
 
+
     /**
      * Sets a fixed item count.
      *
@@ -90,6 +90,7 @@ public class LootUtils {
         return SetItemCountFunction.setCount(ConstantValue.exactly(count));
     }
 
+
     /**
      * Sets random item damage using default bounds (0.2 to 0.7).
      *
@@ -98,6 +99,7 @@ public class LootUtils {
     public static LootItemFunction.Builder setDamage() {
         return setDamage(0.2f, 0.7f);
     }
+
 
     /**
      * Sets item damage to a randomized value between the given bounds.
@@ -110,6 +112,7 @@ public class LootUtils {
         return SetItemDamageFunction.setDamage(UniformGenerator.between(min, max));
     }
 
+
     /**
      * Adds an enchantment to the item with level 1.
      *
@@ -117,10 +120,10 @@ public class LootUtils {
      * @param lookup the registry lookup to resolve the enchantment holder
      * @return a {@link LootItemFunction.Builder} that applies the enchantment at level 1
      */
-    public static LootItemFunction.Builder setEnchantment(
-            ResourceKey<Enchantment> enchantment, HolderLookup.RegistryLookup<Enchantment> lookup) {
+    public static LootItemFunction.Builder setEnchantment(ResourceKey<Enchantment> enchantment, HolderLookup.RegistryLookup<Enchantment> lookup) {
         return setEnchantment(enchantment, 1, lookup);
     }
+
 
     /**
      * Adds an enchantment to the item with a fixed level.
@@ -128,14 +131,12 @@ public class LootUtils {
      * @param enchantment the resource key of the enchantment
      * @param level the level to apply
      * @param lookup the registry lookup to resolve the enchantment holder
-     * @return a {@link LootItemFunction.Builder} that applies the enchantment with the specified
-     *     level
+     * @return a {@link LootItemFunction.Builder} that applies the enchantment with the specified level
      */
-    public static LootItemFunction.Builder setEnchantment(
-            ResourceKey<Enchantment> enchantment, Integer level, HolderLookup.RegistryLookup<Enchantment> lookup) {
-        return new SetEnchantmentsFunction.Builder(false)
-                .withEnchantment(lookup.getOrThrow(enchantment), ConstantValue.exactly(level));
+    public static LootItemFunction.Builder setEnchantment(ResourceKey<Enchantment> enchantment, Integer level, HolderLookup.RegistryLookup<Enchantment> lookup) {
+        return new SetEnchantmentsFunction.Builder(false).withEnchantment(lookup.getOrThrow(enchantment), ConstantValue.exactly(level));
     }
+
 
     /**
      * Adds an enchantment to the item with a randomized level between min and max.
@@ -144,17 +145,13 @@ public class LootUtils {
      * @param minLevel the minimum enchantment level
      * @param maxLevel the maximum enchantment level
      * @param lookup the registry lookup to resolve the enchantment holder
-     * @return a {@link LootItemFunction.Builder} that applies the enchantment with a level in the
-     *     given range
+     * @return a {@link LootItemFunction.Builder} that applies the enchantment with a level in the given range
      */
-    public static LootItemFunction.Builder setEnchantment(
-            ResourceKey<Enchantment> enchantment,
-            Integer minLevel,
-            Integer maxLevel,
+    public static LootItemFunction.Builder setEnchantment(ResourceKey<Enchantment> enchantment, Integer minLevel, Integer maxLevel,
             HolderLookup.RegistryLookup<Enchantment> lookup) {
-        return new SetEnchantmentsFunction.Builder(false)
-                .withEnchantment(lookup.getOrThrow(enchantment), UniformGenerator.between(minLevel, maxLevel));
+        return new SetEnchantmentsFunction.Builder(false).withEnchantment(lookup.getOrThrow(enchantment), UniformGenerator.between(minLevel, maxLevel));
     }
+
 
     /**
      * Applies an attribute modifier to the item.
@@ -165,16 +162,11 @@ public class LootUtils {
      * @param slots the equipment slots the modifier applies to
      * @return a {@link LootItemFunction.Builder} that adds the specified attribute modifier
      */
-    public static LootItemFunction.Builder setAttribute(
-            Holder<Attribute> attribute,
-            AttributeModifier.Operation operation,
-            NumberProvider value,
-            EquipmentSlotGroup slots) {
+    public static LootItemFunction.Builder setAttribute(Holder<Attribute> attribute, AttributeModifier.Operation operation, NumberProvider value, EquipmentSlotGroup slots) {
         return SetAttributesFunction.setAttributes()
-                .withModifier(new SetAttributesFunction.ModifierBuilder(
-                                ResourceLocation.parse(attribute.getRegisteredName()), attribute, operation, value)
-                        .forSlot(slots));
+                .withModifier(new SetAttributesFunction.ModifierBuilder(ResourceLocation.parse(attribute.getRegisteredName()), attribute, operation, value).forSlot(slots));
     }
+
 
     /**
      * Sets whether the item should display the enchantment glint (shiny visual effect).
@@ -186,6 +178,7 @@ public class LootUtils {
         return SetComponentsFunction.setComponent(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, value);
     }
 
+
     /**
      * Applies an armor trim to the item using the specified material and pattern.
      *
@@ -195,15 +188,11 @@ public class LootUtils {
      * @param patternLookup the registry lookup for trim patterns
      * @return a {@link LootItemFunction.Builder} that applies the armor trim component
      */
-    public static LootItemFunction.Builder setArmorTrim(
-            ResourceKey<TrimMaterial> material,
-            ResourceKey<TrimPattern> pattern,
-            HolderLookup.RegistryLookup<TrimMaterial> materialLookup,
-            HolderLookup.RegistryLookup<TrimPattern> patternLookup) {
-        return SetComponentsFunction.setComponent(
-                DataComponents.TRIM,
-                new ArmorTrim(materialLookup.getOrThrow(material), patternLookup.getOrThrow(pattern)));
+    public static LootItemFunction.Builder setArmorTrim(ResourceKey<TrimMaterial> material, ResourceKey<TrimPattern> pattern,
+            HolderLookup.RegistryLookup<TrimMaterial> materialLookup, HolderLookup.RegistryLookup<TrimPattern> patternLookup) {
+        return SetComponentsFunction.setComponent(DataComponents.TRIM, new ArmorTrim(materialLookup.getOrThrow(material), patternLookup.getOrThrow(pattern)));
     }
+
 
     /**
      * Sets the dyed color of the item using an RGB integer value.

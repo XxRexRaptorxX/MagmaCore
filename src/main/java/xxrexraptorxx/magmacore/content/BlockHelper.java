@@ -14,17 +14,21 @@ public class BlockHelper {
         return BuiltInRegistries.BLOCK.getValue(getLocation(modId, name));
     }
 
+
     public static Item getItem(Block block) {
         return block.asItem();
     }
+
 
     public static ItemStack getStack(String modId, String name) {
         return getStack(modId, name, 0);
     }
 
+
     public static ItemStack getStack(String modId, String name, int count) {
         return new ItemStack(BuiltInRegistries.BLOCK.getValue(getLocation(modId, name)), count);
     }
+
 
     /**
      * Creates a {@link ResourceKey} for a {@link Block} given a mod ID and block name.
@@ -37,6 +41,7 @@ public class BlockHelper {
         return ResourceKey.create(Registries.BLOCK, ResourceLocation.fromNamespaceAndPath(modId, name));
     }
 
+
     /**
      * Retrieves the path (resource name) of the given block.
      *
@@ -46,6 +51,7 @@ public class BlockHelper {
     public static String getPath(Block block) {
         return BuiltInRegistries.BLOCK.getKey(block).getPath();
     }
+
 
     /**
      * Retrieves the path (resource name) of the item inside the given {@link ItemStack}.
@@ -57,6 +63,7 @@ public class BlockHelper {
         return ItemHelper.getPath(stack.getItem());
     }
 
+
     /**
      * Creates a {@link ResourceKey} for a {@link Block} using the detected mod ID and the given name.
      *
@@ -66,6 +73,7 @@ public class BlockHelper {
     public static ResourceKey<Block> getPath(String modId, String name) {
         return ResourceKey.create(Registries.BLOCK, ResourceLocation.fromNamespaceAndPath(modId, name));
     }
+
 
     /**
      * Constructs a {@link ResourceLocation} under the current mod's namespace for the given name.
@@ -77,6 +85,7 @@ public class BlockHelper {
         return ResourceLocation.fromNamespaceAndPath(modId, name);
     }
 
+
     /**
      * Retrieves the path (resource name) of the given block. Alias for {@link #getPath(Block)}.
      *
@@ -87,9 +96,9 @@ public class BlockHelper {
         return BuiltInRegistries.BLOCK.getKey(block).getPath();
     }
 
+
     /**
-     * Retrieves the name (resource path) of the item inside the given {@link ItemStack}. Alias for
-     * {@link ItemHelper#getName}.
+     * Retrieves the name (resource path) of the item inside the given {@link ItemStack}. Alias for {@link ItemHelper#getName}.
      *
      * @param stack the item stack to query
      * @return the resource path of the item (e.g. "iron_ingot")
@@ -98,16 +107,17 @@ public class BlockHelper {
         return ItemHelper.getName(stack.getItem());
     }
 
+
     /**
      * Retrieves the namespace (mod ID) of the given block.
      *
      * @param block the block whose namespace to retrieve
-     * @return the namespace portion of the block's {@link ResourceLocation} (e.g. "minecraft",
-     *     "mymod")
+     * @return the namespace portion of the block's {@link ResourceLocation} (e.g. "minecraft", "mymod")
      */
     public static String getId(Block block) {
         return BuiltInRegistries.BLOCK.getKey(block).getNamespace();
     }
+
 
     /**
      * Retrieves the namespace (mod ID) of the item inside the given {@link ItemStack}.
@@ -119,18 +129,15 @@ public class BlockHelper {
         return ItemHelper.getId(stack.getItem());
     }
 
+
     /**
-     * Checks whether the given {@link Block} and {@link Item} share the same resource path. Useful
-     * for identifying block-item pairs (e.g. block and its corresponding item form).
+     * Checks whether the given {@link Block} and {@link Item} share the same resource path. Useful for identifying block-item pairs (e.g. block and its corresponding item form).
      *
      * @param block the block to compare
      * @param item the item to compare
      * @return {@code true} if both have identical resource paths, {@code false} otherwise
      */
     public static boolean isMatching(Block block, Item item) {
-        return BuiltInRegistries.BLOCK
-                .getKey(block)
-                .getPath()
-                .equals(BuiltInRegistries.ITEM.getKey(item).getPath());
+        return BuiltInRegistries.BLOCK.getKey(block).getPath().equals(BuiltInRegistries.ITEM.getKey(item).getPath());
     }
 }

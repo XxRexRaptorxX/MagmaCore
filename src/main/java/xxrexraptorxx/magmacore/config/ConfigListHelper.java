@@ -36,6 +36,7 @@ public class ConfigListHelper {
         }
     }
 
+
     /**
      * Validates a string with item amount format: "amount*namespace:item"
      *
@@ -65,6 +66,7 @@ public class ConfigListHelper {
         }
     }
 
+
     /**
      * Extracts the ID part from a probability string
      *
@@ -80,6 +82,7 @@ public class ConfigListHelper {
 
         return input.trim().substring(0, lastDashIndex);
     }
+
 
     /**
      * Extracts the probability from a probability string
@@ -103,6 +106,7 @@ public class ConfigListHelper {
         }
     }
 
+
     // ENTITIES //
     /** Validates entity string: "namespace:entity" */
     public static boolean isValidEntity(String entityString) {
@@ -119,6 +123,7 @@ public class ConfigListHelper {
         }
     }
 
+
     /** Validates entity spawning string: "namespace:entity-probability" */
     public static boolean isValidEntityWithProbability(String input) {
         if (!input.contains(":") || !hasValidProbabilityFormat(input)) {
@@ -128,6 +133,7 @@ public class ConfigListHelper {
         String entityId = extractId(input);
         return entityId != null && isValidEntity(entityId);
     }
+
 
     // BLOCKS //
     /**
@@ -150,6 +156,7 @@ public class ConfigListHelper {
         }
     }
 
+
     /** Validates block with probability: "namespace:block-probability" */
     public static boolean isValidBlockWithProbability(String input) {
         if (!input.contains(":") || !hasValidProbabilityFormat(input)) {
@@ -159,6 +166,7 @@ public class ConfigListHelper {
         String blockId = extractId(input);
         return blockId != null && isValidBlock(blockId);
     }
+
 
     // ITEMS //
     /** Validates item string: "namespace:item" */
@@ -176,6 +184,7 @@ public class ConfigListHelper {
         }
     }
 
+
     /** Validates item with probability: "namespace:item-probability" */
     public static boolean isValidItemWithProbability(String input) {
         if (!hasValidProbabilityFormat(input)) {
@@ -185,6 +194,7 @@ public class ConfigListHelper {
         String itemId = extractId(input);
         return itemId != null && isValidItem(itemId);
     }
+
 
     /**
      * Validates loot entry format: "amount*namespace:item"
@@ -222,6 +232,7 @@ public class ConfigListHelper {
         }
     }
 
+
     public static ItemStack parseItemWithCountList(String entry) {
         String[] parts = entry.split("\\*", 2);
         if (parts.length != 2) {
@@ -240,6 +251,7 @@ public class ConfigListHelper {
 
         return new ItemStack(item, amount);
     }
+
 
     // GENERIC //
     /**

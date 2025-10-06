@@ -13,21 +13,21 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class TouchSensitiveBlock extends Block {
 
-    protected static final VoxelShape CUSTOM_COLLISION_AABB =
-            Block.box(0.0625D, 0.0625D, 0.0625D, 15.9375D, 15.9375D, 15.9375D);
+    protected static final VoxelShape CUSTOM_COLLISION_AABB = Block.box(0.0625D, 0.0625D, 0.0625D, 15.9375D, 15.9375D, 15.9375D);
 
     public TouchSensitiveBlock(Properties properties) {
         super(properties);
     }
+
 
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return CUSTOM_COLLISION_AABB;
     }
 
+
     @Override
-    public void entityInside(
-            BlockState state, Level level, BlockPos pos, Entity entity, InsideBlockEffectApplier effectApplier) {
+    public void entityInside(BlockState state, Level level, BlockPos pos, Entity entity, InsideBlockEffectApplier effectApplier) {
         if (!level.isClientSide) {
             if (entity instanceof LivingEntity livingEntity) {
                 setInsideEffects(livingEntity, entity, state, level, pos, effectApplier);
@@ -35,13 +35,8 @@ public class TouchSensitiveBlock extends Block {
         }
     }
 
-    private static void setInsideEffects(
-            LivingEntity livingEntity,
-            Entity entity,
-            BlockState state,
-            Level level,
-            BlockPos pos,
-            InsideBlockEffectApplier effectApplier) {
+
+    private static void setInsideEffects(LivingEntity livingEntity, Entity entity, BlockState state, Level level, BlockPos pos, InsideBlockEffectApplier effectApplier) {
         // do stuff
     }
 }

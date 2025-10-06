@@ -14,7 +14,8 @@ public class EMIIntegrationHelper {
 
     private static final List<EmiAction> actions = new ArrayList<>();
 
-    private record EmiAction(List<EmiIngredient> ingredients, List<Component> description, ResourceLocation recipeId) {}
+    private record EmiAction(List<EmiIngredient> ingredients, List<Component> description, ResourceLocation recipeId) {
+    }
 
     public static void enqueue(List<ItemStack> stacks, Component desc, ResourceLocation recipeId) {
         List<EmiStack> emiStacks = stacks.stream().map(EmiStack::of).toList();
@@ -22,6 +23,7 @@ public class EMIIntegrationHelper {
 
         actions.add(new EmiAction(List.of(ingredient), List.of(desc), recipeId));
     }
+
 
     public static void apply(EmiRegistry registry) {
         for (EmiAction action : actions) {

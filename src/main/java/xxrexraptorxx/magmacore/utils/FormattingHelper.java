@@ -21,12 +21,11 @@ public class FormattingHelper {
     public static final String separator = ".";
 
     /**
-     * Capitalizes each word in the given registry_name. Words are delineated by spaces or
-     * underscores. The first letter of each word is converted to uppercase and the rest to lowercase.
+     * Capitalizes each word in the given registry_name. Words are delineated by spaces or underscores. The first letter of each word is converted to uppercase and the rest to
+     * lowercase.
      *
      * @param registry_name the input registry_name to capitalize; may contain spaces or underscores
-     * @return a new registry_name with each word capitalized, or the original registry_name if it is
-     *     null or empty
+     * @return a new registry_name with each word capitalized, or the original registry_name if it is null or empty
      */
     public static String transformRegistryNames(String registry_name) {
         if (registry_name == null || registry_name.isEmpty()) {
@@ -39,19 +38,18 @@ public class FormattingHelper {
 
         for (String word : words) {
             if (!word.isEmpty()) {
-                capitalizedString
-                        .append(Character.toUpperCase(word.charAt(0)))
-                        .append(word.substring(1).toLowerCase())
-                        .append(" ");
+                capitalizedString.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1).toLowerCase()).append(" ");
             }
         }
 
         return capitalizedString.toString().trim();
     }
 
+
     public static String capitalizeWords(String string) {
         return transformRegistryNames(string);
     }
+
 
     /**
      * Constructs a language tag prefix using the Magma Core id.
@@ -63,6 +61,7 @@ public class FormattingHelper {
         return prefix + separator + References.MODID + separator;
     }
 
+
     /**
      * Constructs a language tag prefix using the default namespace.
      *
@@ -72,6 +71,7 @@ public class FormattingHelper {
     public static String setMCLangTagPrefix(String prefix) {
         return prefix + separator + ResourceLocation.DEFAULT_NAMESPACE + separator;
     }
+
 
     /**
      * Constructs a language tag prefix using the provided mod ID.
@@ -84,6 +84,7 @@ public class FormattingHelper {
         return prefix + separator + modId + separator;
     }
 
+
     /**
      * Constructs a full language tag using the MagmaCore id.
      *
@@ -95,6 +96,7 @@ public class FormattingHelper {
         return prefix + separator + References.MODID + separator + suffix;
     }
 
+
     /**
      * Constructs a full language tag using the MagmaCore id.
      *
@@ -104,6 +106,7 @@ public class FormattingHelper {
     public static String setCoreLangTag(String suffix) {
         return References.MODID + separator + suffix;
     }
+
 
     /**
      * Constructs a full language tag using the default namespace.
@@ -115,6 +118,7 @@ public class FormattingHelper {
     public static String setMCLangTag(String prefix, String suffix) {
         return prefix + separator + ResourceLocation.DEFAULT_NAMESPACE + separator + suffix;
     }
+
 
     /**
      * Constructs a full language tag using the provided mod ID.
@@ -128,6 +132,7 @@ public class FormattingHelper {
         return prefix + separator + modId + separator + suffix;
     }
 
+
     /**
      * Creates a translatable text component for a Magma Core language tag.
      *
@@ -139,19 +144,19 @@ public class FormattingHelper {
         return Component.translatable(setCoreLangTag(prefix, suffix));
     }
 
+
     /**
-     * Creates a translatable text component for a Magma Core language key, using the provided prefix
-     * and suffix, with the given text formatting.
+     * Creates a translatable text component for a Magma Core language key, using the provided prefix and suffix, with the given text formatting.
      *
      * @param prefix the base prefix for the translation key
      * @param suffix the suffix for the language key (resulting key: "prefix.magmacore.suffix")
      * @param formatting the {@link ChatFormatting} style to apply to the text
-     * @return a {@link MutableComponent} that will translate the key "{prefix}.magmacore.{suffix}"
-     *     and apply the specified style
+     * @return a {@link MutableComponent} that will translate the key "{prefix}.magmacore.{suffix}" and apply the specified style
      */
     public static MutableComponent setCoreLangComponent(String prefix, String suffix, ChatFormatting formatting) {
         return setCoreLangComponent(prefix, suffix).withStyle(formatting);
     }
+
 
     /**
      * Creates a translatable text component for a Magma Core language tag.
@@ -163,22 +168,21 @@ public class FormattingHelper {
         return Component.translatable(setCoreLangTag(suffix));
     }
 
+
     /**
-     * Creates a translatable text component for a Magma Core language key, using the provided suffix,
-     * with the given text formatting.
+     * Creates a translatable text component for a Magma Core language key, using the provided suffix, with the given text formatting.
      *
      * @param suffix the suffix for the translation key (resulting key: "magmacore.suffix")
      * @param formatting the {@link ChatFormatting} style to apply to the text
-     * @return a {@link MutableComponent} that will translate the key "magmacore.{suffix}" and apply
-     *     the specified style
+     * @return a {@link MutableComponent} that will translate the key "magmacore.{suffix}" and apply the specified style
      */
     public static MutableComponent setCoreLangComponent(String suffix, ChatFormatting formatting) {
         return setCoreLangComponent(suffix).withStyle(formatting);
     }
 
+
     /**
-     * Creates a translatable text component for a mod-specific language tag using the provided mod
-     * ID.
+     * Creates a translatable text component for a mod-specific language tag using the provided mod ID.
      *
      * @param prefix the base prefix for the language key
      * @param modId the mod identifier to include
@@ -189,34 +193,32 @@ public class FormattingHelper {
         return Component.translatable(setLangTag(prefix, modId, suffix));
     }
 
+
     /**
-     * Creates a translatable text component for a mod-specific language key, using the provided
-     * prefix, mod ID, and suffix, with the given text formatting.
+     * Creates a translatable text component for a mod-specific language key, using the provided prefix, mod ID, and suffix, with the given text formatting.
      *
      * @param prefix the base prefix for the translation key
      * @param modId the mod identifier to include in the translation key
      * @param suffix the suffix for the language key (resulting key: "prefix.modId.suffix")
      * @param formatting the {@link ChatFormatting} style to apply to the text
-     * @return a {@link MutableComponent} that will translate the key "{prefix}.{modId}.{suffix}" and
-     *     apply the specified style
+     * @return a {@link MutableComponent} that will translate the key "{prefix}.{modId}.{suffix}" and apply the specified style
      */
-    public static MutableComponent setModLangComponent(
-            String prefix, String modId, String suffix, ChatFormatting formatting) {
+    public static MutableComponent setModLangComponent(String prefix, String modId, String suffix, ChatFormatting formatting) {
         return setModLangComponent(prefix, modId, suffix).withStyle(formatting);
     }
 
+
     /**
-     * Creates a translatable description message component for an item using its description
-     * translation key.
+     * Creates a translatable description message component for an item using its description translation key.
      *
      * @param modId the mod ID used to construct the translation key
      * @param item the item whose description key will be used
      * @return a translatable {@link MutableComponent} for the item's description
      */
     public static MutableComponent setDescComponent(String modId, Item item) {
-        return Component.translatable(
-                setLangTag("message", modId, BuiltInRegistries.ITEM.getKey(item).getPath() + ".desc"));
+        return Component.translatable(setLangTag("message", modId, BuiltInRegistries.ITEM.getKey(item).getPath() + ".desc"));
     }
+
 
     /**
      * Creates a translatable and formatted description message component for an item.
@@ -230,18 +232,18 @@ public class FormattingHelper {
         return setDescComponent(modId, item).withStyle(formatting);
     }
 
+
     /**
-     * Creates a translatable description message component for a block using its description
-     * translation key.
+     * Creates a translatable description message component for a block using its description translation key.
      *
      * @param modId the mod ID used to construct the translation key
      * @param block the block whose description key will be used
      * @return a translatable {@link MutableComponent} for the block's description
      */
     public static MutableComponent setDescComponent(String modId, Block block) {
-        return Component.translatable(setLangTag(
-                "message", modId, BuiltInRegistries.BLOCK.getKey(block).getPath() + ".desc"));
+        return Component.translatable(setLangTag("message", modId, BuiltInRegistries.BLOCK.getKey(block).getPath() + ".desc"));
     }
+
 
     /**
      * Creates a translatable and formatted description message component for a block.
@@ -255,6 +257,7 @@ public class FormattingHelper {
         return setDescComponent(modId, block).withStyle(formatting);
     }
 
+
     /**
      * Creates a translatable description message component using a custom translation key suffix.
      *
@@ -266,9 +269,9 @@ public class FormattingHelper {
         return Component.translatable(setLangTag("message", modId, name + ".desc"));
     }
 
+
     /**
-     * Creates a translatable and formatted description message component using a custom translation
-     * key suffix.
+     * Creates a translatable and formatted description message component using a custom translation key suffix.
      *
      * @param modId the mod ID used to construct the translation key
      * @param name the custom name to append to the translation key
@@ -278,6 +281,7 @@ public class FormattingHelper {
     public static MutableComponent setDescComponent(String modId, String name, ChatFormatting formatting) {
         return setDescComponent(modId, name).withStyle(formatting);
     }
+
 
     /**
      * Creates a translatable chat message component using a custom translation key suffix.
@@ -290,9 +294,9 @@ public class FormattingHelper {
         return Component.translatable(setLangTag("message", modId, name));
     }
 
+
     /**
-     * Creates a translatable and formatted chat message component using a custom translation key
-     * suffix.
+     * Creates a translatable and formatted chat message component using a custom translation key suffix.
      *
      * @param modId the mod ID used to construct the translation key
      * @param name the custom name to append to the translation key
@@ -303,9 +307,9 @@ public class FormattingHelper {
         return setMessageComponent(modId, name).withStyle(formatting);
     }
 
+
     /**
-     * Creates a translatable text component for a mod-specific language tag using the provided mod
-     * ID.
+     * Creates a translatable text component for a mod-specific language tag using the provided mod ID.
      *
      * @param modId the mod identifier to include
      * @param suffix the suffix for the language key
@@ -315,38 +319,38 @@ public class FormattingHelper {
         return Component.translatable(modId + separator + suffix);
     }
 
+
     /**
-     * Creates a translatable text component for a mod-specific language key, using the provided mod
-     * ID and suffix, with the given text formatting.
+     * Creates a translatable text component for a mod-specific language key, using the provided mod ID and suffix, with the given text formatting.
      *
      * @param modId the mod identifier to include in the translation key
      * @param suffix the suffix for the language key (resulting key: "modId.suffix")
      * @param formatting the {@link ChatFormatting} style to apply to the text
-     * @return a {@link MutableComponent} that will translate the key "{modId}.{suffix}" and apply the
-     *     specified style
+     * @return a {@link MutableComponent} that will translate the key "{modId}.{suffix}" and apply the specified style
      */
     public static MutableComponent setLangComponent(String modId, String suffix, ChatFormatting formatting) {
         return Component.translatable(modId + separator + suffix).withStyle(formatting);
     }
 
+
     /**
      * Creates a translatable component for a mod’s creative tab label.
      *
-     * <p>This method constructs a translatable text component using the translation key <code>
-     * "itemGroup.&lt;modId&gt;_tap"</code>. This key can be localized in language files to display
-     * the appropriate name for the mod’s item group (creative tab).
+     * <p>
+     * This method constructs a translatable text component using the translation key <code>
+     * "itemGroup.&lt;modId&gt;_tap"</code>. This key can be localized in language files to display the appropriate name for the mod’s item group (creative tab).
      *
      * @param modId The mod identifier used to build the translation key
-     * @return A {@link net.minecraft.network.chat.MutableComponent} representing the translatable
-     *     text for the creative tab, which can be resolved at runtime to the localized name.
+     * @return A {@link net.minecraft.network.chat.MutableComponent} representing the translatable text for the creative tab, which can be resolved at runtime to the localized
+     * name.
      */
     public static MutableComponent setTabLangComponent(String modId) {
         return Component.translatable("itemGroup." + modId + "_tap");
     }
 
+
     /**
-     * Returns either the normal or expanded tooltip component depending on whether the Shift key is
-     * held down.
+     * Returns either the normal or expanded tooltip component depending on whether the Shift key is held down.
      *
      * @param normal the tooltip to show when Shift is not pressed
      * @param expanded the tooltip to show when Shift is pressed
@@ -356,11 +360,12 @@ public class FormattingHelper {
         return Screen.hasShiftDown() ? expanded : normal;
     }
 
+
     /**
      * Converts a decimal number to a percentage value.
      *
-     * <p>If the input value is greater than 1, it returns 100. Otherwise, it multiplies the decimal
-     * by 100 to convert it to a percentage.
+     * <p>
+     * If the input value is greater than 1, it returns 100. Otherwise, it multiplies the decimal by 100 to convert it to a percentage.
      *
      * @param decimal the decimal value to convert (expected range: 0.0 to 1.0)
      * @return the corresponding percentage value, or 100 if the input exceeds 1
@@ -369,17 +374,19 @@ public class FormattingHelper {
         return decimal > 1 ? 100 : decimal * 100;
     }
 
+
     /**
      * Returns a {@link ChatFormatting} color associated with a given log level.
      *
-     * <p>This method maps common {@link Level} values to specific colors for debugging output:
+     * <p>
+     * This method maps common {@link Level} values to specific colors for debugging output:
      *
      * <ul>
-     *   <li>{@code ERROR} → {@code RED}
-     *   <li>{@code FATAL} → {@code DARK_RED}
-     *   <li>{@code DEBUG} and {@code TRACE} → {@code AQUA}
-     *   <li>{@code WARN} → {@code RED}
-     *   <li>Others → {@code YELLOW}
+     * <li>{@code ERROR} → {@code RED}
+     * <li>{@code FATAL} → {@code DARK_RED}
+     * <li>{@code DEBUG} and {@code TRACE} → {@code AQUA}
+     * <li>{@code WARN} → {@code RED}
+     * <li>Others → {@code YELLOW}
      * </ul>
      *
      * @param level the log level to map
@@ -406,15 +413,17 @@ public class FormattingHelper {
         }
     }
 
+
     /**
      * Returns a {@link ChatFormatting} color based on the category of a given {@link MobEffect}.
      *
-     * <p>Category-to-color mapping:
+     * <p>
+     * Category-to-color mapping:
      *
      * <ul>
-     *   <li>{@code HARMFUL} → {@code DARK_RED}
-     *   <li>{@code BENEFICIAL} → {@code GREEN}
-     *   <li>Neutral or other categories → {@code YELLOW}
+     * <li>{@code HARMFUL} → {@code DARK_RED}
+     * <li>{@code BENEFICIAL} → {@code GREEN}
+     * <li>Neutral or other categories → {@code YELLOW}
      * </ul>
      *
      * @param effect the mob effect to evaluate

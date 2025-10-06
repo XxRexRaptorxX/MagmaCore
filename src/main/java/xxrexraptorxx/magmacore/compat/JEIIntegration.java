@@ -16,6 +16,7 @@ public class JEIIntegration implements IModPlugin {
         return ID;
     }
 
+
     @Override
     public void registerRecipes(IRecipeRegistration registry) {
         JEIIntegrationHelper.apply(registry);

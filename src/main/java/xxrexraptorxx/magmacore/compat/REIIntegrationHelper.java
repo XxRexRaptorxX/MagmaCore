@@ -32,6 +32,7 @@ public class REIIntegrationHelper {
         });
     }
 
+
     public static void apply(DisplayRegistry registry) {
         actions.forEach(action -> action.accept(registry));
         actions.clear();
