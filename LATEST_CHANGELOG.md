@@ -1,2 +1,2 @@
-# [v.1.3.3 for MC 1.21.5](https://github.com/XxRexRaptorxX/MagmaCore/compare/v.1.3.3-dev1...v.1.3.3-dev36)
+# [v.2.0.0 for MC 1.21.10](https://github.com/XxRexRaptorxX/MagmaCore/tree/v.2.0.0-dev1)
 
