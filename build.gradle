@@ -17,14 +17,6 @@ apply from: "$rootDir/gradle/building.gradle"
 apply from: "$rootDir/gradle/initialization.gradle"
 apply from: "$rootDir/gradle/debugging.gradle"
 
-println "=== DEBUG INFO ==="
-println "mod_version from properties: ${project.findProperty('mod_version')}"
-println "mod_group_id from properties: ${project.findProperty('mod_group_id')}"
-println "mod_id from properties: ${project.findProperty('mod_id')}"
-println "project.version: ${project.version}"
-println "project.group: ${project.group}"
-println "archivesName: ${base.archivesName.getOrNull()}"
-println "=================="
 // ========================================
 // PROJECT CONFIGURATION
 // ========================================
