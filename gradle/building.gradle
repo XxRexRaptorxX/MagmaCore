@@ -1,4 +1,23 @@
 // ========================================
+// MAVEN PUBLISHING MIT SOURCES & JAVADOCS
+// ========================================
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
+
+tasks.named('javadoc', Javadoc) {
+    options.encoding = 'UTF-8'
+
+    if (JavaVersion.current().isJava8Compatible()) {
+        options.addStringOption('Xdoclint:none', '-quiet')
+    }
+}
+
+
+// ========================================
 // MOD BUILDING TASKS
 // ========================================
 

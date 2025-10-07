@@ -1,7 +1,6 @@
 package xxrexraptorxx.magmacore.main;
 
 import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -40,7 +39,6 @@ public class MagmaCore {
         }
     }
 
-    @OnlyIn(Dist.CLIENT)
     private void onClientSetup(FMLClientSetupEvent event) {
         ChatLogAppender.register();
     }
