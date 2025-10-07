@@ -27,7 +27,7 @@ public class MagmaCore {
         ConfigHelper.registerConfigs(container, References.MODID, true, Config.SERVER_CONFIG, Config.CLIENT_CONFIG, null, Config.STARTUP_CONFIG);
         ModRegistry.register(References.MODID, References.NAME, References.URL);
 
-        if (FMLEnvironment.dist == Dist.CLIENT) {
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
             bus.addListener(this::onClientSetup);
         }
     }

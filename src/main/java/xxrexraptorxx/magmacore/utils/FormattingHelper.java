@@ -1,13 +1,13 @@
 package xxrexraptorxx.magmacore.utils;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import org.apache.logging.log4j.Level;
@@ -356,8 +356,8 @@ public class FormattingHelper {
      * @param expanded the tooltip to show when Shift is pressed
      * @return {@code expanded} if Shift is down, otherwise {@code normal}
      */
-    public static Component setExpandableTooltip(Component normal, Component expanded) {
-        return Screen.hasShiftDown() ? expanded : normal;
+    public static Component setExpandableTooltip(Entity entity, Component normal, Component expanded) {
+        return entity.isShiftKeyDown() ? expanded : normal;
     }
 
 

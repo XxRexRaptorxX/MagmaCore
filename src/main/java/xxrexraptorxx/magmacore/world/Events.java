@@ -1,22 +1,8 @@
 package xxrexraptorxx.magmacore.world;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.telemetry.TelemetryProperty;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -35,7 +21,6 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.VersionChecker;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -49,7 +34,23 @@ import xxrexraptorxx.magmacore.main.ModRegistry;
 import xxrexraptorxx.magmacore.main.References;
 import xxrexraptorxx.magmacore.utils.FormattingHelper;
 
-@EventBusSubscriber(modid = References.MODID, bus = EventBusSubscriber.Bus.GAME)
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+@EventBusSubscriber(modid = References.MODID)
 public class Events {
 
     private static final Map<String, Boolean> shownMap = new HashMap<>();
@@ -258,7 +259,7 @@ public class Events {
     @SubscribeEvent
     public static void showStopModRepostsMessage(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        if (player.getServer().isDedicatedServer()) return;
+        if (player.level().getServer().isDedicatedServer()) return;
 
         Path configDir = FMLPaths.CONFIGDIR.get();
         Path marker = configDir.resolve("#STOP_MOD_REPOSTS.txt");
@@ -316,7 +317,7 @@ public class Events {
                         """;
 
                 Files.writeString(marker, fileContent, StandardCharsets.UTF_8);
-                String launcher = FMLLoader.getLauncherInfo().toLowerCase();
+                String launcher = TelemetryProperty.LAUNCHER_NAME.id().toLowerCase();
 
                 if (!(launcher.contains("curseforge") || launcher.contains("modrinth") || launcher.contains("prism")) && Config.getModRepostsInfo()) {
                     MagmaCore.LOGGER.info("Stop-mod-reposts info message is generated. Don't worry, this message should only appear the very first time after installation!");

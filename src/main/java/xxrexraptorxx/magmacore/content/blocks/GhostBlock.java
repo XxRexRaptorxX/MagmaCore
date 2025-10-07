@@ -26,8 +26,8 @@ public class GhostBlock extends Block {
 
 
     @Override
-    public void entityInside(BlockState state, Level level, BlockPos pos, Entity entity, InsideBlockEffectApplier effectApplier) {
-        if (!level.isClientSide) {
+    public void entityInside(BlockState state, Level level, BlockPos pos, Entity entity, InsideBlockEffectApplier effectApplier, boolean p_451772_) {
+        if (!level.isClientSide()) {
             if (entity instanceof LivingEntity livingEntity) {
                 setInsideEffects(livingEntity, entity, state, level, pos, effectApplier);
             }
