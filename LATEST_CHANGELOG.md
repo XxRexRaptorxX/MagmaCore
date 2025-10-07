@@ -1,4 +1,4 @@
-# [v.2.0.0 for MC 1.21.10](https://github.com/XxRexRaptorxX/MagmaCore/compare/v.2.0.0-dev1...v.2.0.0-dev4)
+# [v.2.0.0 for MC 1.21.10](https://github.com/XxRexRaptorxX/MagmaCore/compare/v.2.0.0-dev1...v.2.0.0-dev5)
 
 ## 🔨 Refactoring
 
