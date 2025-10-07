@@ -17,15 +17,23 @@ apply from: "$rootDir/gradle/building.gradle"
 apply from: "$rootDir/gradle/initialization.gradle"
 apply from: "$rootDir/gradle/debugging.gradle"
 
+println "=== DEBUG INFO ==="
+println "mod_version from properties: ${project.findProperty('mod_version')}"
+println "mod_group_id from properties: ${project.findProperty('mod_group_id')}"
+println "mod_id from properties: ${project.findProperty('mod_id')}"
+println "project.version: ${project.version}"
+println "project.group: ${project.group}"
+println "archivesName: ${base.archivesName.getOrNull()}"
+println "=================="
 // ========================================
 // PROJECT CONFIGURATION
 // ========================================
 
-version = mod_version
-group = mod_group_id
+version = "${mod_version}"
+group = "${mod_group_id}"
 
 base {
-    archivesName = mod_id
+    archivesName = "${mod_id}"
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(java_version)
@@ -168,6 +176,45 @@ idea {
     module {
         downloadSources = true
         downloadJavadoc = true
+    }
+}
+
+
+// ========================================
+// MAVEN PUBLISHING
+// ========================================
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            from components.java
+
+            groupId = project.group
+            artifactId = project.base.archivesName.get()
+            version = project.version
+
+            pom {
+                name = mod_name
+                description = "${mod_name} - Minecraft mod"
+
+                licenses {
+                    license {
+                        name = mod_license
+                    }
+                }
+
+                developers {
+                    developer {
+                        name = mod_authors
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            url "file://${project.projectDir}/repo"
+        }
     }
 }
 
