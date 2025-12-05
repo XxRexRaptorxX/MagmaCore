@@ -1,6 +1,8 @@
 package xxrexraptorxx.magmacore.utils;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -11,6 +13,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import org.apache.logging.log4j.Level;
+import org.lwjgl.glfw.GLFW;
 import xxrexraptorxx.magmacore.main.References;
 
 public class FormattingHelper {
@@ -357,7 +360,20 @@ public class FormattingHelper {
      * @return {@code expanded} if Shift is down, otherwise {@code normal}
      */
     public static Component setExpandableTooltip(Entity entity, Component normal, Component expanded) {
-        return entity.isShiftKeyDown() ? expanded : normal;
+        return InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), GLFW.GLFW_KEY_LEFT_SHIFT) ? expanded : normal;
+    }
+
+
+    /**
+     * Returns either the normal or expanded tooltip component depending on whether a specific key is held down.
+     *
+     * @param normal the tooltip to show when the key is not pressed
+     * @param expanded the tooltip to show when the key is pressed
+     * @param key the selected key number
+     * @return {@code expanded} if {@code key} is down, otherwise {@code normal}
+     */
+    public static Component setExpandableTooltip(Entity entity, Component normal, Component expanded, int key) {
+        return InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), key) ? expanded : normal;
     }
 
 
