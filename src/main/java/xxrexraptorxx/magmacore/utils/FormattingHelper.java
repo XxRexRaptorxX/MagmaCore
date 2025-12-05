@@ -460,4 +460,16 @@ public class FormattingHelper {
             return ChatFormatting.YELLOW;
         }
     }
+
+
+    /**
+     * Converts "true" or "false" boolean values to "yes" or "no".
+     */
+    public static String ConvertBooleanToText(Boolean value) {
+        if (value) {
+            return Component.translatable("gui.yes").getString();
+        } else {
+            return Component.translatable("gui.no").getString();
+        }
+    }
 }
