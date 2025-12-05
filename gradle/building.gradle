@@ -1,12 +1,6 @@
 // ========================================
-// MAVEN PUBLISHING MIT SOURCES & JAVADOCS
+// MOD BUILDING TASKS
 // ========================================
-
-java {
-    withSourcesJar()
-    withJavadocJar()
-}
-
 
 tasks.named('javadoc', Javadoc) {
     options.encoding = 'UTF-8'
@@ -15,11 +9,6 @@ tasks.named('javadoc', Javadoc) {
         options.addStringOption('Xdoclint:none', '-quiet')
     }
 }
-
-
-// ========================================
-// MOD BUILDING TASKS
-// ========================================
 
 tasks.named('jar').configure {
     archiveBaseName.set(mod_name.replace(" ", ""))
@@ -33,6 +22,17 @@ tasks.matching { it.name == 'runData' }.configureEach {
 tasks.matching { it.name == 'runClient' }.configureEach {
     dependsOn('spotlessApply')
 }
+
+
+// ========================================
+// BUILDING AND FORMATTING
+// ========================================
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
 
 spotless {
     java {
