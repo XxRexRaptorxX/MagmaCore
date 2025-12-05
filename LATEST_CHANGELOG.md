@@ -1,4 +1,8 @@
-# [v.2.0.0 for MC 1.21.10, 1.21.9](https://github.com/XxRexRaptorxX/MagmaCore/compare/v.2.0.0-dev1...v.2.0.0-dev11)
+# [v.2.0.0 for MC 1.21.10, 1.21.9](https://github.com/XxRexRaptorxX/MagmaCore/compare/v.2.0.0-dev1...v.2.0.0-dev12)
+
+## ✨ Features
+
+- ConvertBooleanToText added ([65f49f7](https://github.com/XxRexRaptorxX/MagmaCore/commit/65f49f72b05a1e9db7125d534169615e96b76a3c))
 
 ## 🔧 Bug Fixes
 
