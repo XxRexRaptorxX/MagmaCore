@@ -1,7 +1,8 @@
-# [v.2.0.0 for MC 1.21.10, 1.21.9](https://github.com/XxRexRaptorxX/MagmaCore/compare/v.2.0.0-dev1...v.2.0.0-dev13)
+# [v.2.0.0 for MC 1.21.10, 1.21.9](https://github.com/XxRexRaptorxX/MagmaCore/compare/v.2.0.0-dev1...v.2.0.0-dev14)
 
 ## ✨ Features
 
+- enum of ValidatorFormats for Config Lists added ([63d7ae6](https://github.com/XxRexRaptorxX/MagmaCore/commit/63d7ae6b6936798daef32195c82ff928f440ef20))
 - ConvertBooleanToText added ([65f49f7](https://github.com/XxRexRaptorxX/MagmaCore/commit/65f49f72b05a1e9db7125d534169615e96b76a3c))
 
 ## 🔧 Bug Fixes
