@@ -1,4 +1,8 @@
-# [v.2.0.0 for MC 1.21.10, 1.21.9](https://github.com/XxRexRaptorxX/MagmaCore/compare/v.2.0.0-dev1...v.2.0.0-dev9)
+# [v.2.0.0 for MC 1.21.10, 1.21.9](https://github.com/XxRexRaptorxX/MagmaCore/compare/v.2.0.0-dev1...v.2.0.0-dev10)
+
+## 🔧 Bug Fixes
+
+- shift-key detection ([414d517](https://github.com/XxRexRaptorxX/MagmaCore/commit/414d517a7c5fa0306a169119578246272c776e9c))
 
 ## 🔨 Refactoring
 
