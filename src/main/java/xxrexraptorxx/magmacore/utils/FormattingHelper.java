@@ -348,7 +348,11 @@ public class FormattingHelper {
      * name.
      */
     public static MutableComponent setTabLangComponent(String modId) {
-        return Component.translatable("itemGroup." + modId + "_tap");
+        return Component.translatable("itemGroup." + modId + ".main_tap");
+    }
+
+    public static MutableComponent setTabLangComponent(String modId, String name) {
+        return Component.translatable("itemGroup." + modId + "." + name);
     }
 
 
