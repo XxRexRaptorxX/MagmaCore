@@ -603,7 +603,7 @@ tasks.register("setupGithubWorkflow") {
         println("⚠️ The workflow file '.github/workflows/create_releases.yml' does not exist.")
 
         workflowFile.text = '''\
-name: Create releases
+name: Create previous-version Dev release
 
 on:
   push:
