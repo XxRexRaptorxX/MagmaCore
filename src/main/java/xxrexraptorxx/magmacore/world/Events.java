@@ -75,10 +75,11 @@ public class Events {
             var result = VersionChecker.getResult(modContainer.getModInfo());
             switch (result.status()) {
                 case OUTDATED, BETA_OUTDATED -> {
-                    MutableComponent msg = FormattingHelper.setMessageComponent(entry.modName(), "update_available").withStyle(style -> style.withColor(ChatFormatting.BLUE));
+                    MutableComponent msg = Component.translatable("message." + References.MODID + ".update_available", entry.modName())
+                            .withStyle(style -> style.withColor(ChatFormatting.BLUE));
                     MutableComponent link = FormattingHelper.setMessageComponent(References.MODID, "update_link")
                             .withStyle(style -> style.withColor(ChatFormatting.GREEN).withClickEvent(new ClickEvent.OpenUrl(URI.create(entry.updateUrl())))
-                                    .withHoverEvent(new HoverEvent.ShowText(FormattingHelper.setCoreLangComponent("message.official", ChatFormatting.GOLD))));
+                                    .withHoverEvent(new HoverEvent.ShowText(FormattingHelper.setMessageComponent(References.MODID, "official", ChatFormatting.GOLD))));
 
                     player.displayClientMessage(msg, false);
                     player.displayClientMessage(link, false);
