@@ -1,7 +1,6 @@
 package xxrexraptorxx.magmacore.content.items;
 
 import com.mojang.authlib.GameProfile;
-import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
@@ -18,6 +17,8 @@ import net.minecraft.world.level.Level;
 import xxrexraptorxx.magmacore.main.MagmaCore;
 import xxrexraptorxx.magmacore.utils.FormattingHelper;
 
+import java.util.List;
+
 public class RewardItems {
 
     public static ItemStack getCertificate() {
@@ -26,8 +27,8 @@ public class RewardItems {
         certificate.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
         certificate.set(DataComponents.RARITY, Rarity.EPIC);
         certificate.set(DataComponents.CUSTOM_NAME, FormattingHelper.setCoreLangComponent("item", "certificate", ChatFormatting.GOLD));
-        certificate.set(DataComponents.LORE, new ItemLore(List.of(FormattingHelper.setCoreLangComponent("item", "certificate.lore", ChatFormatting.YELLOW)
-                .append(Component.literal(FormattingHelper.lineSeperator + "- XxRexRaptorxX").withStyle(ChatFormatting.ITALIC).withStyle(ChatFormatting.GRAY)))));
+        certificate.set(DataComponents.LORE, new ItemLore(List.of(FormattingHelper.setCoreLangComponent("item", "certificate.lore", ChatFormatting.YELLOW),
+                Component.literal(FormattingHelper.lineSeperator + "- " + "XxRexRaptorxX").withStyle(ChatFormatting.ITALIC).withStyle(ChatFormatting.GRAY))));
 
         return certificate;
     }
