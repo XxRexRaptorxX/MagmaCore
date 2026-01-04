@@ -347,4 +347,3 @@ tasks.register('updateVersionsJson') {
         println "All remote branches processed. versions.json synchronized where needed without touching your current working tree or rewriting history."
     }
 }
-
