@@ -26,8 +26,8 @@ public class RewardItems {
         certificate.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
         certificate.set(DataComponents.RARITY, Rarity.EPIC);
         certificate.set(DataComponents.CUSTOM_NAME, FormattingHelper.setCoreLangComponent("item", "certificate", ChatFormatting.GOLD));
-        certificate.set(DataComponents.LORE, new ItemLore(List.of(FormattingHelper.setCoreLangComponent("item", "certificate.lore", ChatFormatting.YELLOW)
-                .append(Component.literal(FormattingHelper.lineSeperator + "- XxRexRaptorxX").withStyle(ChatFormatting.ITALIC).withStyle(ChatFormatting.GRAY)))));
+        certificate.set(DataComponents.LORE, new ItemLore(List.of(FormattingHelper.setCoreLangComponent("item", "certificate.lore", ChatFormatting.YELLOW),
+                Component.literal("- XxRexRaptorxX").withStyle(ChatFormatting.ITALIC).withStyle(ChatFormatting.GRAY))));
 
         return certificate;
     }
