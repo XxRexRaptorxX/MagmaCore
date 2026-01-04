@@ -1,20 +1,5 @@
 package xxrexraptorxx.magmacore.world;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.particles.ParticleTypes;
@@ -49,6 +34,22 @@ import xxrexraptorxx.magmacore.main.ModRegistry;
 import xxrexraptorxx.magmacore.main.References;
 import xxrexraptorxx.magmacore.utils.FormattingHelper;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 @EventBusSubscriber(modid = References.MODID, bus = EventBusSubscriber.Bus.GAME)
 public class Events {
 
@@ -74,10 +75,11 @@ public class Events {
             var result = VersionChecker.getResult(modContainer.getModInfo());
             switch (result.status()) {
                 case OUTDATED, BETA_OUTDATED -> {
-                    MutableComponent msg = FormattingHelper.setMessageComponent(entry.modName(), "update_available").withStyle(style -> style.withColor(ChatFormatting.BLUE));
+                    MutableComponent msg = Component.translatable("message." + References.MODID + ".update_available", entry.modName())
+                            .withStyle(style -> style.withColor(ChatFormatting.BLUE));
                     MutableComponent link = FormattingHelper.setMessageComponent(References.MODID, "update_link")
                             .withStyle(style -> style.withColor(ChatFormatting.GREEN).withClickEvent(new ClickEvent.OpenUrl(URI.create(entry.updateUrl())))
-                                    .withHoverEvent(new HoverEvent.ShowText(FormattingHelper.setCoreLangComponent("message.official", ChatFormatting.GOLD))));
+                                    .withHoverEvent(new HoverEvent.ShowText(FormattingHelper.setMessageComponent(References.MODID, "official", ChatFormatting.GOLD))));
 
                     player.displayClientMessage(msg, false);
                     player.displayClientMessage(link, false);
