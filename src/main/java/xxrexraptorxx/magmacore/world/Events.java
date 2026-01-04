@@ -240,7 +240,7 @@ public class Events {
             if (!level.isClientSide() && supporterCache.contains(event.getEntity().getUUID().toString()) || Config.getDebugMode() && isDev) {
                 Vec3 pos = player.position();
                 double d0 = pos.x + (level.random.nextFloat() - 0.5F);
-                double d1 = pos.y + (level.random.nextFloat() * 1.5F - 0.75F);
+                double d1 = pos.y + (level.random.nextFloat() - 0.75F);
                 double d2 = pos.z + (level.random.nextFloat() - 0.5F);
 
                 level.addParticle(ParticleTypes.GLOW, d0, d1, d2, 0.0D, 0.0D, 0.0D);
