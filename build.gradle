@@ -17,6 +17,7 @@ apply from: "$rootDir/gradle/building.gradle"
 apply from: "$rootDir/gradle/initialization.gradle"
 apply from: "$rootDir/gradle/debugging.gradle"
 
+// v.1.0
 // ========================================
 // PROJECT CONFIGURATION
 // ========================================
@@ -306,16 +307,16 @@ String readLatestChangelog() {
         try {
             def text = file.getText('UTF-8').trim()
             if (text) {
-                logger.lifecycle("Using changelog from file: ${file}")
+                logger.lifecycle("ℹ️ Using changelog from file: ${file}")
                 return text
             } else {
-                logger.lifecycle("LATEST_CHANGELOG.md exists but is empty.")
+                logger.lifecycle("⚠️ LATEST_CHANGELOG.md exists but is empty.")
             }
         } catch (Exception e) {
-            logger.warn("Error from reading LATEST_CHANGELOG.md: ${e.message}")
+            logger.warn("❌ Error from reading LATEST_CHANGELOG.md: ${e.message}")
         }
     } else {
-        logger.lifecycle("LATEST_CHANGELOG.md not found in project root.")
+        logger.lifecycle("⚠️ LATEST_CHANGELOG.md not found in project root.")
     }
 
     //2. from Git-HEAD
@@ -329,24 +330,24 @@ String readLatestChangelog() {
         }
         def gitText = stdout.toString('UTF-8').trim()
         if (gitText) {
-            logger.lifecycle("Using changelog from git HEAD:LATEST_CHANGELOG.md")
+            logger.lifecycle("ℹ️ Using changelog from git HEAD:LATEST_CHANGELOG.md")
             return gitText
         } else {
-            logger.lifecycle("No LATEST_CHANGELOG.md content found at git HEAD.")
+            logger.lifecycle("⚠️ No LATEST_CHANGELOG.md content found at git HEAD.")
         }
     } catch (Exception e) {
-        logger.warn("Error from executing 'git show': ${e.message}")
+        logger.warn("❌ Error from executing 'git show': ${e.message}")
     }
 
     // 3. fallback
     try {
         def generated = generateLatestChangelog()
-        logger.lifecycle("Using generated changelog (fallback).")
+        logger.lifecycle("ℹ️ Using generated changelog (fallback).")
         return generated
     } catch (Exception e) {
         logger.warn("generateLatestChangelog() failed: ${e.message}")
     }
 
-    logger.lifecycle("No changelog found — returning empty string.")
+    logger.lifecycle("❌ No changelog found — returning empty string.")
     return ""
 }
